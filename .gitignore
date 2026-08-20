@@ -1,0 +1,7 @@
+data/runtime.json
+storage/uploads/*
+!storage/uploads/.gitkeep
+.env
+*.log
+node_modules/
+sources/
