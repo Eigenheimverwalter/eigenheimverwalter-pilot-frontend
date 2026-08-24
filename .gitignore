@@ -14,4 +14,5 @@ app-current-reference/
 legacy-admin/
 outputs/
 tmp/
+.comparison/
 AGENTS.md
