@@ -1,4 +1,4 @@
-# Eigenheimverwalter Pilot Admin / Partnerportal
+# eigenheimverwalter Pilot – Partner OS
 
 Lauffähige Testplattform für die künftige Admin- und Partnerwelt von Eigenheimverwalter. Sie demonstriert die fachlichen Abläufe und die Zugriffskontrolle unabhängig vom nicht mitgelieferten Produktionssystem.
 
@@ -16,10 +16,11 @@ Testzugänge:
 
 | Rolle | E-Mail | Passwort |
 |---|---|---|
-| Super Admin | admin@ehv.test | PilotAdmin!2026 |
-| Admin Light / Support | support@ehv.test | PilotSupport!2026 |
-| Handwerkspartner | partner@ehv.test | PilotPartner!2026 |
-| Maklerpartner | makler@ehv.test | PilotMakler!2026 |
+| Super Admin | admin@ehv.test | ChangeMe123! |
+| Dachpartner | dachpartner@ehv.test | ChangeMe123! |
+| Admin Light / Support | support@ehv.test | ChangeMe123! |
+| Handwerkspartner | partner@ehv.test | ChangeMe123! |
+| Maklerpartner | makler@ehv.test | ChangeMe123! |
 
 Die Daten werden beim ersten Start in `data/runtime.json` erzeugt. Die Datei ist ignoriert und kann für einen frischen Teststand entfernt werden.
 

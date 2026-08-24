@@ -1,7 +1,17 @@
 data/runtime.json
+data/production-*.json
+data/*.sql
+data/*.sql.gz
 storage/uploads/*
+storage/production-files/*
+storage/address-verification/*
 !storage/uploads/.gitkeep
 .env
 *.log
 node_modules/
 sources/
+app-current-reference/
+legacy-admin/
+outputs/
+tmp/
+AGENTS.md

@@ -1,0 +1,7 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { DwdWarningProvider, normalizeDwdWarnings, weatherProviderCatalog } from '../lib/weather-providers.mjs';
+const payload={warnings:{'803159000':[{identifier:'dwd-1',regionName:'Hamburg',state:'Hamburg',start:1787500000000,end:1787503600000,level:3,type:1,event:'Sturmböen',headline:'Amtliche Warnung vor Sturmböen'}]}};
+test('DWD-Warnung wird providerneutral normalisiert',()=>{const [warning]=normalizeDwdWarnings(payload);assert.equal(warning.externalEventId,'dwd-1');assert.equal(warning.triggerCode,'STORM_ROOF_CHECK');assert.equal(warning.severity,75);assert.equal(warning.region,'Hamburg');assert.equal(warning.warnCellId,'803159000')});
+test('DWD-Provider nutzt injizierbaren Abruf',async()=>{const provider=new DwdWarningProvider({fetchImpl:async()=>({ok:true,json:async()=>payload})});const warnings=await provider.fetchActiveWarnings();assert.equal(warnings.length,1)});
+test('Dienstekatalog unterscheidet verbunden und vorbereitet',()=>{const pending=weatherProviderCatalog();assert.equal(pending.find(x=>x.id==='dwd-cap').status,'partial');const catalog=weatherProviderCatalog({lastSync:'2026-08-24T10:00:00Z'});assert.equal(catalog.find(x=>x.id==='dwd-cap').status,'connected');assert.equal(catalog.find(x=>x.id==='bright-sky').status,'prepared');assert.equal(catalog.find(x=>x.id==='push').status,'not_configured')});
