@@ -21,12 +21,16 @@ Testzugänge:
 | Admin Light / Support | support@ehv.test | ChangeMe123! |
 | Handwerkspartner | partner@ehv.test | ChangeMe123! |
 | Maklerpartner | makler@ehv.test | ChangeMe123! |
+| Partner Basic | basic@ehv.test | ChangeMe123! |
 
 Die Daten werden beim ersten Start in `data/runtime.json` erzeugt. Die Datei ist ignoriert und kann für einen frischen Teststand entfernt werden.
 
 ## Enthaltene Funktionen
 
-- Rollen und serverseitige Berechtigungsprüfung für Super Admin, Admin Light, Partner-Manager, Handwerks- und Maklerpartner
+- Rollen und serverseitige Berechtigungsprüfung für Super Admin, Admin Light, Partner-Manager, Handwerks-, Makler- und Partner-Basic-Zugänge
+- Partner-Basic-Selbstregistrierung mit E-Mail-Bestätigung, Anmeldung per E-Mail und Passwort sowie sicherem Passwort-Reset
+- Einwilligungsbasierte Kundenempfehlungen mit personenbezogenem, nicht erratbarem Zuordnungslink sowie KPI- und Regionenübersicht
+- Basic-Empfehlungsprozess mit verbindlicher Gewerkewahl, Kundenbestätigung von E-Mail und Immobilienadresse, gewerkebeschränkter Kundenakte und bewusst deaktiviertem Gebietsschutz
 - Zugriffsscope aus expliziter Partner-Objekt-Zuordnung, Gewerk, PLZ/Region und optional befristeter Ausnahmezuweisung außerhalb des Lizenzgebiets
 - Partnerverwaltung und vorbereiteter Einladungs-/Onboardingprozess
 - Kunden- und Objektakten mit stabiler EHV-Objekt-ID und externer Phase-4-Referenz

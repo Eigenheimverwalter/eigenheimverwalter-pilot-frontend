@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: eigenheimverwalter-pilot-admin-test
+    runtime: node
+    region: frankfurt
+    plan: free
+    branch: codex/makler-workflow-and-platform-update
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_ENV
+        value: staging
+      - key: APP_ORIGIN
+        value: https://eigenheimverwalter-pilot-admin-test.onrender.com
+      - key: DATA_FILE
+        value: /tmp/ehv-pilot/runtime.json
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: STAGING_DEMO_PASSWORD
+        sync: false
+      - key: UPLOAD_MAX_BYTES
+        value: "5242880"
+      - key: MAIL_TRANSPORT
+        value: outbox
+      - key: WEATHER_DWD_ENABLED
+        value: "true"

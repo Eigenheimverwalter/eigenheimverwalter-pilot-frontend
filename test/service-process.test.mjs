@@ -1,0 +1,5 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {transitionServiceProcess,serviceSla} from '../lib/service-process.mjs';
+test('unzulässige Statussprünge werden abgelehnt',()=>assert.equal(transitionServiceProcess({status:'new'},'completed').error,'invalid_transition'));
+test('Ablehnung benötigt eine Begründung',()=>assert.equal(transitionServiceProcess({status:'new'},'rejected').error,'rejection_reason_required'));
+test('Abschluss benötigt Nachweis oder dokumentierte Ausnahme',()=>{const p={status:'performed'};assert.equal(transitionServiceProcess(p,'completed').error,'completion_evidence_required');assert.equal(transitionServiceProcess(p,'completed',{acknowledgeMissingEvidence:true,actorId:'u1'}).ok,true)});
+test('SLA berechnet erste Reaktion nachvollziehbar',()=>{const result=serviceSla({createdAt:'2026-01-01T08:00:00Z',statusEvents:[{to:'accepted',at:'2026-01-01T13:00:00Z'}]},{now:new Date('2026-01-01T14:00:00Z')});assert.equal(result.firstReactionHours,5);assert.equal(result.firstReactionBreached,true)});
