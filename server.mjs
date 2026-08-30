@@ -91,7 +91,7 @@ if(!store.data.customers.some(x=>x.id==='c-basic-broker-demo'))store.data.custom
 if(!store.data.properties.some(x=>x.id==='o-basic-broker-demo'))store.data.properties.push({id:'o-basic-broker-demo',ehvId:'EHV-BASIC-M-001',customerId:'c-basic-broker-demo',address:'Beispielstraße 21',postalCode:'22041',city:'Hamburg',type:'Einfamilienhaus',year:1987,area:146,landArea:612,value:585000,plot:'Flur 12',parcel:'184/7',basement:true,outbuilding:'Garage',selfInhabited:true,livingPersons:3,energyClass:'C',phase4Ref:'pilot:test:basic-broker',dataClass:'fictional_test'});
 if(!store.data.assignments.some(x=>x.id==='a-basic-broker-demo'))store.data.assignments.push({id:'a-basic-broker-demo',partnerId:'p-basic-broker',propertyId:'o-basic-broker-demo',tradeId:'BROKER',status:'active',overrideRegion:true,accessStart:new Date().toISOString().slice(0,10),accessEnd:null,source:'basic_partner_referral',scope:'referred_customer_and_broker_basis_only'});
 store.save();
-const productionFile=path.resolve(process.env.PRODUCTION_MIRROR||'./data/production-mirror.json');
+const productionFile=path.resolve(process.env.PRODUCTION_MIRROR||(fs.existsSync('/etc/secrets/production-mirror.json')?'/etc/secrets/production-mirror.json':'./data/production-mirror.json'));
 const production=fs.existsSync(productionFile)?JSON.parse(fs.readFileSync(productionFile,'utf8')):null;
 const sessions=new Map(), rate=new Map();
 const revokeUserSessions=userId=>{for(const [token,session] of sessions)if(session.userId===userId)sessions.delete(token)};
