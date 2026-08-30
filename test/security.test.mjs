@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { seed } from '../lib/store.mjs';
-import { canAccessProperty, hasPermission, verifyPassword } from '../lib/security.mjs';
+import { canAccessProperty, hasPermission, verifyPassword, maskReferralEmail } from '../lib/security.mjs';
 
 const data=seed();
 const user=id=>data.users.find(u=>u.id===id), prop=id=>data.properties.find(p=>p.id===id);
@@ -17,3 +17,4 @@ test('Admin Light darf Trigger nicht verändern',()=>assert.equal(hasPermission(
 test('Partner Basic darf Empfehlungen und ausschließlich explizit zugewiesene Kundenakten bearbeiten',()=>{const basic={id:'u-basic-test',role:'partner_basic'};assert.equal(hasPermission(basic,'referrals.write',data),true);assert.equal(hasPermission(basic,'customers.read',data),true);assert.equal(hasPermission(basic,'equipment.write',data),true);assert.equal(canAccessProperty(basic,prop('o-3001'),data),false)});
 test('Partner Basic Makler bleibt auf explizit zugewiesene Immobilien beschränkt',()=>{data.users.push({id:'u-basic-broker-unit',role:'partner_basic'});data.partners.push({id:'p-basic-broker-unit',userId:'u-basic-broker-unit',status:'active',tradeIds:['BROKER'],primaryTradeId:'BROKER',postalCodes:[]});data.assignments.push({id:'a-basic-broker-unit',partnerId:'p-basic-broker-unit',propertyId:'o-3002',tradeId:'BROKER',status:'active',overrideRegion:true});assert.equal(canAccessProperty(data.users.at(-1),prop('o-3002'),data),true);assert.equal(canAccessProperty(data.users.at(-1),prop('o-3001'),data),false)});
 test('Tippgeber Basic darf empfehlen, aber keine Kunden-, Immobilien- oder Equipmentakten lesen',()=>{const referral={id:'u-referral-unit',role:'referral_partner'};assert.equal(hasPermission(referral,'dashboard.read',data),true);assert.equal(hasPermission(referral,'referrals.write',data),true);assert.equal(hasPermission(referral,'customers.read',data),false);assert.equal(hasPermission(referral,'properties.read',data),false);assert.equal(hasPermission(referral,'equipment.read',data),false);assert.equal(hasPermission(referral,'service.read',data),false);assert.equal(canAccessProperty(referral,prop('o-3001'),data),false)});
+test('Empfehlungs-E-Mail wird datensparsam maskiert',()=>{assert.equal(maskReferralEmail('offen@example.test'),'of***.st');assert.equal(maskReferralEmail('Antonio@Beispiel.de'),'an***.de');assert.equal(maskReferralEmail('offen@example.test').includes('@'),false)});
