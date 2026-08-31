@@ -10,6 +10,7 @@ services:
     healthCheckPath: /api/health
     autoDeployTrigger: commit
     envVars:
+      - fromGroup: eigenheimverwalter-pilot
       - key: NODE_ENV
         value: staging
       - key: APP_ORIGIN
