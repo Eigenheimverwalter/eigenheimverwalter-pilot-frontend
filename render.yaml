@@ -23,7 +23,7 @@ services:
       - key: UPLOAD_MAX_BYTES
         value: "5242880"
       - key: MAIL_TRANSPORT
-        sync: false
+        value: smtp
       - key: SMTP_HOST
         value: w01e0654.kasserver.com
       - key: SMTP_PORT
