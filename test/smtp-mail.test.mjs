@@ -1,0 +1,8 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { channelForKind, sendPortalMail, smtpConfiguration } from '../lib/smtp-mail.mjs';
+
+test('Registrierung und Empfehlungen verwenden das Registrierungs-Postfach',()=>{assert.equal(channelForKind('referral.invitation'),'registration');assert.equal(channelForKind('partner_basic.confirmation'),'registration');assert.equal(channelForKind('auth.password_reset'),'registration')});
+test('Allgemeine Partnerkommunikation verwendet das Partner-Postfach',()=>assert.equal(channelForKind('partner.general'),'partner'));
+test('SMTP ist nur mit Host und passendem Secret aktiv',()=>{const config=smtpConfiguration('partner',{MAIL_TRANSPORT:'smtp',SMTP_HOST:'w001.kasserver.com',SMTP_PARTNER_USER:'partner@eigenheimverwalter.de',SMTP_PARTNER_PASSWORD:'secret'});assert.equal(config.configured,true);assert.equal(config.port,465);assert.equal(config.from,'partner@eigenheimverwalter.de')});
+test('Versand übergibt niemals das andere Postfach an den Transport',async()=>{let captured;const delivery=await sendPortalMail({to:'kunde@example.test',subject:'Einladung',text:'Text',kind:'referral.invitation',env:{MAIL_TRANSPORT:'smtp',SMTP_HOST:'w001.kasserver.com',SMTP_REGISTRATION_PASSWORD:'secret'},transport:async(config,envelope)=>{captured={config,envelope};return{status:'sent'}}});assert.equal(delivery.status,'sent');assert.equal(captured.config.from,'registrierung@eigenheimverwalter.de');assert.equal(captured.envelope.to,'kunde@example.test')});

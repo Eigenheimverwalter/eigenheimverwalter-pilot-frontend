@@ -23,6 +23,20 @@ services:
       - key: UPLOAD_MAX_BYTES
         value: "5242880"
       - key: MAIL_TRANSPORT
-        value: outbox
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "465"
+      - key: SMTP_HELO
+        value: eigenheimverwalter.de
+      - key: SMTP_PARTNER_USER
+        value: partner@eigenheimverwalter.de
+      - key: SMTP_PARTNER_PASSWORD
+        sync: false
+      - key: SMTP_REGISTRATION_USER
+        value: registrierung@eigenheimverwalter.de
+      - key: SMTP_REGISTRATION_PASSWORD
+        sync: false
       - key: WEATHER_DWD_ENABLED
         value: "true"
