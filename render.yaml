@@ -25,17 +25,17 @@ services:
       - key: MAIL_TRANSPORT
         sync: false
       - key: SMTP_HOST
-        sync: false
+        value: w01e0654.kasserver.com
       - key: SMTP_PORT
         value: "465"
       - key: SMTP_HELO
         value: eigenheimverwalter.de
       - key: SMTP_PARTNER_USER
-        value: partner@eigenheimverwalter.de
+        value: m07c73cd
       - key: SMTP_PARTNER_PASSWORD
         sync: false
       - key: SMTP_REGISTRATION_USER
-        value: registrierung@eigenheimverwalter.de
+        value: m0673807
       - key: SMTP_REGISTRATION_PASSWORD
         sync: false
       - key: WEATHER_DWD_ENABLED
