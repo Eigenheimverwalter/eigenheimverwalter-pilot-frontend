@@ -7,10 +7,6 @@ on:
         description: "Zur Ausführung exakt PILOT-IMPORT eingeben"
         required: true
         type: string
-  push:
-    branches: [codex/makler-workflow-and-platform-update]
-    paths:
-      - ".github/pilot-import-trigger"
 
 permissions:
   contents: read
@@ -25,7 +21,7 @@ env:
 
 jobs:
   import:
-    if: ${{ github.event_name == 'push' || inputs.confirmation == 'PILOT-IMPORT' }}
+    if: ${{ inputs.confirmation == 'PILOT-IMPORT' }}
     runs-on: ubuntu-latest
     environment: staging
     steps:
