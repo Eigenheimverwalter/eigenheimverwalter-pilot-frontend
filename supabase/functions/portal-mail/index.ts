@@ -92,6 +92,26 @@ async function smtpSend(channel: Channel, recipient: string, subject: string, me
   return { status: "sent", sender: definition.address, sentAt: new Date().toISOString(), messageId: crypto.randomUUID() };
 }
 
+async function httpsSend(channel: Channel, recipient: string, subject: string, message: string) {
+  const apiKey = Deno.env.get("RESEND_API_KEY") || "";
+  if (!apiKey) return null;
+  const definition = channels[channel];
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: `eigenheimverwalter <${definition.address}>`,
+      reply_to: definition.address,
+      to: [recipient],
+      subject,
+      text: message,
+    }),
+  });
+  const payload = await response.json().catch(() => ({})) as { id?: string; message?: string; name?: string };
+  if (!response.ok) throw new Error(`HTTPS-Mailprovider: ${payload.message || payload.name || response.status}`);
+  return { status: "sent", sender: definition.address, sentAt: new Date().toISOString(), messageId: payload.id || crypto.randomUUID() };
+}
+
 Deno.serve(async (req) => {
   const url = new URL(req.url);
   if (req.method === "GET" && url.pathname.endsWith("/health")) {
@@ -112,7 +132,7 @@ Deno.serve(async (req) => {
   if (body.action !== "pilot_send_email" || !(channel in channels) || !validEmail(recipient) || !subject || !message) {
     return json({ error: "Ungültige oder unvollständige Versanddaten" }, 422);
   }
-  try { return json(await smtpSend(channel, recipient, subject, message)); }
+  try { return json(await httpsSend(channel, recipient, subject, message) || await smtpSend(channel, recipient, subject, message)); }
   catch (error) {
     const detail = error instanceof Error ? error.message.slice(0, 200) : "Unbekannter SMTP-Fehler";
     console.error(JSON.stringify({ event: "portal_mail_failed", channel, detail }));

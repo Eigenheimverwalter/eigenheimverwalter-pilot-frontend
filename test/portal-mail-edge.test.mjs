@@ -39,3 +39,10 @@ test('SMTP-Nutzdaten werden gegen Header-Injection und falsche Kanäle geschütz
   assert.match(edge, /body\.action !== "pilot_send_email"/);
   assert.match(edge, /message[\s\S]*slice\(0, 50_000\)/);
 });
+
+test('Produktiver Versand nutzt vorrangig einen HTTPS-Mailprovider', () => {
+  assert.match(edge, /RESEND_API_KEY/);
+  assert.match(edge, /https:\/\/api\.resend\.com\/emails/);
+  assert.match(edge, /reply_to: definition\.address/);
+  assert.match(edge, /httpsSend\(channel, recipient, subject, message\) \|\| await smtpSend/);
+});
