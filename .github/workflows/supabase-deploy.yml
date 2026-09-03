@@ -57,3 +57,8 @@ jobs:
             -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
             -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}")
           test "$trade_status" = "200" || { echo "Fachmodell-Smoke-Test fehlgeschlagen (HTTP $trade_status)."; exit 1; }
+          identity_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+            "https://${SUPABASE_PROJECT_REF}.supabase.co/rest/v1/identity_imports?select=source_user_id&limit=1" \
+            -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}")
+          test "$identity_status" = "200" || { echo "Auth-/Import-Smoke-Test fehlgeschlagen (HTTP $identity_status)."; exit 1; }
