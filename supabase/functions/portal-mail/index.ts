@@ -29,6 +29,10 @@ const safeEqual = (left: string, right: string) => {
   for (let index = 0; index < left.length; index++) result |= left.charCodeAt(index) ^ right.charCodeAt(index);
   return result === 0;
 };
+const fingerprint = async (value: string) => {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return [...new Uint8Array(digest)].slice(0, 6).map((byte) => byte.toString(16).padStart(2, "0")).join("");
+};
 
 async function smtpSend(channel: Channel, recipient: string, subject: string, message: string) {
   const definition = channels[channel];
@@ -106,7 +110,7 @@ Deno.serve(async (req) => {
 
   const supplied = (req.headers.get("x-pilot-mail-token") || "").trim();
   const expected = (Deno.env.get("PILOT_MAIL_GATEWAY_TOKEN") || "").trim();
-  if (expected.length < 48 || !safeEqual(supplied, expected)) return json({ error: "Nicht autorisiert" }, 401);
+  if (expected.length < 48 || !safeEqual(supplied, expected)) return json({ error: "Nicht autorisiert", diagnostic: { supplied: await fingerprint(supplied), expected: await fingerprint(expected), suppliedLength: supplied.length, expectedLength: expected.length } }, 401);
 
   let body: MailRequest;
   try { body = await req.json(); } catch { return json({ error: "Ungültiges JSON" }, 400); }
