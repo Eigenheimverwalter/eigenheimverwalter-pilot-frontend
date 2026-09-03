@@ -23,6 +23,21 @@ jobs:
       - uses: supabase/setup-cli@v1
         with:
           version: latest
+      - name: Verify isolated Pilot credentials
+        shell: bash
+        env:
+          SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_PUBLISHABLE_KEY" || { echo "SUPABASE_PUBLISHABLE_KEY fehlt im Environment staging."; exit 1; }
+          test -n "$SUPABASE_SERVICE_ROLE_KEY" || { echo "SUPABASE_SERVICE_ROLE_KEY fehlt im Environment staging."; exit 1; }
+          case "$SUPABASE_PUBLISHABLE_KEY" in sb_publishable_*|eyJ*) ;; *) echo "Publishable Key hat ein unbekanntes Format."; exit 1;; esac
+          case "$SUPABASE_SERVICE_ROLE_KEY" in sb_secret_*|eyJ*) ;; *) echo "Service Role/Secret Key hat ein unbekanntes Format."; exit 1;; esac
+          status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+            "https://${SUPABASE_PROJECT_REF}.supabase.co/rest/v1/" \
+            -H "apikey: ${SUPABASE_PUBLISHABLE_KEY}")
+          test "$status" = "200" || { echo "Publishable Key gehört nicht zum erreichbaren Pilotprojekt (HTTP $status)."; exit 1; }
       - name: Link project
         run: supabase link --project-ref "$SUPABASE_PROJECT_REF"
         env:
