@@ -1,4 +1,4 @@
-# Dediziertes EHV-Pilotprojekt; keine gemeinsame Laufzeit oder Secrets mit der Sales OS.
+# Dediziertes EHV-Pilotprojekt; getrennte Laufzeit, Daten und Secrets gegenüber der Sales OS.
 project_id = "rpniwtshbwjuesoeztyt"
 
 [functions.portal-api]
