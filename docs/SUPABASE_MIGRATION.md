@@ -32,8 +32,8 @@ Datensätze idempotent in `legacy_portal_records` und Dateien in private Storage
 Service-Role-Secret darf dabei nur lokal beziehungsweise als geschütztes CI-Secret existieren.
 
 Die GitHub Action `Supabase deploy` benötigt im GitHub-Environment `staging` die Secrets
-`SUPABASE_ACCESS_TOKEN` und `SUPABASE_DB_PASSWORD` sowie die Variable
-`SUPABASE_PROJECT_REF=<Referenz des neuen Pilot-Projekts>`. Die Referenz der Sales OS darf hier
+`SUPABASE_ACCESS_TOKEN` und `SUPABASE_DB_PASSWORD`. Die öffentliche Projekt-Referenz
+`rpniwtshbwjuesoeztyt` ist versionskontrolliert; die Referenz der Sales OS darf hier
 nicht verwendet werden. Die Action überträgt keine SMTP- oder Benutzerpasswörter
 in den Quellcode.
 
