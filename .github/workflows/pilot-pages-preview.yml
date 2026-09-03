@@ -1,0 +1,39 @@
+name: Pilot Frontend Vorschau
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pilot-pages-preview
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: staging
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Supabase-Laufzeitkonfiguration erstellen
+        env:
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          test -n "$SUPABASE_PUBLISHABLE_KEY" || { echo "SUPABASE_PUBLISHABLE_KEY fehlt"; exit 1; }
+          cat > public/runtime-config.js <<EOF
+          window.__EHV_RUNTIME__ = Object.freeze({
+            authMode: 'supabase',
+            supabaseUrl: 'https://rpniwtshbwjuesoeztyt.supabase.co',
+            supabasePublishableKey: '${SUPABASE_PUBLISHABLE_KEY}',
+            legacyApiBase: 'https://eigenheimverwalter-pilot-admin-test.onrender.com'
+          });
+          EOF
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+      - uses: actions/deploy-pages@v4

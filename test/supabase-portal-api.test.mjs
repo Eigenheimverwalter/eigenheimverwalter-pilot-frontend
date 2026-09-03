@@ -19,3 +19,12 @@ test('Partnerdaten werden über Quellidentität und aktive Zuweisungen begrenzt'
   assert.match(source,/identity_imports/);
   assert.match(source,/item\.partnerId === partner\.id && item\.status === "active"/);
 });
+
+test('Frontend kann kontrolliert zwischen Legacy und Supabase wechseln',()=>{
+  const bridge=fs.readFileSync(new URL('../public/assets/supabase-bridge.js',import.meta.url),'utf8');
+  const app=fs.readFileSync(new URL('../public/assets/app.js',import.meta.url),'utf8');
+  assert.match(bridge,/signInWithPassword/);
+  assert.match(bridge,/persistSession:true/);
+  assert.match(app,/ehvSupabaseBridge/);
+  assert.match(app,/legacyApiBase/);
+});
