@@ -18,17 +18,28 @@ const runtimeState = async (client: ReturnType<typeof createClient>): Promise<Ru
   return data.payload as RuntimeState;
 };
 
-const dashboard = (state: RuntimeState) => {
-  const customers = array(state.customers), properties = array(state.properties), partners = array(state.partners);
-  const services = array(state.serviceCases), opportunities = array(state.partnerOpportunities);
+const scopedData = (state: RuntimeState, profile: PortalProfile, sourceUserId: string | null) => {
+  const allProperties = array(state.properties), allPartners = array(state.partners), assignments = array(state.assignments);
+  if (["super_admin", "admin_light"].includes(profile.role)) return { properties: allProperties, partners: allPartners };
+  const partner = allPartners.find((item) => String(item.userId ?? "") === String(sourceUserId ?? ""));
+  if (!partner) return { properties: [], partners: [] };
+  const propertyIds = new Set(assignments.filter((item) => item.partnerId === partner.id && item.status === "active").map((item) => item.propertyId));
+  return { properties: allProperties.filter((item) => propertyIds.has(item.id)), partners: [partner] };
+};
+
+const dashboard = (state: RuntimeState, profile: PortalProfile, sourceUserId: string | null) => {
+  const scoped = scopedData(state, profile, sourceUserId), propertyIds = new Set(scoped.properties.map((item) => item.id));
+  const services = array(state.serviceCases).filter((item) => propertyIds.has(item.propertyId));
+  const salesFiles = array(state.salesFiles).filter((item) => propertyIds.has(item.propertyId));
   return {
     kpis: {
-      customers: customers.length,
-      properties: properties.length,
-      activePartners: partners.filter((item) => item.status === "active").length,
-      openServices: services.filter((item) => !["done", "cancelled"].includes(String(item.status))).length,
-      openOpportunities: opportunities.filter((item) => !["completed", "rejected"].includes(String(item.status))).length,
+      partners: scoped.partners.filter((item) => item.status === "active").length,
+      properties: scoped.properties.length,
+      openCases: services.filter((item) => !["done", "cancelled"].includes(String(item.status))).length,
+      salesFiles: salesFiles.length,
     },
+    recentCases: services.slice(0, 5),
+    properties: scoped.properties,
     source: "supabase",
   };
 };
@@ -58,12 +69,14 @@ Deno.serve(async (req) => {
   const { data: profile, error: profileError } = await userClient.from("portal_users")
     .select("id,display_name,role,status,created_at").eq("id", user.id).single();
   if (profileError || !profile || profile.status !== "active") return json({ error: "Portalprofil nicht eingerichtet oder nicht aktiv" }, 403);
+  const { data: identity } = await serviceClient.from("identity_imports").select("source_user_id").eq("auth_user_id", user.id).maybeSingle();
+  const sourceUserId = identity?.source_user_id ? String(identity.source_user_id) : null;
 
   if (req.method === "GET" && url.pathname.endsWith("/me")) {
     return json({ user: { ...profile, email: user.email } });
   }
   if (req.method === "GET" && url.pathname.endsWith("/dashboard")) {
-    try { return json(dashboard(await runtimeState(serviceClient))); }
+    try { return json(dashboard(await runtimeState(serviceClient), profile as PortalProfile, sourceUserId)); }
     catch (error) { return json({ error: error instanceof Error ? error.message : "Datenzugriff fehlgeschlagen" }, 503); }
   }
   if (req.method === "GET" && url.pathname.endsWith("/customers")) {
@@ -73,7 +86,13 @@ Deno.serve(async (req) => {
   }
   if (req.method === "GET" && url.pathname.endsWith("/partners")) {
     if (!(profile as PortalProfile).role.match(/^(super_admin|admin_light)$/)) return json({ error: "Keine Berechtigung" }, 403);
-    try { const state = await runtimeState(serviceClient); return json({ partners: array(state.partners), source: "supabase" }); }
+    try {
+      const state = await runtimeState(serviceClient);
+      return json({
+        partners: array(state.partners), trades: array(state.trades), organizations: array(state.partnerOrganizations),
+        roleTemplates: array(state.partnerRoleTemplates), source: "supabase",
+      });
+    }
     catch (error) { return json({ error: error instanceof Error ? error.message : "Datenzugriff fehlgeschlagen" }, 503); }
   }
   return json({ error: "Route nicht gefunden" }, 404);
