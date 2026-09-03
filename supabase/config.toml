@@ -1,4 +1,4 @@
-# Dediziertes EHV-Pilotprojekt; getrennte Laufzeit, Daten und Secrets gegenüber der Sales OS.
+# Dediziertes EHV-Pilotprojekt: getrennte Laufzeit, Daten und Secrets gegenüber der Sales OS.
 project_id = "rpniwtshbwjuesoeztyt"
 
 [functions.document-api]
