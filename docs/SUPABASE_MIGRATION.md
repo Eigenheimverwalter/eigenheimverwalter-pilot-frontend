@@ -31,6 +31,10 @@ vorhandenen Runtime-Stands mit SHA-256-Prüfsummen. `npm run migration:import` �
 Datensätze idempotent in `legacy_portal_records` und Dateien in private Storage-Buckets. Das
 Service-Role-Secret darf dabei nur lokal beziehungsweise als geschütztes CI-Secret existieren.
 
+Der Workflow `Pilot-Daten nach Supabase importieren` wird absichtlich nur manuell und mit der
+Bestätigung `PILOT-IMPORT` ausgeführt. Nach dem Import vergleicht er die exakte Anzahl der
+Legacy-Datensätze und archiviert ausschließlich die Prüfsummen-Manifeste, niemals die Nutzdaten.
+
 Die GitHub Action `Supabase deploy` benötigt im GitHub-Environment `staging` die Secrets
 `SUPABASE_ACCESS_TOKEN` und `SUPABASE_DB_PASSWORD`. Die öffentliche Projekt-Referenz
 `rpniwtshbwjuesoeztyt` ist versionskontrolliert; die Referenz der Sales OS darf hier
