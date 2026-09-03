@@ -39,17 +39,22 @@ async function smtpSend(channel: Channel, recipient: string, subject: string, me
   const connection = await Deno.connectTls({ hostname: SMTP_HOST, port: SMTP_PORT });
   const encoder = new TextEncoder(), decoder = new TextDecoder();
   let buffered = "";
+  const write = async (value: string) => {
+    const bytes = encoder.encode(value);
+    let offset = 0;
+    while (offset < bytes.length) offset += await connection.write(bytes.subarray(offset));
+  };
   const readResponse = async (expected: number[]) => {
     while (true) {
-      const lines = buffered.split("\r\n");
-      for (let index = 0; index < lines.length - 1; index++) {
-        const match = lines[index].match(/^(\d{3})([ -])/);
-        if (match?.[2] === " ") {
-          buffered = lines.slice(index + 1).join("\r\n");
-          const code = Number(match[1]);
-          if (!expected.includes(code)) throw new Error(`SMTP-Antwort ${code}`);
-          return;
-        }
+      const lineEnd = buffered.indexOf("\r\n");
+      if (lineEnd >= 0) {
+        const line = buffered.slice(0, lineEnd);
+        buffered = buffered.slice(lineEnd + 2);
+        const match = line.match(/^(\d{3})([ -])(.*)$/);
+        if (!match || match[2] === "-") continue;
+        const code = Number(match[1]);
+        if (!expected.includes(code)) throw new Error(`SMTP ${code}: ${match[3]}`);
+        return;
       }
       const chunk = new Uint8Array(4096);
       const count = await connection.read(chunk);
@@ -58,7 +63,7 @@ async function smtpSend(channel: Channel, recipient: string, subject: string, me
     }
   };
   const command = async (line: string, expected: number[]) => {
-    await connection.write(encoder.encode(`${line}\r\n`));
+    await write(`${line}\r\n`);
     await readResponse(expected);
   };
 
@@ -83,33 +88,13 @@ async function smtpSend(channel: Channel, recipient: string, subject: string, me
       base64(normalized),
       ".",
     ].join("\r\n");
-    await connection.write(encoder.encode(`${data}\r\n`));
+    await write(`${data}\r\n`);
     await readResponse([250]);
     await command("QUIT", [221]);
   } finally {
     connection.close();
   }
   return { status: "sent", sender: definition.address, sentAt: new Date().toISOString(), messageId: crypto.randomUUID() };
-}
-
-async function httpsSend(channel: Channel, recipient: string, subject: string, message: string) {
-  const apiKey = Deno.env.get("RESEND_API_KEY") || "";
-  if (!apiKey) return null;
-  const definition = channels[channel];
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      from: `eigenheimverwalter <${definition.address}>`,
-      reply_to: definition.address,
-      to: [recipient],
-      subject,
-      text: message,
-    }),
-  });
-  const payload = await response.json().catch(() => ({})) as { id?: string; message?: string; name?: string };
-  if (!response.ok) throw new Error(`HTTPS-Mailprovider: ${payload.message || payload.name || response.status}`);
-  return { status: "sent", sender: definition.address, sentAt: new Date().toISOString(), messageId: payload.id || crypto.randomUUID() };
 }
 
 Deno.serve(async (req) => {
@@ -132,7 +117,7 @@ Deno.serve(async (req) => {
   if (body.action !== "pilot_send_email" || !(channel in channels) || !validEmail(recipient) || !subject || !message) {
     return json({ error: "Ungültige oder unvollständige Versanddaten" }, 422);
   }
-  try { return json(await httpsSend(channel, recipient, subject, message) || await smtpSend(channel, recipient, subject, message)); }
+  try { return json(await smtpSend(channel, recipient, subject, message)); }
   catch (error) {
     const detail = error instanceof Error ? error.message.slice(0, 200) : "Unbekannter SMTP-Fehler";
     console.error(JSON.stringify({ event: "portal_mail_failed", channel, detail }));
