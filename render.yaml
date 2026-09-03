@@ -43,5 +43,9 @@ services:
         value: m0673807
       - key: SMTP_REGISTRATION_PASSWORD
         sync: false
+      - key: SMTP_INFO_USER
+        value: info@eigenheimverwalter.de
+      - key: SMTP_INFO_PASSWORD
+        sync: false
       - key: WEATHER_DWD_ENABLED
         value: "true"
