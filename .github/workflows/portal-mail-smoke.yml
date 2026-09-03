@@ -1,0 +1,53 @@
+name: Pilot mail smoke test
+
+on:
+  workflow_dispatch:
+    inputs:
+      recipient:
+        description: Kontrollierter Empfänger für drei Testmails
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  SUPABASE_PROJECT_REF: rpniwtshbwjuesoeztyt
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Validate recipient
+        shell: bash
+        env:
+          RECIPIENT: ${{ inputs.recipient }}
+        run: |
+          [[ "$RECIPIENT" =~ ^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$ ]] || exit 1
+      - name: Send one controlled mail through every channel
+        shell: bash
+        env:
+          RECIPIENT: ${{ inputs.recipient }}
+          MAIL_TOKEN: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+          test "${#MAIL_TOKEN}" -ge 32
+          endpoint="https://${SUPABASE_PROJECT_REF}.supabase.co/functions/v1/portal-mail"
+          for channel in partner registration info; do
+            payload=$(jq -nc \
+              --arg channel "$channel" \
+              --arg recipient "$RECIPIENT" \
+              --arg subject "eigenheimverwalter Pilot-Mailtest · ${channel}" \
+              --arg message "Kontrollierter Versandtest des dedizierten Pilot-Mailgateways. Kanal: ${channel}." \
+              '{action:"pilot_send_email",channel:$channel,recipientEmail:$recipient,subject:$subject,message:$message}')
+            response=$(curl --silent --show-error --write-out '\n%{http_code}' \
+              -X POST "$endpoint" \
+              -H "Content-Type: application/json" \
+              -H "x-pilot-mail-token: ${MAIL_TOKEN}" \
+              --data "$payload")
+            status=$(tail -n1 <<< "$response")
+            body=$(sed '$d' <<< "$response")
+            echo "${channel}: HTTP ${status} ${body}"
+            test "$status" = "200"
+          done
