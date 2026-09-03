@@ -28,3 +28,9 @@ test('Frontend kann kontrolliert zwischen Legacy und Supabase wechseln',()=>{
   assert.match(app,/ehvSupabaseBridge/);
   assert.match(app,/legacyApiBase/);
 });
+
+test('Frontend-Assets funktionieren sowohl an der Domainwurzel als auch unter GitHub Pages',()=>{
+  const html=fs.readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+  assert.doesNotMatch(html,/(?:href|src)="\/(?:assets|runtime-config)/);
+  assert.match(html,/\.\/assets\/app\.css\?v=20260903-2/);
+});
