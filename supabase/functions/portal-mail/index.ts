@@ -104,8 +104,8 @@ Deno.serve(async (req) => {
   }
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
-  const supplied = req.headers.get("x-pilot-mail-token") || "";
-  const expected = Deno.env.get("PILOT_MAIL_GATEWAY_TOKEN") || "";
+  const supplied = (req.headers.get("x-pilot-mail-token") || "").trim();
+  const expected = (Deno.env.get("PILOT_MAIL_GATEWAY_TOKEN") || "").trim();
   if (expected.length < 48 || !safeEqual(supplied, expected)) return json({ error: "Nicht autorisiert" }, 401);
 
   let body: MailRequest;
