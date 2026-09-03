@@ -1,0 +1,7 @@
+project_id = "yfgieygxlpatmhdskmaa"
+
+[functions.portal-api]
+verify_jwt = true
+
+[functions.document-api]
+verify_jwt = true
