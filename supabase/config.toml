@@ -1,8 +1,8 @@
 # Dediziertes EHV-Pilotprojekt; getrennte Laufzeit, Daten und Secrets gegenüber der Sales OS.
 project_id = "rpniwtshbwjuesoeztyt"
 
-[functions.portal-api]
-verify_jwt = true
-
 [functions.document-api]
 verify_jwt = true
+
+[functions.portal-api]
+verify_jwt = false

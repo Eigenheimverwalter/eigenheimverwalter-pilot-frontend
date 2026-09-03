@@ -49,6 +49,21 @@ jobs:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
       - name: Deploy Edge Functions
-        run: supabase functions deploy document-api --project-ref "$SUPABASE_PROJECT_REF"
+        run: |
+          supabase functions deploy document-api --project-ref "$SUPABASE_PROJECT_REF"
+          supabase functions deploy portal-api --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      - name: Smoke-test Pilot backend
+        shell: bash
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+          health=$(curl --fail --silent "https://${SUPABASE_PROJECT_REF}.supabase.co/functions/v1/portal-api/health")
+          echo "$health" | grep -q '"projectRef":"rpniwtshbwjuesoeztyt"'
+          status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+            "https://${SUPABASE_PROJECT_REF}.supabase.co/rest/v1/documents?select=id&limit=1" \
+            -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}")
+          test "$status" = "200" || { echo "Datenbank-Smoke-Test fehlgeschlagen (HTTP $status)."; exit 1; }
