@@ -75,6 +75,18 @@ create table if not exists public.audit_events (
   created_at timestamptz not null default now()
 );
 
+-- Verlustfreier Übergangsspeicher für noch nicht normalisierte Portalmodule.
+-- Jede bisherige JSON-Collection wird zunächst 1:1 übernommen und anschließend
+-- modulweise in Fachtabellen migriert. source_id + collection machen Importe idempotent.
+create table if not exists public.legacy_portal_records (
+  collection text not null,
+  source_id text not null,
+  payload jsonb not null,
+  payload_sha256 text not null,
+  imported_at timestamptz not null default now(),
+  primary key (collection, source_id)
+);
+
 alter table public.portal_users enable row level security;
 alter table public.organizations enable row level security;
 alter table public.organization_members enable row level security;
@@ -82,6 +94,7 @@ alter table public.properties enable row level security;
 alter table public.property_assignments enable row level security;
 alter table public.documents enable row level security;
 alter table public.audit_events enable row level security;
+alter table public.legacy_portal_records enable row level security;
 
 create or replace function public.is_admin()
 returns boolean language sql stable security definer set search_path=public

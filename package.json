@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "node server.mjs",
     "start": "node server.mjs",
-    "test": "node --test"
+    "test": "node --test",
+    "migration:export": "node scripts/export-supabase-migration.mjs",
+    "migration:import": "node scripts/import-supabase-migration.mjs"
   },
   "engines": { "node": ">=20" }
 }

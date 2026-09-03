@@ -24,6 +24,13 @@ würde bestehende Testdaten, Uploads und einen Großteil der API-Routen abschnei
 7. Zeilenanzahl, Prüfsummen und Stichproben fachlich abnehmen.
 8. DNS auf das neue Frontend umstellen; Render zunächst read-only halten und anschließend löschen.
 
+## Reproduzierbarer Datenabgleich
+
+`npm run migration:export` erzeugt keine neue Kundendatenbasis, sondern ein Manifest des
+vorhandenen Runtime-Stands mit SHA-256-Prüfsummen. `npm run migration:import` übernimmt diese
+Datensätze idempotent in `legacy_portal_records` und Dateien in private Storage-Buckets. Das
+Service-Role-Secret darf dabei nur lokal beziehungsweise als geschütztes CI-Secret existieren.
+
 Die GitHub Action `Supabase deploy` benötigt im GitHub-Environment `staging` die Secrets
 `SUPABASE_ACCESS_TOKEN` und `SUPABASE_DB_PASSWORD` sowie die Variable
 `SUPABASE_PROJECT_REF=yfgieygxlpatmhdskmaa`. Sie überträgt keine SMTP- oder Benutzerpasswörter
