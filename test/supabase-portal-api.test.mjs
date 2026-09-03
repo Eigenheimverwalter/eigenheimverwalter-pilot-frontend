@@ -34,3 +34,9 @@ test('Frontend-Assets funktionieren sowohl an der Domainwurzel als auch unter Gi
   assert.doesNotMatch(html,/(?:href|src)="\/(?:assets|runtime-config)/);
   assert.match(html,/\.\/assets\/app\.css\?v=20260903-2/);
 });
+
+test('Render-Übergang nutzt die eingerichteten ALL-INKL-SMTP-Kanäle direkt',()=>{
+  const render=fs.readFileSync(new URL('../render.yaml',import.meta.url),'utf8');
+  assert.match(render,/key: MAIL_TRANSPORT\s+value: smtp/);
+  for(const key of ['SMTP_PARTNER_PASSWORD','SMTP_REGISTRATION_PASSWORD','SMTP_INFO_PASSWORD'])assert.match(render,new RegExp(`key: ${key}\\s+sync: false`));
+});

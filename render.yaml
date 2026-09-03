@@ -24,7 +24,7 @@ services:
       - key: UPLOAD_MAX_BYTES
         value: "5242880"
       - key: MAIL_TRANSPORT
-        value: supabase
+        value: smtp
       - key: SUPABASE_MAIL_GATEWAY_URL
         value: https://yfgieygxlpatmhdskmaa.supabase.co/functions/v1/sales-integrations
       - key: SUPABASE_MAIL_GATEWAY_TOKEN
