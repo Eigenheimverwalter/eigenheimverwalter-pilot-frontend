@@ -34,6 +34,9 @@ Service-Role-Secret darf dabei nur lokal beziehungsweise als geschütztes CI-Sec
 Der Workflow `Pilot-Daten nach Supabase importieren` wird absichtlich nur manuell und mit der
 Bestätigung `PILOT-IMPORT` ausgeführt. Nach dem Import vergleicht er die exakte Anzahl der
 Legacy-Datensätze und archiviert ausschließlich die Prüfsummen-Manifeste, niemals die Nutzdaten.
+Der Altbestand wird über `/api/migration/export` mit einem mindestens 48 Zeichen langen,
+einmaligen Bearer-Token abgerufen. Passwort-Hashes, Reset- und Authentifizierungs-Tokens werden
+serverseitig aus dem Export entfernt. Nach erfolgreicher Migration wird der Token widerrufen.
 
 Die GitHub Action `Supabase deploy` benötigt im GitHub-Environment `staging` die Secrets
 `SUPABASE_ACCESS_TOKEN` und `SUPABASE_DB_PASSWORD`. Die öffentliche Projekt-Referenz

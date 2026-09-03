@@ -49,3 +49,5 @@ services:
         sync: false
       - key: WEATHER_DWD_ENABLED
         value: "true"
+      - key: PILOT_MIGRATION_EXPORT_TOKEN
+        sync: false

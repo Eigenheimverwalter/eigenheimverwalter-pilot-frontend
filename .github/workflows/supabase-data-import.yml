@@ -1,9 +1,6 @@
 name: Pilot-Daten nach Supabase importieren
 
 on:
-  push:
-    branches: [codex/makler-workflow-and-platform-update]
-    paths: [".github/pilot-import-trigger"]
   workflow_dispatch:
     inputs:
       confirmation:
@@ -24,7 +21,7 @@ env:
 
 jobs:
   import:
-    if: ${{ github.event_name == 'push' || inputs.confirmation == 'PILOT-IMPORT' }}
+    if: ${{ inputs.confirmation == 'PILOT-IMPORT' }}
     runs-on: ubuntu-latest
     environment: staging
     steps:
@@ -32,9 +29,17 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-      - name: Daten und Prüfsummen vorbereiten
+      - name: Migrationspaket herunterladen
+        env:
+          PILOT_MIGRATION_EXPORT_URL: ${{ secrets.PILOT_MIGRATION_EXPORT_URL }}
+          PILOT_MIGRATION_EXPORT_TOKEN: ${{ secrets.PILOT_MIGRATION_EXPORT_TOKEN }}
         run: |
-          node scripts/export-supabase-migration.mjs data/runtime.json tmp/supabase-migration
+          test -n "$PILOT_MIGRATION_EXPORT_URL" || { echo "PILOT_MIGRATION_EXPORT_URL fehlt."; exit 1; }
+          test -n "$PILOT_MIGRATION_EXPORT_TOKEN" || { echo "PILOT_MIGRATION_EXPORT_TOKEN fehlt."; exit 1; }
+          mkdir -p tmp/source
+          curl --fail --silent --show-error "$PILOT_MIGRATION_EXPORT_URL" \
+            -H "Authorization: Bearer ${PILOT_MIGRATION_EXPORT_TOKEN}" -o tmp/source/runtime.json
+          node scripts/export-supabase-migration.mjs tmp/source/runtime.json tmp/supabase-migration
           node scripts/build-supabase-import.mjs tmp/supabase-migration
       - name: In das isolierte Pilotprojekt importieren
         env:

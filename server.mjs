@@ -22,6 +22,8 @@ import { partnerConfigurationIssues, partnerRoutingEligibility } from './lib/par
 const port=Number(process.env.PORT||8080), origin=process.env.APP_ORIGIN||process.env.RENDER_EXTERNAL_URL||`http://localhost:${port}`;
 const validIntegrationSignature=(offerId,customerId,timestamp,signature)=>{const secret=process.env.EHV_APP_INTEGRATION_KEY;if(!secret||!timestamp||Math.abs(Date.now()-Number(timestamp))>300000)return false;const expected=crypto.createHmac('sha256',secret).update(`${offerId}.${customerId}.${timestamp}`).digest('hex'),given=String(signature||'');return given.length===expected.length&&crypto.timingSafeEqual(Buffer.from(given),Buffer.from(expected))};
 const validSalesSyncToken=req=>{const expected=String(process.env.SALES_OS_SYNC_TOKEN||''),given=String(req.headers.authorization||'').replace(/^Bearer\s+/i,'');return expected.length>=32&&given.length===expected.length&&crypto.timingSafeEqual(Buffer.from(given),Buffer.from(expected))};
+const validMigrationExportToken=req=>{const expected=String(process.env.PILOT_MIGRATION_EXPORT_TOKEN||''),given=String(req.headers.authorization||'').replace(/^Bearer\s+/i,'');return expected.length>=48&&given.length===expected.length&&crypto.timingSafeEqual(Buffer.from(given),Buffer.from(expected))};
+const migrationSnapshot=()=>{const blockedCollections=new Set(['authChallenges','passwordResetRequests']);const blockedKeys=new Set(['password','passwordHash','token','secret','remember_token','fcm_token']);const scrub=value=>Array.isArray(value)?value.map(scrub):value&&typeof value==='object'?Object.fromEntries(Object.entries(value).filter(([key])=>!blockedKeys.has(key)).map(([key,item])=>[key,scrub(item)])):value;return Object.fromEntries(Object.entries(store.data).filter(([key])=>!blockedCollections.has(key)).map(([key,value])=>[key,scrub(value)]))};
 const store=new Store(process.env.DATA_FILE||'./data/runtime.json');
 const SERVICE_DOCUMENT_KINDS=Object.freeze(['offer','order_confirmation','invoice','maintenance_report','inspection_report','renovation_proof','photo','video','measurement_proof','other','report','quote']);
 const appPackage=JSON.parse(fs.readFileSync(new URL('./package.json',import.meta.url),'utf8'));
@@ -145,6 +147,7 @@ const opportunityKpis=()=>{const s=opportunitySummary(),sent=store.data.customer
 const server=http.createServer(async(req,res)=>{try{
   const url=new URL(req.url,origin), ip=req.socket.remoteAddress||'unknown';
   if(req.method==='GET'&&url.pathname==='/api/health')return send(res,200,{status:'ok',service:'eigenheimverwalter-pilot-admin',version:appPackage.version,environment:process.env.NODE_ENV||'development'});
+  if(req.method==='GET'&&url.pathname==='/api/migration/export'){if(!validMigrationExportToken(req))return send(res,404,{error:'Nicht gefunden'});const snapshot=migrationSnapshot();store.audit({id:'system:migration'},'migration.exported','system','runtime',ip,{collections:Object.keys(snapshot).length});return send(res,200,snapshot);}
   if(req.method==='POST'&&url.pathname==='/api/integrations/sales-os/partners'){
     if(!validSalesSyncToken(req))return send(res,401,{error:'Ungültige Sales-OS-Integration'});
     const payload=await body(req),rows=Array.isArray(payload.partners)?payload.partners:[];
