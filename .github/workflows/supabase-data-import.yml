@@ -1,6 +1,9 @@
 name: Pilot-Daten nach Supabase importieren
 
 on:
+  push:
+    branches: [codex/makler-workflow-and-platform-update]
+    paths: [".github/pilot-import-trigger"]
   workflow_dispatch:
     inputs:
       confirmation:
@@ -21,7 +24,7 @@ env:
 
 jobs:
   import:
-    if: ${{ inputs.confirmation == 'PILOT-IMPORT' }}
+    if: ${{ github.event_name == 'push' || inputs.confirmation == 'PILOT-IMPORT' }}
     runs-on: ubuntu-latest
     environment: staging
     steps:
