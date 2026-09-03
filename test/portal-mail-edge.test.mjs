@@ -18,7 +18,8 @@ test('Supabase-Mailgateway trennt alle drei ALL-INKL-Absender strikt', () => {
 
 test('Mailgateway ist nur serverseitig mit langem Geheimnis erreichbar', () => {
   assert.match(edge, /x-pilot-mail-token/);
-  assert.match(edge, /expected\.length < 32/);
+  assert.match(edge, /PILOT_MAIL_GATEWAY_TOKEN/);
+  assert.match(edge, /expected\.length < 48/);
   assert.match(edge, /safeEqual\(supplied, expected\)/);
   assert.doesNotMatch(edge, /Access-Control-Allow-Origin/);
 });
