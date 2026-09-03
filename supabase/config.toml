@@ -1,4 +1,4 @@
-project_id = "yfgieygxlpatmhdskmaa"
+project_id = "eigenheimverwalter-pilot"
 
 [functions.portal-api]
 verify_jwt = true

@@ -33,8 +33,17 @@ Service-Role-Secret darf dabei nur lokal beziehungsweise als geschütztes CI-Sec
 
 Die GitHub Action `Supabase deploy` benötigt im GitHub-Environment `staging` die Secrets
 `SUPABASE_ACCESS_TOKEN` und `SUPABASE_DB_PASSWORD` sowie die Variable
-`SUPABASE_PROJECT_REF=yfgieygxlpatmhdskmaa`. Sie überträgt keine SMTP- oder Benutzerpasswörter
+`SUPABASE_PROJECT_REF=<Referenz des neuen Pilot-Projekts>`. Die Referenz der Sales OS darf hier
+nicht verwendet werden. Die Action überträgt keine SMTP- oder Benutzerpasswörter
 in den Quellcode.
+
+## Strikte Projekttrennung
+
+Das Pilotportal erhält ein eigenes Supabase-Projekt. Insbesondere dürfen die Werte für
+`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, Datenbankpasswort,
+JWT-Konfiguration, Storage und Edge-Function-Secrets nicht aus der Sales OS übernommen werden.
+Nur ausdrücklich definierte fachliche Schnittstellen verbinden beide Projekte; ein gemeinsamer
+Service-Role-Key oder direkter Tabellenzugriff ist unzulässig.
 
 ## Noch nicht abschalten
 
