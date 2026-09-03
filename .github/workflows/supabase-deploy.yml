@@ -37,6 +37,7 @@ jobs:
         run: |
           supabase functions deploy document-api --project-ref "$SUPABASE_PROJECT_REF"
           supabase functions deploy portal-api --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt
+          supabase functions deploy portal-mail --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       - name: Smoke-test Pilot backend
@@ -47,6 +48,8 @@ jobs:
           set -euo pipefail
           health=$(curl --fail --silent "https://${SUPABASE_PROJECT_REF}.supabase.co/functions/v1/portal-api/health")
           echo "$health" | grep -q '"projectRef":"rpniwtshbwjuesoeztyt"'
+          mail_health=$(curl --fail --silent "https://${SUPABASE_PROJECT_REF}.supabase.co/functions/v1/portal-mail/health")
+          echo "$mail_health" | grep -q '"status":"ok"'
           status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
             "https://${SUPABASE_PROJECT_REF}.supabase.co/rest/v1/documents?select=id&limit=1" \
             -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \

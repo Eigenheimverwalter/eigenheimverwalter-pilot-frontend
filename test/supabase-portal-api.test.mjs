@@ -35,8 +35,9 @@ test('Frontend-Assets funktionieren sowohl an der Domainwurzel als auch unter Gi
   assert.match(html,/\.\/assets\/app\.css\?v=20260903-2/);
 });
 
-test('Render-Übergang nutzt die eingerichteten ALL-INKL-SMTP-Kanäle direkt',()=>{
+test('Render-Übergang nutzt den dedizierten Pilot-Mailgateway',()=>{
   const render=fs.readFileSync(new URL('../render.yaml',import.meta.url),'utf8');
-  assert.match(render,/key: MAIL_TRANSPORT\s+value: smtp/);
+  assert.match(render,/key: MAIL_TRANSPORT\s+value: supabase/);
+  assert.match(render,/rpniwtshbwjuesoeztyt\.supabase\.co\/functions\/v1\/portal-mail/);
   for(const key of ['SMTP_PARTNER_PASSWORD','SMTP_REGISTRATION_PASSWORD','SMTP_INFO_PASSWORD'])assert.match(render,new RegExp(`key: ${key}\\s+sync: false`));
 });

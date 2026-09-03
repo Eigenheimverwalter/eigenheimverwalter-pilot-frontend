@@ -6,3 +6,6 @@ verify_jwt = true
 
 [functions.portal-api]
 verify_jwt = false
+
+[functions.portal-mail]
+verify_jwt = false
