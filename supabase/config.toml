@@ -1,3 +1,4 @@
+# Dediziertes Pilotprojekt; keine gemeinsame Laufzeit mit der Sales OS.
 project_id = "rpniwtshbwjuesoeztyt"
 
 [functions.portal-api]
