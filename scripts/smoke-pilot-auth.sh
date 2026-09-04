@@ -68,13 +68,13 @@ recovery_password="$(openssl rand -base64 36 | tr -d '\n')Bb2!"
 recovery_link=$(curl --fail --silent --show-error -X POST "${api}/auth/v1/admin/generate_link" \
   "${admin_headers[@]}" -H 'Content-Type: application/json' \
   --data "$(jq -nc --arg email "$email" '{type:"recovery",email:$email,options:{redirectTo:"https://eigenheimverwalter.github.io/eigenheimverwalter-pilot-frontend/passwort-zuruecksetzen"}}')")
-recovery_token_hash=$(jq -r '.properties.hashed_token // empty' <<< "$recovery_link")
-test -n "$recovery_token_hash"
+recovery_token_hash=$(jq -r '.properties.hashed_token // .hashed_token // empty' <<< "$recovery_link")
+test -n "$recovery_token_hash" || { echo 'Recovery-Link enthielt keinen einmaligen Token-Hash.'; exit 1; }
 recovery_session=$(curl --fail --silent --show-error -X POST "${api}/auth/v1/verify" \
   -H "apikey: ${SUPABASE_PUBLISHABLE_KEY}" -H 'Content-Type: application/json' \
   --data "$(jq -nc --arg token "$recovery_token_hash" '{type:"recovery",token_hash:$token}')")
 recovery_access_token=$(jq -r '.access_token // empty' <<< "$recovery_session")
-test -n "$recovery_access_token"
+test -n "$recovery_access_token" || { echo 'Recovery-Token konnte nicht in eine Sitzung umgetauscht werden.'; exit 1; }
 curl --fail --silent --show-error -X PUT "${api}/auth/v1/user" \
   -H "apikey: ${SUPABASE_PUBLISHABLE_KEY}" -H "Authorization: Bearer ${recovery_access_token}" \
   -H 'Content-Type: application/json' --data "$(jq -nc --arg password "$recovery_password" '{password:$password}')" >/dev/null
@@ -82,7 +82,7 @@ session=$(curl --fail --silent --show-error -X POST "${api}/auth/v1/token?grant_
   -H "apikey: ${SUPABASE_PUBLISHABLE_KEY}" -H 'Content-Type: application/json' \
   --data "$(jq -nc --arg email "$email" --arg password "$recovery_password" '{email:$email,password:$password}')")
 access_token=$(jq -r '.access_token // empty' <<< "$session")
-test -n "$access_token"
+test -n "$access_token" || { echo 'Login mit dem über Recovery gesetzten Passwort fehlgeschlagen.'; exit 1; }
 unset password recovery_password recovery_link recovery_token_hash recovery_session recovery_access_token session created identity
 
 me=$(curl --fail --silent --show-error "${api}/functions/v1/portal-api/me" \
