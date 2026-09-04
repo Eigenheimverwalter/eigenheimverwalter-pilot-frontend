@@ -72,6 +72,8 @@ test('DWD warning synchronization and opportunity generation run in Supabase',()
   assert.match(writes,/weather\.sync\.completed/);
   assert.match(writes,/externalServiceStatus/);
   assert.match(bridge,/weather\/dwd\/sync/);
+  assert.match(writes,/city\.length>=4&&region\.includes\(city\)/);
+  assert.doesNotMatch(writes,/federalState===fold\(x\.state\)/);
 });
 
 test('land-register OCR stays in the browser and both review workflows persist in Supabase',()=>{
