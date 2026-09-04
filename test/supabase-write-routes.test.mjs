@@ -66,6 +66,13 @@ test('role and partner-role administration no longer falls through to Render',()
   assert.match(bridge,/partner-role-templates\\\/\[\^\/\]\+/);
 });
 
+test('DWD warning synchronization and opportunity generation run in Supabase',()=>{
+  assert.match(writes,/DwdWarningProvider/);
+  assert.match(writes,/weather\.sync\.completed/);
+  assert.match(writes,/externalServiceStatus/);
+  assert.match(bridge,/weather\/dwd\/sync/);
+});
+
 test('dynamic entity writes are routed to Supabase',()=>{
   assert.match(bridge,/dynamicSupported/);
   assert.match(bridge,/cases\|partners\|equipment/);
