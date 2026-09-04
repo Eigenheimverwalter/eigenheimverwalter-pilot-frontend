@@ -21,7 +21,11 @@ window.ehvSupabaseBridge={
     if(path==='/api/login'){
       const credentials=JSON.parse(options.body||'{}');
       const {error}=await client.auth.signInWithPassword({email:credentials.email,password:credentials.password});
-      if(error)throw Error('E-Mail-Adresse oder Passwort ist nicht korrekt');
+      if(error){
+        const email=String(credentials.email||'').trim().toLowerCase();
+        if(email.endsWith('@ehv.test'))throw Error('Dieser alte Render-Testzugang wurde nicht nach Supabase übernommen. Der Adminzugang erfolgt über info@eigenheimverwalter.de und „Passwort vergessen“.');
+        throw Error('E-Mail-Adresse oder Passwort ist nicht korrekt');
+      }
       return this.request('/api/me');
     }
     if(path==='/api/logout'){

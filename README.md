@@ -12,16 +12,12 @@ node server.mjs
 
 Danach `http://localhost:8080` öffnen.
 
-Testzugänge:
-
-| Rolle | E-Mail | Passwort |
-|---|---|---|
-| Super Admin | admin@ehv.test | ChangeMe123! |
-| Dachpartner | dachpartner@ehv.test | ChangeMe123! |
-| Admin Light / Support | support@ehv.test | ChangeMe123! |
-| Handwerkspartner | partner@ehv.test | ChangeMe123! |
-| Maklerpartner | makler@ehv.test | ChangeMe123! |
-| Partner Basic | basic@ehv.test | ChangeMe123! |
+Die früheren lokalen `@ehv.test`-Konten gehören ausschließlich zum isolierten
+Node-Demostand und sind keine Zugänge zur Supabase-Plattform. Der feste
+Supabase-Admin ist `info@eigenheimverwalter.de`; das Kennwort wird ausschließlich
+über den Passwort-Reset gesetzt. Weitere Rollen werden über den serverseitigen
+Einladungsprozess angelegt. Produktive oder öffentlich erreichbare Umgebungen
+dürfen keine bekannten Standardkennwörter verwenden.
 
 Die Daten werden beim ersten Start in `data/runtime.json` erzeugt. Die Datei ist ignoriert und kann für einen frischen Teststand entfernt werden.
 
