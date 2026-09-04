@@ -29,7 +29,8 @@ jobs:
             authMode: 'supabase',
             supabaseUrl: 'https://rpniwtshbwjuesoeztyt.supabase.co',
             supabasePublishableKey: '${SUPABASE_PUBLISHABLE_KEY}',
-            legacyApiBase: 'https://eigenheimverwalter-pilot-admin-test.onrender.com'
+            legacyApiBase: '',
+            siteBaseUrl: 'https://rpniwtshbwjuesoeztyt.supabase.co/functions/v1/portal-web'
           });
           EOF
       - uses: actions/configure-pages@v5

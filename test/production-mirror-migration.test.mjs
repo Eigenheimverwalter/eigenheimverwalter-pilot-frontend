@@ -50,8 +50,8 @@ test('available production files are uploaded privately and linked idempotently'
   assert.match(deployWorkflow,/import-production-documents\.mjs/);
 });
 
-test('deployment verifies migrated documents and removes the temporary import function',()=>{
-  assert.match(deployWorkflow,/functions delete production-document-import/);
+test('deployment verifies migrated documents and no longer deploys the temporary import function',()=>{
+  assert.doesNotMatch(deployWorkflow,/functions deploy production-document-import/);
   assert.match(deployWorkflow,/migrated_document_count/);
   assert.match(deployWorkflow,/-ge 93/);
 });

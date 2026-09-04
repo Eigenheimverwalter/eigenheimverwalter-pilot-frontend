@@ -48,14 +48,12 @@ jobs:
           done
       - name: Deploy Edge Functions
         run: |
+          node scripts/build-supabase-web-function.mjs
           supabase functions deploy document-api --project-ref "$SUPABASE_PROJECT_REF"
           supabase functions deploy portal-api --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt
           supabase functions deploy portal-mail --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt
           supabase functions deploy portal-public --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-      - name: Remove temporary production document import function
-        run: supabase functions delete production-document-import --project-ref "$SUPABASE_PROJECT_REF" --yes
+          supabase functions deploy portal-web --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       - name: Merge confidential production mirror
@@ -101,6 +99,11 @@ jobs:
           echo "$mail_health" | grep -q '"status":"ok"'
           public_health=$(curl --fail --silent "https://${SUPABASE_PROJECT_REF}.supabase.co/functions/v1/portal-public/health")
           echo "$public_health" | grep -q '"status":"ok"'
+          web=$(curl --fail --silent --location "https://${SUPABASE_PROJECT_REF}.supabase.co/functions/v1/portal-web/")
+          echo "$web" | grep -q 'eigenheimverwalter Pilot'
+          runtime_config=$(curl --fail --silent "https://${SUPABASE_PROJECT_REF}.supabase.co/functions/v1/portal-web/runtime-config.js")
+          echo "$runtime_config" | grep -q "authMode:'supabase'"
+          test "$(echo "$runtime_config" | grep -c 'onrender.com')" = "0" || { echo 'Render-Fallback ist noch aktiv.'; exit 1; }
           status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
             "https://${SUPABASE_PROJECT_REF}.supabase.co/rest/v1/documents?select=id&limit=1" \
             -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
