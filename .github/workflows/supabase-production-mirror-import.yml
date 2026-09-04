@@ -1,0 +1,32 @@
+name: Pilot-Produktivspiegel nach Supabase importieren
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  import:
+    environment: staging
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: https://rpniwtshbwjuesoeztyt.supabase.co
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Produktivspiegel verschlüsselt abrufen
+        env:
+          PILOT_MIGRATION_EXPORT_URL: ${{ secrets.PILOT_MIGRATION_EXPORT_URL }}
+          PILOT_MIGRATION_EXPORT_TOKEN: ${{ secrets.PILOT_MIGRATION_EXPORT_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p tmp/source
+          base="${PILOT_MIGRATION_EXPORT_URL%/api/migration/export}"
+          curl --fail --silent --show-error "$base/api/migration/production-export" -H "Authorization: Bearer ${PILOT_MIGRATION_EXPORT_TOKEN}" -o tmp/source/production-mirror.json
+      - name: In aktuellen Supabase-Stand atomar einfügen
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/import-production-mirror.mjs tmp/source/production-mirror.json

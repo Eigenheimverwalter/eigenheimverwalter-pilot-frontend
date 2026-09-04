@@ -1,0 +1,53 @@
+services:
+  - type: web
+    name: eigenheimverwalter-pilot-admin-test
+    runtime: node
+    region: frankfurt
+    plan: free
+    branch: codex/makler-workflow-and-platform-update
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    envVars:
+      - fromGroup: eigenheimverwalter-pilot
+      - key: NODE_ENV
+        value: staging
+      - key: APP_ORIGIN
+        value: https://eigenheimverwalter-pilot-admin-test.onrender.com
+      - key: DATA_FILE
+        value: /tmp/ehv-pilot/runtime.json
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: STAGING_DEMO_PASSWORD
+        sync: false
+      - key: UPLOAD_MAX_BYTES
+        value: "5242880"
+      - key: MAIL_TRANSPORT
+        value: supabase
+      - key: SUPABASE_MAIL_GATEWAY_URL
+        value: https://rpniwtshbwjuesoeztyt.supabase.co/functions/v1/portal-mail
+      - key: SUPABASE_MAIL_GATEWAY_TOKEN
+        sync: false
+      - key: SMTP_HOST
+        value: w01e0654.kasserver.com
+      - key: SMTP_PORT
+        value: "465"
+      - key: SMTP_HELO
+        value: eigenheimverwalter.de
+      - key: SMTP_PARTNER_USER
+        value: m07c73cd
+      - key: SMTP_PARTNER_PASSWORD
+        sync: false
+      - key: SMTP_REGISTRATION_USER
+        value: m0673807
+      - key: SMTP_REGISTRATION_PASSWORD
+        sync: false
+      - key: SMTP_INFO_USER
+        value: info@eigenheimverwalter.de
+      - key: SMTP_INFO_PASSWORD
+        sync: false
+      - key: WEATHER_DWD_ENABLED
+        value: "true"
+      - key: PILOT_MIGRATION_EXPORT_TOKEN
+        sync: false

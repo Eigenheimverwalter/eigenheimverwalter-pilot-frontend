@@ -1,0 +1,29 @@
+name: Pilot Frontend Abnahme
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pilot-frontend-verification
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Öffentliche GitHub-Pages-Bereitstellung prüfen
+        run: |
+          base='https://eigenheimverwalter.github.io/eigenheimverwalter-pilot-frontend'
+          html=$(curl --fail --silent --show-error "$base/")
+          config=$(curl --fail --silent --show-error "$base/runtime-config.js")
+          test -n "$html"
+          grep -Fq "rpniwtshbwjuesoeztyt.supabase.co" <<<"$config"
+          grep -Fq "authMode:'supabase'" <<<"$config"
+          ! grep -Fq "onrender.com" <<<"$config"
+      - name: Supabase-Backend prüfen
+        run: |
+          response=$(curl --fail --silent --show-error 'https://rpniwtshbwjuesoeztyt.supabase.co/functions/v1/portal-api/health')
+          grep -Fq '"ok":true' <<<"$response"

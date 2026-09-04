@@ -1,0 +1,86 @@
+name: Pilot-Daten nach Supabase importieren
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Zur Ausführung exakt PILOT-IMPORT eingeben"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pilot-supabase-data-import
+  cancel-in-progress: false
+
+env:
+  SUPABASE_PROJECT_REF: rpniwtshbwjuesoeztyt
+  SUPABASE_URL: https://rpniwtshbwjuesoeztyt.supabase.co
+
+jobs:
+  import:
+    if: ${{ inputs.confirmation == 'PILOT-IMPORT' }}
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.116.0
+      - name: Pilot-Schema vor dem Import aktualisieren
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          supabase link --project-ref "$SUPABASE_PROJECT_REF"
+          supabase db push
+      - name: Migrationspaket herunterladen
+        env:
+          PILOT_MIGRATION_EXPORT_URL: ${{ secrets.PILOT_MIGRATION_EXPORT_URL }}
+          PILOT_MIGRATION_EXPORT_TOKEN: ${{ secrets.PILOT_MIGRATION_EXPORT_TOKEN }}
+        run: |
+          test -n "$PILOT_MIGRATION_EXPORT_URL" || { echo "PILOT_MIGRATION_EXPORT_URL fehlt."; exit 1; }
+          test -n "$PILOT_MIGRATION_EXPORT_TOKEN" || { echo "PILOT_MIGRATION_EXPORT_TOKEN fehlt."; exit 1; }
+          mkdir -p tmp/source
+          curl --fail --silent --show-error "$PILOT_MIGRATION_EXPORT_URL" \
+            -H "Authorization: Bearer ${PILOT_MIGRATION_EXPORT_TOKEN}" -o tmp/source/runtime.json
+          node scripts/export-supabase-migration.mjs tmp/source/runtime.json tmp/supabase-migration
+          node scripts/build-supabase-import.mjs tmp/supabase-migration
+      - name: In das isolierte Pilotprojekt importieren
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/import-supabase-migration.mjs tmp/supabase-migration
+      - name: Soll-/Ist-Abgleich
+        shell: bash
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+          expected=$(node -e "console.log(require('./tmp/supabase-migration/migration-manifest.json').record_count)")
+          actual=$(curl --fail --silent --show-error \
+            "${SUPABASE_URL}/rest/v1/legacy_portal_records?select=collection,source_id" \
+            -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Prefer: count=exact" -D /tmp/headers -o /dev/null && sed -n 's/^content-range: .*\/\([0-9]*\).*/\1/ip' /tmp/headers | tr -d '\r')
+          test "$actual" = "$expected" || { echo "Datensatzabweichung: erwartet $expected, vorhanden $actual"; exit 1; }
+          state_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+            "${SUPABASE_URL}/rest/v1/portal_runtime_state?id=eq.primary&select=id" \
+            -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}")
+          test "$state_status" = "200" || { echo "Portal-Laufzeitstand fehlt (HTTP $state_status)."; exit 1; }
+          echo "Import validiert: $actual Datensätze."
+      - name: Migrationsmanifest archivieren
+        uses: actions/upload-artifact@v4
+        with:
+          name: pilot-migration-manifest
+          path: |
+            tmp/supabase-migration/migration-manifest.json
+            tmp/supabase-migration/identity-manifest.json
+            tmp/supabase-migration/documents-manifest.json
+            tmp/supabase-migration/portal-runtime-state.json
+          retention-days: 30

@@ -1,0 +1,6 @@
+await import('../runtime-config.js');
+await import('./supabase-bridge.js');
+const code=decodeURIComponent(location.pathname.split('/').filter(Boolean).at(-1)||''),$=s=>document.querySelector(s);
+const request=async(path,options={})=>{const bridge=window.ehvSupabaseBridge;if(bridge?.handles(path))return bridge.request(path,options);throw Error('Supabase-Schnittstelle nicht verfügbar')};
+try{const p=await request(`/api/referrals/${encodeURIComponent(code)}`);$('#ref-title').textContent=`Empfohlen von ${p.company}`;$('#ref-copy').textContent=`Gewerk: ${p.trade}. Ihre Registrierung wird diesem Partner nachvollziehbar zugeordnet.`;$('#ref-form').hidden=false;const postals=await request('/api/postal-codes?q=');$('#postal-list').innerHTML=postals.entries.map(x=>`<option value="${x.postalCode}">${x.city}</option>`).join('')}catch(e){$('#ref-title').textContent='Link nicht verfügbar';$('#ref-copy').textContent=e.message}
+$('#ref-form').onsubmit=async e=>{e.preventDefault();const d=Object.fromEntries(new FormData(e.target));d.consent=e.target.consent.checked;try{const result=await request(`/api/referrals/${encodeURIComponent(code)}/leads`,{method:'POST',body:JSON.stringify(d)});e.target.hidden=true;$('#ref-message').textContent=`Vielen Dank. Ihre Anfrage wurde zugeordnet. Referenz: ${result.reference}`}catch(err){$('#ref-message').textContent=err.message}};

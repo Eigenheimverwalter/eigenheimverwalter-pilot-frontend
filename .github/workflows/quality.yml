@@ -1,0 +1,29 @@
+name: Pilot quality gate
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - codex/makler-workflow-and-platform-update
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pilot-quality-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Verify repository integrity
+        run: git diff --check
+      - name: Run complete test suite
+        run: npm test

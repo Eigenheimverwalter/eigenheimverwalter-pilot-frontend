@@ -1,0 +1,7 @@
+[hidden] {
+  display: none !important;
+}
+
+body:has(#app:not([hidden])) {
+  overflow-x: hidden;
+}
