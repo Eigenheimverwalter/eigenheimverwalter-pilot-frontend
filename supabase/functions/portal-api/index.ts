@@ -5,6 +5,7 @@ import {
 } from "../_shared/runtime.ts";
 import { readRoute } from "../_shared/read-routes.ts";
 import { writeRoute } from "../_shared/write-routes.ts";
+import { DwdWarningProvider } from "../_shared/weather-providers.mjs";
 
 const jsonResponse = (req:Request,body: unknown, status = 200) => new Response(JSON.stringify(body), {
   status,
@@ -69,6 +70,11 @@ Deno.serve(async (req) => {
   if (req.method === "GET" && url.pathname.endsWith("/dashboard")) {
     try { return json(dashboard((await loadRuntime(serviceClient)).state, effectiveProfile, effectiveSourceUserId)); }
     catch (error) { return json({ error: error instanceof Error ? error.message : "Datenzugriff fehlgeschlagen" }, 503); }
+  }
+  if(req.method==="GET"&&routePath==="/weather/dwd/preview"){
+    if(!isAdmin(profile))return json({error:"Keine Berechtigung"},403);
+    try{const warnings=await new DwdWarningProvider().fetchActiveWarnings(),mapped=warnings.filter(item=>item.triggerCode);return json({provider:"DWD",received:warnings.length,mapped:mapped.length,unmapped:warnings.length-mapped.length,checkedAt:new Date().toISOString(),samples:mapped.slice(0,5).map(item=>({region:item.region,state:item.state,event:item.event,triggerCode:item.triggerCode,severity:item.severity}))});}
+    catch(error){return json({error:`DWD-Livecheck fehlgeschlagen: ${error instanceof Error?error.message:"Unbekannter Fehler"}`},502);}
   }
   if (req.method === "GET") {
     try {
