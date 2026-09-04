@@ -38,6 +38,8 @@ test('Kunden- und Partnerkarten filtern die Tabellen unmittelbar und kombinierba
   assert.match(app, /row\.dataset\.regions=profile\.regions\.join\('\|'\)/);
   assert.match(app, /table\.addEventListener\('regionfilter',apply\)/);
   assert.match(app, /delete table\.dataset\.region/);
+  assert.match(app, /id="clear-partner-region">Regionsfilter zurücksetzen/);
+  assert.match(app, /\$\('#clear-partner-region'\)\.onclick=\(\)=>\{delete table\.dataset\.region/);
 });
 
 test('Lesende Partneransicht startet ausschließlich aus der Partnertabelle', () => {
