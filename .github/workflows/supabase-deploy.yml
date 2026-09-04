@@ -13,6 +13,10 @@ permissions:
 
 env:
   SUPABASE_PROJECT_REF: rpniwtshbwjuesoeztyt
+  ALLINKL_FTP_HOST: ${{ secrets.ALLINKL_FTP_HOST }}
+  ALLINKL_FTP_USERNAME: ${{ secrets.ALLINKL_FTP_USERNAME }}
+  ALLINKL_FTP_PASSWORD: ${{ secrets.ALLINKL_FTP_PASSWORD }}
+  ALLINKL_PILOT_TARGET_DIR: ${{ vars.ALLINKL_PILOT_TARGET_DIR }}
 
 jobs:
   deploy:
@@ -86,3 +90,40 @@ jobs:
             -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
             -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}")
           echo "$migration_status" | jq -e '.customers == 194 and .properties == 148 and .propertyFiles == 522 and .availableDocuments >= 93 and .runtimeRevision > 0' >/dev/null || { echo "Supabase-Datenintegrität nicht bestätigt: $migration_status"; exit 1; }
+      - name: Validate ALL-INKL frontend target
+        if: ${{ env.ALLINKL_FTP_HOST != '' && env.ALLINKL_FTP_USERNAME != '' && env.ALLINKL_FTP_PASSWORD != '' && env.ALLINKL_PILOT_TARGET_DIR != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$ALLINKL_PILOT_TARGET_DIR" =~ ^/[^[:space:]]*pilot[^[:space:]]*/$ ]] || { echo 'Das Zielverzeichnis muss absolut sein, mit / enden und eindeutig "pilot" enthalten.'; exit 1; }
+      - name: Build Render-free frontend
+        if: ${{ env.ALLINKL_FTP_HOST != '' && env.ALLINKL_FTP_USERNAME != '' && env.ALLINKL_FTP_PASSWORD != '' && env.ALLINKL_PILOT_TARGET_DIR != '' }}
+        env:
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+          PILOT_PUBLIC_URL: https://eigenheimverwalter-pilot.de
+        run: node scripts/build-static-frontend.mjs dist
+      - name: Deploy frontend to ALL-INKL
+        if: ${{ env.ALLINKL_FTP_HOST != '' && env.ALLINKL_FTP_USERNAME != '' && env.ALLINKL_FTP_PASSWORD != '' && env.ALLINKL_PILOT_TARGET_DIR != '' }}
+        uses: SamKirkland/FTP-Deploy-Action@fe9c9aad1198372d80a77c8dace63cbe48b69eac
+        with:
+          server: ${{ env.ALLINKL_FTP_HOST }}
+          username: ${{ env.ALLINKL_FTP_USERNAME }}
+          password: ${{ env.ALLINKL_FTP_PASSWORD }}
+          protocol: ftps
+          port: 21
+          local-dir: ./dist/
+          server-dir: ${{ env.ALLINKL_PILOT_TARGET_DIR }}
+          dangerous-clean-slate: false
+      - name: Verify ALL-INKL frontend
+        if: ${{ env.ALLINKL_FTP_HOST != '' && env.ALLINKL_FTP_USERNAME != '' && env.ALLINKL_FTP_PASSWORD != '' && env.ALLINKL_PILOT_TARGET_DIR != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          page=$(curl --fail --silent --show-error https://eigenheimverwalter-pilot.de/)
+          echo "$page" | grep -q 'eigenheimverwalter Pilot'
+          config=$(curl --fail --silent --show-error https://eigenheimverwalter-pilot.de/runtime-config.js)
+          echo "$config" | grep -q "authMode:'supabase'"
+          test "$(echo "$config" | grep -c 'onrender.com')" = "0"
+      - name: Report pending ALL-INKL credentials
+        if: ${{ env.ALLINKL_FTP_HOST == '' || env.ALLINKL_FTP_USERNAME == '' || env.ALLINKL_FTP_PASSWORD == '' || env.ALLINKL_PILOT_TARGET_DIR == '' }}
+        run: echo 'Supabase ist vollständig bereitgestellt; Frontend-Cutover wartet auf die vier ALL-INKL-Umgebungswerte.'
