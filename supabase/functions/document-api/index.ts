@@ -22,7 +22,7 @@ const legacyTarget=(route:string,state:Record<string,unknown>)=>{
 Deno.serve(async req=>{
   if(req.method==="OPTIONS")return new Response(null,{status:204,headers:corsHeaders});
   let auth;try{auth=await authenticate(req.headers.get("Authorization"));}catch(error){return json({error:error instanceof Error?error.message:"Nicht angemeldet"},Number((error as {status?:number}).status||401));}
-  const {user,profile,sourceUserId,service}=auth,url=new URL(req.url),documentId=url.searchParams.get("id");
+  const {user,profile,sourceUserId,service}=auth,url=new URL(req.url),documentId=url.searchParams.get("id"),requestedPropertyId=url.searchParams.get("propertyId"),requestedClass=url.searchParams.get("class");
   try{
     const snapshot=await loadRuntime(service),allowed=new Set(scopedProperties(snapshot.state,profile,sourceUserId).map(x=>String(x.id)));
     if(req.method==="POST"){
@@ -39,12 +39,15 @@ Deno.serve(async req=>{
         if(target.key==="serviceCases"){const documents=Array.isArray(target.entity.documents)?target.entity.documents:[];documents.push(reference);target.entity.documents=documents;}
         if(target.key==="salesFiles"){const rows=array(snapshot.state.brokerSalesDocuments);rows.push({...reference,id:data.id,salesFileId:target.id,propertyId});snapshot.state.brokerSalesDocuments=rows;}
         if(target.key==="equipmentRecords"){const rows=array(snapshot.state.partnerOffers);rows.push({id:identifier("offer"),documentId:data.id,equipmentId:target.id,propertyId,partnerId:null,status:"uploaded",uploadedAt:data.created_at});snapshot.state.partnerOffers=rows;}
+        if(target.key==="properties"){target.entity.landRegisterDocumentId=data.id;}
         await replaceRuntime(service,snapshot,user.id,"document.linked",target.key,target.id,{documentId:data.id,propertyId,documentClass});
       }
       await service.from("audit_events").insert({actor_user_id:user.id,action:"document.uploaded",entity_type:"document",entity_id:data.id,metadata:{propertyId,documentClass,sha256,size:file.bytes.length}});return json({document:data},201);
     }
-    if(!documentId)return json({error:"Dokument-ID fehlt"},422);
-    const {data:document,error}=await service.from("documents").select("*").eq("id",documentId).is("deleted_at",null).single();if(error||!document)return json({error:"Dokument nicht gefunden"},404);
+    if(!documentId&&!requestedPropertyId)return json({error:"Dokument-ID fehlt"},422);
+    let query=service.from("documents").select("*").is("deleted_at",null);
+    query=documentId?query.eq("id",documentId):query.eq("source_property_id",requestedPropertyId!).eq("document_class",requestedClass||"land_register").order("created_at",{ascending:false}).limit(1);
+    const {data:documents,error}=await query;const document=Array.isArray(documents)?documents[0]:documents;if(error||!document)return json({error:"Dokument nicht gefunden"},404);
     if(!document.source_property_id||!allowed.has(String(document.source_property_id)))return json({error:"Dokument nicht freigegeben"},403);
     if(req.method==="GET"){
       const {data:signed,error:signedError}=await service.storage.from(document.bucket_id).createSignedUrl(document.object_path,60);if(signedError)throw new Error("Dokument konnte nicht bereitgestellt werden");

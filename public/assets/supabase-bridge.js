@@ -60,3 +60,24 @@ window.ehvSupabaseBridge={
   },
   handles(path){return Boolean(enabled)&&(path==='/api/login'||path==='/api/logout'||supportsPath(path)||isDocumentUpload(path));},
 };
+
+const legacyDocumentRequest=href=>{
+  const url=new URL(href,location.origin),path=url.pathname;
+  const direct=path.match(/^\/api\/(?:service-documents|offer-documents|broker\/sales-documents|production\/documents)\/([^/]+)$/);
+  if(direct)return `id=${encodeURIComponent(direct[1])}`;
+  const land=path.match(/^\/api\/production\/properties\/([^/]+)\/land-register$/);
+  if(land)return `propertyId=${encodeURIComponent(land[1])}&class=land_register`;
+  return null;
+};
+
+document.addEventListener('click',async event=>{
+  if(!enabled)return;const anchor=event.target.closest('a[href]');if(!anchor)return;
+  const query=legacyDocumentRequest(anchor.href);if(!query)return;event.preventDefault();
+  const popup=window.open('about:blank','_blank','noopener');
+  try{
+    const {data:{session}}=await client.auth.getSession();if(!session)throw Error('Nicht angemeldet');
+    const response=await fetch(`${config.supabaseUrl}/functions/v1/document-api?${query}`,{headers:{Authorization:`Bearer ${session.access_token}`,apikey:config.supabasePublishableKey}});
+    if(!response.ok)return responseError(response);const result=await response.json();
+    if(popup)popup.location.replace(result.url);else location.assign(result.url);
+  }catch(error){if(popup)popup.close();window.dispatchEvent(new CustomEvent('ehv-document-error',{detail:{message:error.message}}));}
+});

@@ -23,3 +23,10 @@ test('document views use short-lived URLs and audited soft deletion',()=>{
   assert.match(source,/deleted_at:new Date\(\)\.toISOString\(\)/);assert.match(source,/document\.deleted/);
   assert.match(migration,/source_property_id text/);
 });
+
+test('legacy document links resolve through the authenticated Supabase bridge',()=>{
+  assert.match(source,/requestedPropertyId/);assert.match(source,/requestedClass/);
+  assert.match(bridge,/legacyDocumentRequest/);assert.match(bridge,/service-documents/);
+  assert.match(bridge,/offer-documents/);assert.match(bridge,/sales-documents/);
+  assert.match(bridge,/land-register/);assert.match(bridge,/ehv-document-error/);
+});
