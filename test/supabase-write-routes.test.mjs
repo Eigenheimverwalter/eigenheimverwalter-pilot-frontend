@@ -7,10 +7,15 @@ const api=fs.readFileSync(new URL('../supabase/functions/portal-api/index.ts',im
 const bridge=fs.readFileSync(new URL('../public/assets/supabase-bridge.js',import.meta.url),'utf8');
 
 test('central mutations use the atomic audited runtime function',()=>{
-  for(const route of ['/assignments','/cases','/valuations','/campaigns','/partners'])assert.ok(writes.includes(`path==="${route}"`),`${route} fehlt`);
+  for(const route of ['/assignments','/cases','/valuations','/campaigns','/partners','/customer-invitations'])assert.ok(writes.includes(`path==="${route}"`),`${route} fehlt`);
   assert.match(writes,/await replaceRuntime/);
   assert.match(writes,/allowedProperties\.has/);
   assert.match(api,/writeRoute\(req\.method/);
+});
+
+test('customer invitations use expiring hashed tokens and registration mail',()=>{
+  assert.match(writes,/tokenHash:await digest/);assert.match(writes,/expiresAt/);
+  assert.match(writes,/sendPortalMail\("registration"/);assert.match(bridge,/siteUrl=location\.origin/);
 });
 
 test('dynamic entity writes are routed to Supabase',()=>{
