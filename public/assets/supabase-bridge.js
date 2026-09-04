@@ -7,7 +7,8 @@ const supported=new Set([
   '/api/opportunity-engine','/api/partner/workbench','/api/audit','/api/postal-codes',
   '/api/portfolio/risks'
   ,'/api/admin-light-dashboard','/api/broker-dashboard','/api/broker/customers',
-  '/api/partner-coverage','/api/partner-geography','/api/customer-coverage'
+  '/api/partner-coverage','/api/partner-geography','/api/customer-coverage',
+  '/api/analytics/overview','/api/system-overview'
 ]);
 const normalizedPath=path=>String(path||'').split('?')[0];
 const dynamicSupported=[
