@@ -61,4 +61,6 @@ test('Zugangsverwaltung lädt Mitarbeiter ein und trennt Admin Light von Support
   assert.match(app, /support_staff:'Support-Mitarbeiter'/);
   assert.match(app, /support_staff:\['dashboard','production','partners'\]/);
   assert.match(app, /api\('\/api\/access-management\/invitations'/);
+  assert.match(app, /const form=\$\('#staff-invitation-form'\);form\.onsubmit/);
+  assert.doesNotMatch(app, /setTimeout\(\(\)=>\$\('#staff-invitation-form'\)\.onsubmit/);
 });
