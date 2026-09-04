@@ -3,11 +3,18 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 const source=fs.readFileSync(new URL('../supabase/functions/_shared/read-routes.ts',import.meta.url),'utf8');
+const bridge=fs.readFileSync(new URL('../public/assets/supabase-bridge.js',import.meta.url),'utf8');
 
 test('Supabase compatibility reads cover the central portal menus',()=>{
   for(const route of ['/account','/customers','/production/customers','/partners','/assignments','/cases','/sales','/campaigns','/role-profiles','/partner-role-templates','/admin/users','/opportunity-engine','/partner/workbench','/audit','/postal-codes','/portfolio/risks']){
     assert.ok(source.includes(`path==="${route}"`),`${route} fehlt`);
+    assert.ok(bridge.includes(`'/api${route}'`),`${route} ist im Frontend nicht aktiviert`);
   }
+});
+
+test('Query parameters do not bypass the Supabase route selection',()=>{
+  assert.match(bridge,/split\('\?'\)\[0\]/);
+  assert.match(bridge,/supported\.has\(normalizedPath\(path\)\)/);
 });
 
 test('Partner reads remain property- and partner-scoped',()=>{

@@ -1,6 +1,13 @@
 const config=window.__EHV_RUNTIME__||{};
 const enabled=config.authMode==='supabase'&&config.supabaseUrl&&config.supabasePublishableKey;
-const supported=new Set(['/api/me','/api/dashboard','/api/customers','/api/partners']);
+const supported=new Set([
+  '/api/me','/api/dashboard','/api/account','/api/customers','/api/production/customers',
+  '/api/partners','/api/assignments','/api/cases','/api/sales','/api/campaigns',
+  '/api/role-profiles','/api/partner-role-templates','/api/admin/users',
+  '/api/opportunity-engine','/api/partner/workbench','/api/audit','/api/postal-codes',
+  '/api/portfolio/risks'
+]);
+const normalizedPath=path=>String(path||'').split('?')[0];
 let client=null;
 
 const responseError=async response=>{
@@ -29,7 +36,7 @@ window.ehvSupabaseBridge={
       if(error)throw error;
       return null;
     }
-    if(!supported.has(path))return null;
+    if(!supported.has(normalizedPath(path)))return null;
     const {data:{session}}=await client.auth.getSession();
     if(!session)throw Error('Nicht angemeldet');
     const route=path.replace(/^\/api/,'');
@@ -42,5 +49,5 @@ window.ehvSupabaseBridge={
     if(path==='/api/me')return {user:{id:data.user.id,name:data.user.display_name,email:data.user.email,role:data.user.role},csrf:null,supportView:null};
     return data;
   },
-  handles(path){return Boolean(enabled)&&(path==='/api/login'||path==='/api/logout'||supported.has(path));},
+  handles(path){return Boolean(enabled)&&(path==='/api/login'||path==='/api/logout'||supported.has(normalizedPath(path)));},
 };
