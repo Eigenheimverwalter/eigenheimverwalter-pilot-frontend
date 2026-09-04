@@ -4,7 +4,7 @@ import fs from 'node:fs';
 
 const source=fs.readFileSync(new URL('../supabase/functions/document-api/index.ts',import.meta.url),'utf8');
 const migration=fs.readFileSync(new URL('../supabase/migrations/202609040002_document_source_refs.sql',import.meta.url),'utf8');
-const bridge=fs.readFileSync(new URL('../public/assets/supabase-bridge.js',import.meta.url),'utf8');
+const bridge=fs.readFileSync(new URL('../public/assets/supabase-bridge.js',import.meta.url),'utf8')+fs.readFileSync(new URL('../public/assets/supabase-routes.mjs',import.meta.url),'utf8');
 
 test('document API uploads only scoped, allow-listed private files',()=>{
   assert.match(source,/authenticate/);assert.match(source,/scopedProperties/);assert.match(source,/allowed\.has\(propertyId\)/);

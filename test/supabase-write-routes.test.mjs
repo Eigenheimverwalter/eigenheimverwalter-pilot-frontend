@@ -4,7 +4,7 @@ import fs from 'node:fs';
 
 const writes=fs.readFileSync(new URL('../supabase/functions/_shared/write-routes.ts',import.meta.url),'utf8');
 const api=fs.readFileSync(new URL('../supabase/functions/portal-api/index.ts',import.meta.url),'utf8');
-const bridge=fs.readFileSync(new URL('../public/assets/supabase-bridge.js',import.meta.url),'utf8');
+const bridge=fs.readFileSync(new URL('../public/assets/supabase-bridge.js',import.meta.url),'utf8')+fs.readFileSync(new URL('../public/assets/supabase-routes.mjs',import.meta.url),'utf8');
 const frontend=fs.readFileSync(new URL('../public/assets/app.js',import.meta.url),'utf8');
 
 test('central mutations use the atomic audited runtime function',()=>{
@@ -85,9 +85,15 @@ test('land-register OCR stays in the browser and both review workflows persist i
 });
 
 test('dynamic entity writes are routed to Supabase',()=>{
-  assert.match(bridge,/dynamicSupported/);
-  assert.match(bridge,/cases\|partners\|equipment/);
+  assert.match(bridge,/supabase-routes\.mjs/);
   assert.ok(bridge.includes("'/api/valuations'"));
+});
+
+test('partner suspension and deletion revoke portal access atomically',()=>{
+  assert.match(writes,/allowedStatuses/);
+  assert.match(writes,/replaceRuntimeAndAccess/);
+  assert.match(writes,/portalAccessIntent/);
+  assert.match(writes,/partner\.updated/);
 });
 
 test('service, broker and opportunity workflows persist through Supabase',()=>{

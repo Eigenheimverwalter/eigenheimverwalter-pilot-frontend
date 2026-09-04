@@ -1,4 +1,4 @@
-import { array, clean, identifier, isAdmin, replaceRuntime, scopedProperties, sourcePartner, type PortalProfile, type RuntimeSnapshot } from "./runtime.ts";
+import { array, clean, identifier, isAdmin, replaceRuntime, replaceRuntimeAndAccess, scopedProperties, sourcePartner, type PortalProfile, type RuntimeSnapshot } from "./runtime.ts";
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sendPortalMail } from "./mail.ts";
 import { normalizeEquipmentFields } from "./equipment-fields.mjs";
@@ -19,6 +19,7 @@ const campaignAudience=(snapshot:RuntimeSnapshot,campaign:Record<string,unknown>
 export async function writeRoute(method:string,path:string,ctx:Context){
   const {snapshot,profile,sourceUserId,service,body}=ctx,state=snapshot.state,admin=isAdmin(profile),partner=sourcePartner(state,sourceUserId);
   const allowedProperties=new Set(scopedProperties(state,profile,sourceUserId).map(x=>x.id));
+  let portalAccessIntent:null|{sourceUserId:string;status:"active"|"disabled"}=null;
   let result:unknown,action="",entityType="",entityId="",mailAfterCommit:MailIntent|null=null;
   if(method==="PATCH"&&path==="/account"){
     const sourceUser=collection(snapshot,"users").find(x=>String(x.id)===String(sourceUserId));if(!sourceUser)fail("Quellkonto nicht gefunden",404);for(const [key,max] of [["name",120],["phone",50],["address",180],["postalCode",5],["city",100]] as const)if(key in body)sourceUser[key]=clean(body[key],max);if(sourceUser.postalCode&&!/^\d{5}$/.test(String(sourceUser.postalCode)))fail("Postleitzahl muss fünfstellig sein");result={account:{...sourceUser,email:undefined,passwordHash:undefined}};action="account.updated";entityType="portal_user";entityId=profile.id;
@@ -115,7 +116,7 @@ export async function writeRoute(method:string,path:string,ctx:Context){
     const key=caseId?"serviceCases":partnerId?"partners":equipmentId?"equipmentRecords":"",id=caseId||partnerId||equipmentId;
     if(!key||!id)return undefined;const rows=collection(snapshot,key),row=rows.find(x=>String(x.id)===id);if(!row)fail("Datensatz nicht gefunden",404);
     if(partnerId&&!admin)fail("Keine Berechtigung",403);if((caseId||equipmentId)&&!allowedProperties.has(row.propertyId))fail("Kein Zugriff",403);
-    if(method==="DELETE"){if(profile.role!=="super_admin")fail("Keine Berechtigung",403);snapshot.state[key]=rows.filter(x=>x!==row);result={deleted:true,id};action=`${entityType||key}.deleted`;}
+    if(method==="DELETE"){if(profile.role!=="super_admin")fail("Keine Berechtigung",403);snapshot.state[key]=rows.filter(x=>x!==row);if(partnerId&&row.userId)portalAccessIntent={sourceUserId:String(row.userId),status:"disabled"};result={deleted:true,id};action=`${entityType||key}.deleted`;}
     else if(method==="PATCH"&&equipmentId){
       if(!partner)fail("Fachliche Spezifikationen dürfen nur vom zugeordneten Gewerkepartner gepflegt werden",403);if(row.tradeId!==partner.primaryTradeId)fail("Kein Schreibzugriff auf dieses Equipment",403);
       const previous={...((row.specifications as Record<string,unknown>)||{})},normalized=normalizeEquipmentFields(String(row.tradeId),body,row),verify=body.verify===true||body.verify==="true";
@@ -125,11 +126,17 @@ export async function writeRoute(method:string,path:string,ctx:Context){
       row.verification={...((row.verification as Record<string,unknown>)||{}),status:verify?"verified":"partial",verifiedAt:verify?now:null,verifiedBy:verify?sourceUserId:null,source:"licensed_partner",fieldCount:Object.values(normalized.values).filter(v=>v!==null&&v!==""&&v!==undefined).length,requiredCount:normalized.schema.requiredCount};
       const customer=collection(snapshot,"customers").find(x=>x.id===collection(snapshot,"properties").find(p=>p.id===row.propertyId)?.customerId),notification={id:identifier("notification"),userId:customer?.id||null,type:firstConfiguration?"equipment.configured":"equipment.updated",title:firstConfiguration?"Ihre Gewerkakte wurde eingerichtet":"Ihre Gewerkakte wurde aktualisiert",message:`Der Fachpartner ${partner.company} hat die technischen Daten für ${row.label||row.tradeId} ${firstConfiguration?"erstmalig erfasst":"geändert"}.`,propertyId:row.propertyId,equipmentId:row.id,partnerId:partner.id,createdAt:now,status:"queued",channel:"app_push"};collection(snapshot,"notifications").unshift(notification);result={equipment:row,notification:{id:notification.id,status:notification.status,channel:notification.channel},nextStep:{code:"service_record",title:"Nächster Schritt: Serviceheft pflegen",message:"Dokumentieren Sie künftig jede Prüfung, Wartung oder Reparatur mit Datum, Ergebnis und vorhandenen Nachweisen im Serviceheft."}};action=firstConfiguration?"equipment.specification.created":"equipment.specification.updated";
     }
+    else if(method==="PATCH"&&partnerId){
+      const allowedKeys=new Set(["company","contact","email","phone","address","postalCode","city","status","onboarding","notes"]),allowedStatuses=new Set(["invited","active","paused","disabled"]);
+      for(const [k,v] of Object.entries(body)){if(!allowedKeys.has(k))continue;if(k==="status"&&!allowedStatuses.has(String(v)))fail("Ungültiger Partnerstatus");row[k]=typeof v==="string"?clean(v,k==="notes"?2000:240):v;}
+      row.updatedAt=new Date().toISOString();if(row.userId&&Object.hasOwn(body,"status"))portalAccessIntent={sourceUserId:String(row.userId),status:row.status==="active"?"active":"disabled"};result=row;action="partner.updated";
+    }
     else if(method==="PATCH"){const protectedKeys=new Set(["id","userId","propertyId","password","passwordHash"]);for(const [k,v] of Object.entries(body))if(!protectedKeys.has(k))row[k]=typeof v==="string"?clean(v,2000):v;row.updatedAt=new Date().toISOString();result=row;action=`${key}.updated`;}
     else return undefined;entityType=key;entityId=id;
     }
   }
-  await replaceRuntime(service,snapshot,profile.id,action,entityType,entityId,{sourceUserId});
+  if(portalAccessIntent)await replaceRuntimeAndAccess(service,snapshot,profile.id,action,entityType,entityId,portalAccessIntent.sourceUserId,portalAccessIntent.status,{sourceUserId});
+  else await replaceRuntime(service,snapshot,profile.id,action,entityType,entityId,{sourceUserId});
   if(method==="PATCH"&&path==="/account")await service.from("portal_users").update({display_name:clean(body.name||profile.display_name,120),updated_at:new Date().toISOString()}).eq("id",profile.id);
   if(mailAfterCommit){const delivery=await sendPortalMail(mailAfterCommit.channel,mailAfterCommit.recipientEmail,mailAfterCommit.subject,mailAfterCommit.message);if(result&&typeof result==="object"){const target=(result as Record<string,unknown>).mail;if(target&&typeof target==="object")Object.assign(target,delivery,{from:(delivery as Record<string,unknown>).sender||mailAfterCommit.channel});else Object.assign(result as Record<string,unknown>,{delivery,...delivery});}}
   return {status:method==="POST"?201:200,body:result};

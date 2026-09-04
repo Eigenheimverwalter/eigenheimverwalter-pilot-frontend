@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 const source=fs.readFileSync(new URL('../supabase/functions/_shared/read-routes.ts',import.meta.url),'utf8');
-const bridge=fs.readFileSync(new URL('../public/assets/supabase-bridge.js',import.meta.url),'utf8');
+const bridge=fs.readFileSync(new URL('../public/assets/supabase-bridge.js',import.meta.url),'utf8')+fs.readFileSync(new URL('../public/assets/supabase-routes.mjs',import.meta.url),'utf8');
 
 test('Supabase compatibility reads cover the central portal menus',()=>{
   for(const route of ['/account','/customers','/production/customers','/partners','/assignments','/cases','/sales','/campaigns','/role-profiles','/partner-role-templates','/admin/users','/opportunity-engine','/partner/workbench','/audit','/postal-codes','/portfolio/risks','/admin-light-dashboard','/broker-dashboard','/broker/customers','/partner-coverage','/partner-geography','/customer-coverage','/analytics/overview','/system-overview','/partner-performance','/broker-ranking','/property-ranking','/referral','/partner-basic/profile','/partner-basic/dashboard','/partner-basic/broker-properties']){

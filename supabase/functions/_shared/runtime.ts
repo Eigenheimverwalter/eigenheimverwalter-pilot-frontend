@@ -66,6 +66,35 @@ export async function replaceRuntime(
   return Array.isArray(data) ? data[0] : data;
 }
 
+export async function replaceRuntimeAndAccess(
+  service: SupabaseClient,
+  snapshot: RuntimeSnapshot,
+  actorId: string,
+  action: string,
+  entityType: string,
+  entityId: string,
+  accessSourceUserId: string,
+  accessStatus: "active" | "disabled",
+  metadata: Record<string, unknown> = {},
+) {
+  const { data, error } = await service.rpc("replace_portal_runtime_and_access", {
+    expected_revision: snapshot.revision,
+    next_payload: snapshot.state,
+    audit_actor: actorId,
+    audit_action: action,
+    audit_entity_type: entityType,
+    audit_entity_id: entityId,
+    access_source_user_id: accessSourceUserId,
+    access_status: accessStatus,
+    audit_metadata: metadata,
+  });
+  if (error) {
+    const conflict = String(error.message).includes("runtime_revision_conflict");
+    throw Object.assign(new Error(conflict ? "Die Daten wurden parallel geändert. Bitte erneut versuchen." : "Partnerzugang und Laufzeitdaten konnten nicht gemeinsam gespeichert werden"), { status: conflict ? 409 : 500 });
+  }
+  return Array.isArray(data) ? data[0] : data;
+}
+
 export const isAdmin = (profile: PortalProfile) => ["super_admin", "admin_light"].includes(profile.role);
 export const requireRole = (profile: PortalProfile, roles: string[]) => {
   if (!roles.includes(profile.role)) throw Object.assign(new Error("Keine Berechtigung"), { status: 403 });

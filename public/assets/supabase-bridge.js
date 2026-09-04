@@ -1,46 +1,6 @@
 const config=window.__EHV_RUNTIME__||{};
 const enabled=config.authMode==='supabase'&&config.supabaseUrl&&config.supabasePublishableKey;
-const supported=new Set([
-  '/api/me','/api/dashboard','/api/account','/api/customers','/api/production/customers',
-  '/api/partners','/api/assignments','/api/cases','/api/sales','/api/valuations','/api/campaigns',
-  '/api/role-profiles','/api/partner-role-templates','/api/admin/users',
-  '/api/opportunity-engine','/api/partner/workbench','/api/audit','/api/postal-codes',
-  '/api/portfolio/risks'
-  ,'/api/admin-light-dashboard','/api/broker-dashboard','/api/broker/customers',
-  '/api/partner-coverage','/api/partner-geography','/api/customer-coverage',
-  '/api/analytics/overview','/api/system-overview'
-  ,'/api/partner-performance','/api/broker-ranking','/api/property-ranking','/api/referral'
-  ,'/api/support-view/users','/api/support-view/start','/api/support-view/stop','/api/customer-invitations'
-  ,'/api/partner-basic/profile','/api/partner-basic/dashboard','/api/partner-basic/broker-properties','/api/referral/invitations'
-  ,'/api/system/mail-test'
-  ,'/api/trigger-definitions','/api/trigger-events'
-  ,'/api/weather/dwd/sync'
-  ,'/api/production/customers/restore-all'
-]);
-const normalizedPath=path=>String(path||'').split('?')[0];
-const dynamicSupported=[
-  /^\/api\/equipment-schema\/[^/]+$/,
-  /^\/api\/equipment\/[^/]+\/schema$/,
-  /^\/api\/(?:cases|partners|equipment|service-records)\/[^/]+$/,
-  /^\/api\/equipment\/[^/]+\/service-records$/,
-  /^\/api\/partners\/[^/]+\/license$/,
-  /^\/api\/partners\/[^/]+\/email$/,
-  /^\/api\/trigger-definitions\/[^/]+$/,
-  /^\/api\/role-profiles\/[^/]+$/,
-  /^\/api\/partner-role-templates\/[^/]+$/,
-  /^\/api\/campaigns\/[^/]+(?:\/(?:preview|source-verify|approve|activate))?$/,
-  /^\/api\/broker\/sales-files\/[^/]+(?:\/(?:document-status|address-verification|mandate|closing|release))?$/,
-  /^\/api\/customer-actions\/[^/]+\/respond$/,
-  /^\/api\/partner-opportunities\/[^/]+\/complete$/
-  ,/^\/api\/production\/customers\/[^/]+$/,
-  /^\/api\/production\/properties\/[^/]+\/address-verification$/,
-  /^\/api\/properties\/[^/]+\/equipment$/
-];
-const supportsPath=path=>supported.has(normalizedPath(path))||dynamicSupported.some(pattern=>pattern.test(normalizedPath(path)));
-const documentUploads=[/^\/api\/cases\/[^/]+\/documents$/, /^\/api\/broker\/sales-files\/[^/]+\/documents$/, /^\/api\/equipment\/[^/]+\/offers$/, /^\/api\/production\/properties\/[^/]+\/land-register$/];
-const isDocumentUpload=path=>documentUploads.some(pattern=>pattern.test(normalizedPath(path)));
-const publicPaths=[/^\/api\/partner-basic\/trades$/, /^\/api\/partner-basic\/register$/, /^\/api\/password\/forgot$/, /^\/api\/postal-codes(?:\?.*)?$/, /^\/api\/referrals\/[^/]+(?:\/leads)?$/, /^\/api\/referral-invitations\/[^/]+$/, /^\/api\/customer-registration\/[^/]+$/, /^\/api\/partner-invitations\/[^/]+$/];
-const isPublicPath=path=>publicPaths.some(pattern=>pattern.test(normalizedPath(path)));
+const {normalizedPath,supportsPath,isDocumentUpload,isPublicPath,handlesRoute}=await import('./supabase-routes.mjs');
 let client=null;
 
 const responseError=async response=>{
@@ -95,7 +55,7 @@ window.ehvSupabaseBridge={
     return data;
   },
   async updatePassword(password){const {error}=await client.auth.updateUser({password});if(error)throw error;return {message:'Das Passwort wurde geändert.'};},
-  handles(path){return Boolean(enabled)&&(path==='/api/login'||path==='/api/logout'||isPublicPath(path)||supportsPath(path)||isDocumentUpload(path));},
+  handles(path){return Boolean(enabled)&&handlesRoute(path);},
 };
 
 const legacyDocumentRequest=href=>{
