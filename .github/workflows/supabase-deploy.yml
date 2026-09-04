@@ -107,6 +107,17 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
         run: bash scripts/smoke-pilot-auth.sh
+      - name: Verify durable GitHub Pages frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://eigenheimverwalter.github.io/eigenheimverwalter-pilot-frontend'
+          html=$(curl --fail --silent --show-error "$base/")
+          config=$(curl --fail --silent --show-error "$base/runtime-config.js")
+          test -n "$html"
+          grep -Fq 'rpniwtshbwjuesoeztyt.supabase.co' <<< "$config"
+          grep -Fq "authMode:'supabase'" <<< "$config"
+          ! grep -Fq 'onrender.com' <<< "$config"
       - name: Validate ALL-INKL frontend target
         if: ${{ env.ALLINKL_FTP_HOST != '' && env.ALLINKL_FTP_USERNAME != '' && env.ALLINKL_FTP_PASSWORD != '' && env.ALLINKL_PILOT_TARGET_DIR != '' }}
         shell: bash
