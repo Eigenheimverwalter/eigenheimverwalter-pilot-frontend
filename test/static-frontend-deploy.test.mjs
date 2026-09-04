@@ -9,6 +9,8 @@ test('ALL-INKL frontend build is Supabase-only and keeps SPA routes',()=>{
   assert.match(builder,/authMode:'supabase'/);
   assert.match(builder,/legacyApiBase:''/);
   assert.match(builder,/RewriteRule \^ index\.html/);
+  assert.match(builder,/PILOT_BASE_PATH/);
+  assert.match(builder,/404\.html/);
   assert.match(workflow,/FTP-Deploy-Action@fe9c9aad1198372d80a77c8dace63cbe48b69eac/);
   assert.match(workflow,/protocol: ftps/);
   assert.match(workflow,/ALLINKL_PILOT_TARGET_DIR/);
