@@ -60,7 +60,30 @@ session=$(curl --fail --silent --show-error -X POST "${api}/auth/v1/token?grant_
   --data "$(jq -nc --arg email "$email" --arg password "$password" '{email:$email,password:$password}')")
 access_token=$(jq -r '.access_token // empty' <<< "$session")
 test -n "$access_token"
-unset password session created identity
+
+# Prove the same Supabase recovery sequence used by the browser: create a
+# recovery link, exchange its one-time token, update the password and log in
+# with the replacement password. No token or password is written to the log.
+recovery_password="$(openssl rand -base64 36 | tr -d '\n')Bb2!"
+recovery_link=$(curl --fail --silent --show-error -X POST "${api}/auth/v1/admin/generate_link" \
+  "${admin_headers[@]}" -H 'Content-Type: application/json' \
+  --data "$(jq -nc --arg email "$email" '{type:"recovery",email:$email,options:{redirectTo:"https://eigenheimverwalter.github.io/eigenheimverwalter-pilot-frontend/passwort-zuruecksetzen"}}')")
+recovery_token_hash=$(jq -r '.properties.hashed_token // empty' <<< "$recovery_link")
+test -n "$recovery_token_hash"
+recovery_session=$(curl --fail --silent --show-error -X POST "${api}/auth/v1/verify" \
+  -H "apikey: ${SUPABASE_PUBLISHABLE_KEY}" -H 'Content-Type: application/json' \
+  --data "$(jq -nc --arg token "$recovery_token_hash" '{type:"recovery",token_hash:$token}')")
+recovery_access_token=$(jq -r '.access_token // empty' <<< "$recovery_session")
+test -n "$recovery_access_token"
+curl --fail --silent --show-error -X PUT "${api}/auth/v1/user" \
+  -H "apikey: ${SUPABASE_PUBLISHABLE_KEY}" -H "Authorization: Bearer ${recovery_access_token}" \
+  -H 'Content-Type: application/json' --data "$(jq -nc --arg password "$recovery_password" '{password:$password}')" >/dev/null
+session=$(curl --fail --silent --show-error -X POST "${api}/auth/v1/token?grant_type=password" \
+  -H "apikey: ${SUPABASE_PUBLISHABLE_KEY}" -H 'Content-Type: application/json' \
+  --data "$(jq -nc --arg email "$email" --arg password "$recovery_password" '{email:$email,password:$password}')")
+access_token=$(jq -r '.access_token // empty' <<< "$session")
+test -n "$access_token"
+unset password recovery_password recovery_link recovery_token_hash recovery_session recovery_access_token session created identity
 
 me=$(curl --fail --silent --show-error "${api}/functions/v1/portal-api/me" \
   -H "Authorization: Bearer ${access_token}" -H "Origin: https://eigenheimverwalter.github.io")
@@ -135,4 +158,4 @@ auth_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
 test "$(jq 'length' <<< "$identity_left")" = '0'
 test "$(jq 'length' <<< "$document_left")" = '0'
 test "$auth_status" = '404'
-echo 'Echtes Supabase-Login, Dashboard, Rollen-ACL, privater Dokumentzyklus und rückstandsfreie Bereinigung wurden bestätigt.'
+echo 'Echtes Supabase-Login, Passwort-Recovery, Dashboard, Rollen-ACL, privater Dokumentzyklus und rückstandsfreie Bereinigung wurden bestätigt.'
