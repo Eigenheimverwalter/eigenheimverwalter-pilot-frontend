@@ -52,6 +52,7 @@ jobs:
           supabase functions deploy portal-api --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt
           supabase functions deploy portal-mail --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt
           supabase functions deploy portal-public --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt
+          supabase functions deploy production-document-import --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       - name: Merge confidential production mirror
@@ -84,7 +85,7 @@ jobs:
           set -euo pipefail
           export PILOT_MIGRATION_EXPORT_BASE="${PILOT_MIGRATION_EXPORT_URL%/api/migration/export}"
           node scripts/import-production-documents.mjs tmp/source/production-mirror.json | tee tmp/production-document-import-result.json
-          jq -e '.status == "validated" and .total > 0 and .available > 0 and .failed == 0' tmp/production-document-import-result.json >/dev/null
+          jq -e '.status == "validated" and .total > 0 and .failed == 0' tmp/production-document-import-result.json >/dev/null
       - name: Smoke-test Pilot backend
         shell: bash
         env:

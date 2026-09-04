@@ -9,6 +9,7 @@ const importer=fs.readFileSync(new URL('../scripts/import-production-mirror.mjs'
 const documentImporter=fs.readFileSync(new URL('../scripts/import-production-documents.mjs',import.meta.url),'utf8');
 const workflow=fs.readFileSync(new URL('../.github/workflows/supabase-production-mirror-import.yml',import.meta.url),'utf8');
 const deployWorkflow=fs.readFileSync(new URL('../.github/workflows/supabase-deploy.yml',import.meta.url),'utf8');
+const temporaryImporter=fs.readFileSync(new URL('../supabase/functions/production-document-import/index.ts',import.meta.url),'utf8');
 
 test('confidential production mirror has a separate token-protected export',()=>{
   assert.match(server,/\/api\/migration\/production-export/);
@@ -26,8 +27,9 @@ test('production document binaries have an authenticated migration-only export',
 
 test('production mirror merges into the current runtime revision instead of replacing newer work',()=>{
   assert.match(importer,/select=payload,revision/);
-  assert.match(importer,/\.\.\.current\.payload,productionMirror:mirror/);
+  assert.match(importer,/\.\.\.current\.payload,productionMirror:/);
   assert.match(importer,/replace_portal_runtime_state/);
+  assert.match(importer,/previous\?\.supabaseDocumentId/);
   assert.match(workflow,/production-export/);
   assert.match(workflow,/SUPABASE_SERVICE_ROLE_KEY/);
 });
@@ -47,4 +49,11 @@ test('available production files are uploaded privately and linked idempotently'
   assert.match(documentImporter,/uploaded_by:null/);
   assert.match(documentImporter,/replace_portal_runtime_state/);
   assert.match(deployWorkflow,/import-production-documents\.mjs/);
+});
+
+test('local confidential files use a temporary GitHub-authorized direct import path',()=>{
+  assert.match(temporaryImporter,/api\.github\.com\/user/);
+  assert.match(temporaryImporter,/collaborators/);
+  assert.match(temporaryImporter,/ehv-sensitive-documents/);
+  assert.match(temporaryImporter,/migration\.local_production_documents\.finalized/);
 });

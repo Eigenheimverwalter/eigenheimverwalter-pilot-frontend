@@ -33,7 +33,7 @@ if(result.failed)throw new Error(`${result.failed} vorhandene Dokumente konnten 
 const stateResponse=await fetch(`${supabaseUrl}/rest/v1/portal_runtime_state?id=eq.primary&select=payload,revision`,{headers});
 if(!stateResponse.ok)throw new Error('Laufzeitstand konnte nach Dokumentimport nicht geladen werden');
 const [current]=await stateResponse.json(),bySource=new Map(result.documents.map(item=>[item.sourceId,item]));
-const mirror=current?.payload?.productionMirror,nextFiles=mirror?.tables?.property_files?.map(item=>{const imported=bySource.get(String(item.id));return imported?{...item,fileAvailable:true,supabaseDocumentId:imported.documentId,storageBucket:imported.bucket,storageObjectPath:imported.objectPath}:{...item,fileAvailable:false};});
+const mirror=current?.payload?.productionMirror,nextFiles=mirror?.tables?.property_files?.map(item=>{const imported=bySource.get(String(item.id));return imported?{...item,fileAvailable:true,supabaseDocumentId:imported.documentId,storageBucket:imported.bucket,storageObjectPath:imported.objectPath}:item;});
 if(!nextFiles)throw new Error('Produktivspiegel fehlt im aktuellen Laufzeitstand');
 const next={...current.payload,productionMirror:{...mirror,tables:{...mirror.tables,property_files:nextFiles}}};
 const replace=await fetch(`${supabaseUrl}/rest/v1/rpc/replace_portal_runtime_state`,{method:'POST',headers,body:JSON.stringify({expected_revision:current.revision,next_payload:next,audit_actor:null,audit_action:'migration.production_documents.merged',audit_entity_type:'production_documents',audit_entity_id:'source',audit_metadata:{available:result.available,missing:result.missing,unsupported:result.unsupported,total:files.length}})});
