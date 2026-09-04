@@ -25,7 +25,7 @@ const dynamicSupported=[
 const supportsPath=path=>supported.has(normalizedPath(path))||dynamicSupported.some(pattern=>pattern.test(normalizedPath(path)));
 const documentUploads=[/^\/api\/cases\/[^/]+\/documents$/, /^\/api\/broker\/sales-files\/[^/]+\/documents$/, /^\/api\/equipment\/[^/]+\/offers$/, /^\/api\/production\/properties\/[^/]+\/land-register$/];
 const isDocumentUpload=path=>documentUploads.some(pattern=>pattern.test(normalizedPath(path)));
-const publicPaths=[/^\/api\/partner-basic\/trades$/, /^\/api\/partner-basic\/register$/, /^\/api\/password\/forgot$/];
+const publicPaths=[/^\/api\/partner-basic\/trades$/, /^\/api\/partner-basic\/register$/, /^\/api\/password\/forgot$/, /^\/api\/postal-codes(?:\?.*)?$/, /^\/api\/referrals\/[^/]+(?:\/leads)?$/, /^\/api\/referral-invitations\/[^/]+$/, /^\/api\/customer-registration\/[^/]+$/];
 const isPublicPath=path=>publicPaths.some(pattern=>pattern.test(normalizedPath(path)));
 let client=null;
 

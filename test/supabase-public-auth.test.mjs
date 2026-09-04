@@ -5,6 +5,8 @@ const source=fs.readFileSync(new URL('../supabase/functions/portal-public/index.
 const bridge=fs.readFileSync(new URL('../public/assets/supabase-bridge.js',import.meta.url),'utf8');
 const ui=fs.readFileSync(new URL('../public/assets/partner-basic.js',import.meta.url),'utf8');
 const workflow=fs.readFileSync(new URL('../.github/workflows/supabase-deploy.yml',import.meta.url),'utf8');
+const referral=fs.readFileSync(new URL('../public/assets/referral.js',import.meta.url),'utf8');
+const customerRegistration=fs.readFileSync(new URL('../public/assets/customer-registration.js',import.meta.url),'utf8');
 
 test('public registration uses Supabase Auth and registration mail without storing passwords',()=>{
   assert.match(source,/auth\.admin\.generateLink\(\{type:"signup"/);
@@ -12,6 +14,13 @@ test('public registration uses Supabase Auth and registration mail without stori
   assert.doesNotMatch(source,/passwordHash/);
   assert.match(source,/identity_imports/);
   assert.match(source,/replace_portal_runtime_state/);
+});
+
+test('public referral and customer invitation flows are Supabase-native',()=>{
+  for(const fragment of ['referrals','partnerReferralInvitations','customer-registration','customerInvitations'])assert.ok(source.includes(fragment));
+  assert.match(source,/referral\.invitation\.accepted/);assert.match(source,/customer\.registration\.completed/);
+  assert.match(referral,/supabase-bridge/);assert.match(customerRegistration,/supabase-bridge/);
+  assert.doesNotMatch(referral,/await fetch\(path/);assert.doesNotMatch(customerRegistration,/await fetch\(path/);
 });
 
 test('public auth routes are origin-limited and routed without Render',()=>{
