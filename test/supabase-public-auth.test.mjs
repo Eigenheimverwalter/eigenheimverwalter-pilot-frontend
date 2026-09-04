@@ -8,6 +8,7 @@ const workflow=fs.readFileSync(new URL('../.github/workflows/supabase-deploy.yml
 const referral=fs.readFileSync(new URL('../public/assets/referral.js',import.meta.url),'utf8');
 const customerRegistration=fs.readFileSync(new URL('../public/assets/customer-registration.js',import.meta.url),'utf8');
 const authConfig=fs.readFileSync(new URL('../scripts/configure-pilot-auth.sh',import.meta.url),'utf8');
+const authSmoke=fs.readFileSync(new URL('../scripts/smoke-pilot-auth.sh',import.meta.url),'utf8');
 
 test('public registration uses Supabase Auth and registration mail without storing passwords',()=>{
   assert.match(source,/auth\.admin\.generateLink\(\{type:"signup"/);
@@ -76,4 +77,16 @@ test('CI configures only the concrete Pilot GitHub Pages auth path',()=>{
   assert.match(authConfig,/\$site\+"\/\*\*"/);
   assert.doesNotMatch(authConfig,/https:\/\/\*\*\.github\.io/);
   assert.match(authConfig,/current.*uri_allow_list/);
+});
+
+test('CI proves a real Supabase login and cleans its scoped smoke identity',()=>{
+  assert.match(workflow,/bash scripts\/smoke-pilot-auth\.sh/);
+  assert.match(authSmoke,/grant_type=password/);
+  assert.match(authSmoke,/portal-api\/me/);
+  assert.match(authSmoke,/portal-api\/dashboard/);
+  assert.match(authSmoke,/role-profiles/);
+  assert.match(authSmoke,/test "\$acl_status" = '403'/);
+  assert.match(authSmoke,/trap cleanup EXIT/);
+  assert.match(authSmoke,/auth\/v1\/admin\/users\/\$\{user_id\}/);
+  assert.doesNotMatch(authSmoke,/ChangeMe123/);
 });
