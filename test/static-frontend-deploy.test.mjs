@@ -17,6 +17,12 @@ test('ALL-INKL frontend build is Supabase-only and keeps SPA routes',()=>{
   assert.doesNotMatch(workflow,/legacyApiBase[^\n]*onrender\.com/);
 });
 
+test('static build publishes password recovery as a real page',()=>{
+  assert.match(builder,/passwordResetDirectory/);
+  assert.match(builder,/passwort-zuruecksetzen/);
+  assert.match(builder,/copyFileSync\(path\.join\(target,'index\.html'\)/);
+});
+
 test('ALL-INKL deployment rejects a broad or ambiguous remote target',()=>{
   assert.match(workflow,/TARGET_DIR.*pilot/);
   assert.match(workflow,/muss absolut sein/);
