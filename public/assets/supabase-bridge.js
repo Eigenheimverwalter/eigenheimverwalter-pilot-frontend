@@ -24,6 +24,8 @@ const dynamicSupported=[
 const supportsPath=path=>supported.has(normalizedPath(path))||dynamicSupported.some(pattern=>pattern.test(normalizedPath(path)));
 const documentUploads=[/^\/api\/cases\/[^/]+\/documents$/, /^\/api\/broker\/sales-files\/[^/]+\/documents$/, /^\/api\/equipment\/[^/]+\/offers$/, /^\/api\/production\/properties\/[^/]+\/land-register$/];
 const isDocumentUpload=path=>documentUploads.some(pattern=>pattern.test(normalizedPath(path)));
+const publicPaths=[/^\/api\/partner-basic\/trades$/, /^\/api\/partner-basic\/register$/, /^\/api\/password\/forgot$/];
+const isPublicPath=path=>publicPaths.some(pattern=>pattern.test(normalizedPath(path)));
 let client=null;
 
 const responseError=async response=>{
@@ -52,6 +54,10 @@ window.ehvSupabaseBridge={
       if(error)throw error;
       return null;
     }
+    if(isPublicPath(path)){
+      const response=await fetch(`${config.supabaseUrl}/functions/v1/portal-public${path.replace(/^\/api/,'')}`,{...options,headers:{apikey:config.supabasePublishableKey,'Content-Type':'application/json',...(options.headers||{})}});
+      if(!response.ok)return responseError(response);return response.json();
+    }
     if(!supportsPath(path)&&!isDocumentUpload(path))return null;
     const {data:{session}}=await client.auth.getSession();
     if(!session)throw Error('Nicht angemeldet');
@@ -70,7 +76,8 @@ window.ehvSupabaseBridge={
     if(path==='/api/me')return {user:{id:data.user.id,name:data.user.display_name,email:data.user.email,role:data.user.role},csrf:null,supportView:null};
     return data;
   },
-  handles(path){return Boolean(enabled)&&(path==='/api/login'||path==='/api/logout'||supportsPath(path)||isDocumentUpload(path));},
+  async updatePassword(password){const {error}=await client.auth.updateUser({password});if(error)throw error;return {message:'Das Passwort wurde geändert.'};},
+  handles(path){return Boolean(enabled)&&(path==='/api/login'||path==='/api/logout'||isPublicPath(path)||supportsPath(path)||isDocumentUpload(path));},
 };
 
 const legacyDocumentRequest=href=>{

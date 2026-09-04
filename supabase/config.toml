@@ -9,3 +9,6 @@ verify_jwt = false
 
 [functions.portal-mail]
 verify_jwt = false
+
+[functions.portal-public]
+verify_jwt = false
