@@ -89,7 +89,8 @@ jobs:
             "https://${SUPABASE_PROJECT_REF}.supabase.co/rest/v1/rpc/pilot_migration_status" \
             -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
             -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}")
-          echo "$migration_status" | jq -e '.customers == 194 and .properties == 148 and .propertyFiles == 522 and .availableDocuments >= 93 and .runtimeRevision > 0' >/dev/null || { echo "Supabase-Datenintegrität nicht bestätigt: $migration_status"; exit 1; }
+          echo "$migration_status" | jq '{customers,properties,propertyFiles,availableDocuments,runtimeRevision,activeAdminProfiles,activeInfoAdmin}'
+          echo "$migration_status" | jq -e '.customers == 194 and .properties == 148 and .propertyFiles == 522 and .availableDocuments >= 93 and .runtimeRevision > 0 and .activeAdminProfiles >= 1 and .activeInfoAdmin == true' >/dev/null || { echo "Supabase-Daten-, Auth- oder Admin-Integrität nicht bestätigt."; exit 1; }
       - name: Validate ALL-INKL frontend target
         if: ${{ env.ALLINKL_FTP_HOST != '' && env.ALLINKL_FTP_USERNAME != '' && env.ALLINKL_FTP_PASSWORD != '' && env.ALLINKL_PILOT_TARGET_DIR != '' }}
         shell: bash

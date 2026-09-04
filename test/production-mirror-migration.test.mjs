@@ -56,3 +56,13 @@ test('deployment verifies migrated documents and no longer deploys the temporary
   assert.match(deployWorkflow,/\.customers == 194/);
   assert.match(deployWorkflow,/\.availableDocuments >= 93/);
 });
+
+test('deployment requires an active info admin without logging identity data',()=>{
+  const workflow=fs.readFileSync('.github/workflows/supabase-deploy.yml','utf8');
+  const migration=fs.readFileSync('supabase/migrations/202609040008_pilot_access_status.sql','utf8');
+  assert.match(migration,/activeAdminProfiles/);
+  assert.match(migration,/activeInfoAdmin/);
+  assert.match(migration,/lower\('info@eigenheimverwalter\.de'\)/);
+  assert.match(workflow,/\.activeAdminProfiles >= 1/);
+  assert.match(workflow,/\.activeInfoAdmin == true/);
+});
