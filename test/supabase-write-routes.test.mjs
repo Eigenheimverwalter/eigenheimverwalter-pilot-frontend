@@ -35,6 +35,11 @@ test('partner and administrative test mail use the Supabase gateway channels',()
   assert.match(bridge,/partners\\\/\[\^\/\]\+\\\/email/);
 });
 
+test('trigger configuration and event processing are Supabase-native',()=>{
+  assert.match(writes,/processTriggerEvent/);assert.match(writes,/\/trigger-definitions/);assert.match(writes,/\/trigger-events/);
+  assert.match(writes,/trigger_event\.processed/);assert.match(bridge,/trigger-definitions/);assert.match(bridge,/trigger-events/);
+});
+
 test('dynamic entity writes are routed to Supabase',()=>{
   assert.match(bridge,/dynamicSupported/);
   assert.match(bridge,/cases\|partners\|equipment/);

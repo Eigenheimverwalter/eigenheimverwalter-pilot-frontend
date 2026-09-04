@@ -13,6 +13,7 @@ const supported=new Set([
   ,'/api/support-view/users','/api/support-view/start','/api/support-view/stop','/api/customer-invitations'
   ,'/api/partner-basic/profile','/api/partner-basic/dashboard','/api/partner-basic/broker-properties','/api/referral/invitations'
   ,'/api/system/mail-test'
+  ,'/api/trigger-definitions','/api/trigger-events'
 ]);
 const normalizedPath=path=>String(path||'').split('?')[0];
 const dynamicSupported=[
@@ -22,6 +23,7 @@ const dynamicSupported=[
   /^\/api\/equipment\/[^/]+\/service-records$/,
   /^\/api\/partners\/[^/]+\/license$/,
   /^\/api\/partners\/[^/]+\/email$/,
+  /^\/api\/trigger-definitions\/[^/]+$/,
   /^\/api\/broker\/sales-files\/[^/]+(?:\/(?:document-status|address-verification|mandate|closing|release))?$/,
   /^\/api\/customer-actions\/[^/]+\/respond$/,
   /^\/api\/partner-opportunities\/[^/]+\/complete$/
