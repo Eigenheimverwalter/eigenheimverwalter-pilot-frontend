@@ -66,3 +66,13 @@ test('deployment requires an active info admin without logging identity data',()
   assert.match(workflow,/\.activeAdminProfiles >= 1/);
   assert.match(workflow,/\.activeInfoAdmin == true/);
 });
+
+test('admin bootstrap is fixed to info and never stores an initial password',()=>{
+  const workflow=fs.readFileSync('.github/workflows/pilot-admin-bootstrap.yml','utf8');
+  assert.match(workflow,/ADMIN_EMAIL: info@eigenheimverwalter\.de/);
+  assert.match(workflow,/openssl rand -base64 48/);
+  assert.match(workflow,/role:\"super_admin\"/);
+  assert.match(workflow,/portal-public\/password\/forgot/);
+  assert.doesNotMatch(workflow,/ChangeMe123/);
+  assert.doesNotMatch(workflow,/admin_password/i);
+});
