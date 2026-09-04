@@ -40,6 +40,14 @@ test('partner detail and license summaries no longer fall back to Render',()=>{
   assert.match(bridge,/partners\\\/\[\^\/\]\+\\\/license/);
 });
 
+test('regional and opportunity KPI responses match the dashboard contract',()=>{
+  assert.match(source,/regions=Object\.fromEntries/);
+  assert.match(source,/partners:regional\.length/);
+  assert.match(source,/scope:profile\.role==="super_admin"\?"admin"/);
+  for(const metric of ['pushRate','openRate','responseRate','serviceLeadRate','completedServiceRate'])assert.ok(source.includes(metric),`${metric} fehlt`);
+  assert.match(source,/queue:\{mode:"synchron"/);
+});
+
 test('production customer reads filter soft deletions and sort newest registrations first',()=>{
   assert.match(source,/productionCustomerDeletions/);
   assert.match(source,/filter\(x=>!deleted/);
