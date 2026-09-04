@@ -54,6 +54,25 @@ jobs:
           supabase functions deploy portal-public --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      - name: Merge confidential production mirror
+        shell: bash
+        env:
+          PILOT_MIGRATION_EXPORT_URL: ${{ secrets.PILOT_MIGRATION_EXPORT_URL }}
+          PILOT_MIGRATION_EXPORT_TOKEN: ${{ secrets.PILOT_MIGRATION_EXPORT_TOKEN }}
+          SUPABASE_URL: https://rpniwtshbwjuesoeztyt.supabase.co
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$PILOT_MIGRATION_EXPORT_URL" || { echo 'PILOT_MIGRATION_EXPORT_URL fehlt.'; exit 1; }
+          test -n "$PILOT_MIGRATION_EXPORT_TOKEN" || { echo 'PILOT_MIGRATION_EXPORT_TOKEN fehlt.'; exit 1; }
+          export_base="${PILOT_MIGRATION_EXPORT_URL%/api/migration/export}"
+          mkdir -p tmp/source
+          curl --fail --silent --show-error \
+            "$export_base/api/migration/production-export" \
+            -H "Authorization: Bearer $PILOT_MIGRATION_EXPORT_TOKEN" \
+            --output tmp/source/production-mirror.json
+          node scripts/import-production-mirror.mjs tmp/source/production-mirror.json | tee tmp/production-import-result.json
+          jq -e '.status == "validated" and .customers > 0 and .properties > 0' tmp/production-import-result.json >/dev/null
       - name: Smoke-test Pilot backend
         shell: bash
         env:
