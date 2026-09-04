@@ -50,6 +50,14 @@ test('production customer edits, soft deletion and restore are Supabase-native',
   assert.match(bridge,/production\\\/customers\\\/\[\^\/\]\+/);
 });
 
+test('campaign preview, approvals, activation and archival are Supabase-native',()=>{
+  for(const action of ['preview','source-verify','approve','activate'])assert.ok(writes.includes(action),`${action} fehlt`);
+  assert.match(writes,/campaignAudience/);
+  assert.match(writes,/campaign\.partner_briefing/);
+  assert.match(writes,/campaign\.archived/);
+  assert.match(bridge,/campaigns\\\/\[\^\/\]\+/);
+});
+
 test('dynamic entity writes are routed to Supabase',()=>{
   assert.match(bridge,/dynamicSupported/);
   assert.match(bridge,/cases\|partners\|equipment/);
