@@ -1,6 +1,6 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import {
-  array, authenticate, isAdmin, loadRuntime, scopedProperties, sourcePartner,
+  array, authenticate, isAdmin, loadRuntime, replaceRuntime, scopedProperties, sourcePartner,
   type PortalProfile,
 } from "../_shared/runtime.ts";
 import { readRoute } from "../_shared/read-routes.ts";
@@ -44,6 +44,10 @@ Deno.serve(async (req) => {
   try { auth = await authenticate(req.headers.get("Authorization")); }
   catch (error) { return json({ error: error instanceof Error ? error.message : "Nicht angemeldet" }, Number((error as {status?:number}).status || 401)); }
   const { user, profile, sourceUserId, service: serviceClient } = auth;
+  if(sourceUserId&&profile.role==="partner_basic"&&user.email_confirmed_at){
+    try{const activationSnapshot=await loadRuntime(serviceClient),partner=sourcePartner(activationSnapshot.state,sourceUserId);if(partner&&partner.status==="invited"){partner.status="active";partner.lifecycle="active";partner.activatedAt=new Date().toISOString();await replaceRuntime(serviceClient,activationSnapshot,profile.id,"partner_basic.email_confirmed","partner",String(partner.id),{sourceUserId});}}
+    catch(error){if(!String(error instanceof Error?error.message:error).includes("parallel geändert"))return json({error:"Die bestätigte Partnerregistrierung konnte nicht aktiviert werden"},503);}
+  }
   const routePath=url.pathname.replace(/^.*\/portal-api/,"")||"/";
   if(req.method==="GET"&&routePath==="/support-view/users"){
     if(!isAdmin(profile))return json({error:"Keine Berechtigung"},403);

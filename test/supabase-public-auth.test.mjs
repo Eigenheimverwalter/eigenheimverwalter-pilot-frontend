@@ -31,6 +31,14 @@ test('full partner invitations activate a scoped Supabase identity',()=>{
   assert.match(bridge,/partner-invitations/);
 });
 
+test('Basic partner confirmation activates runtime state and failed registration is compensated',()=>{
+  const api=fs.readFileSync(new URL('../supabase/functions/portal-api/index.ts',import.meta.url),'utf8');
+  assert.match(api,/partner_basic\.email_confirmed/);
+  assert.match(api,/user\.email_confirmed_at/);
+  assert.match(source,/auth\.admin\.deleteUser/);
+  assert.match(source,/identity_imports"\)\.delete/);
+});
+
 test('public auth routes are origin-limited and routed without Render',()=>{
   assert.match(source,/allowedOrigin/);assert.match(source,/type:"recovery"/);
   assert.match(bridge,/portal-public/);assert.match(bridge,/isPublicPath/);
