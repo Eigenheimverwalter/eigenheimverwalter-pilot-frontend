@@ -3,7 +3,7 @@ name: Supabase deploy
 on:
   workflow_dispatch:
   push:
-    branches: [codex/makler-workflow-and-platform-update]
+    branches: [main, codex/makler-workflow-and-platform-update]
     paths:
       - "supabase/**"
       - ".github/workflows/supabase-deploy.yml"
