@@ -43,6 +43,9 @@ test('partner detail and license summaries no longer fall back to Render',()=>{
 test('regional and opportunity KPI responses match the dashboard contract',()=>{
   assert.match(source,/regions=Object\.fromEntries/);
   assert.match(source,/partners:regional\.length/);
+  assert.match(source,/registeredCustomers:profiles\.length/);
+  assert.match(source,/completedCustomers=profiles\.filter/);
+  assert.match(source,/PLZ-Abdeckung: Anteil/);
   assert.match(source,/scope:profile\.role==="super_admin"\?"admin"/);
   for(const metric of ['pushRate','openRate','responseRate','serviceLeadRate','completedServiceRate'])assert.ok(source.includes(metric),`${metric} fehlt`);
   assert.match(source,/queue:\{mode:"synchron"/);

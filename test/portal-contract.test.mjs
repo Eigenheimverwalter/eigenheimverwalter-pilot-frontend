@@ -31,3 +31,11 @@ test('Kritische Formularaktionen haben explizite Event-Handler', () => {
   assert.match(basic, /q\('#forgot-form'\)\.onsubmit/);
   assert.match(app, /function bindGo\(\).*querySelectorAll\('\[data-go\]'\)/);
 });
+
+test('Kunden- und Partnerkarten filtern die Tabellen unmittelbar und kombinierbar', () => {
+  assert.match(app, /table\.dataset\.region=region;table\.dispatchEvent\(new CustomEvent\('regionfilter'\)\)/);
+  assert.match(app, /row\.dataset\.region=profile\.region/);
+  assert.match(app, /row\.dataset\.regions=profile\.regions\.join\('\|'\)/);
+  assert.match(app, /table\.addEventListener\('regionfilter',apply\)/);
+  assert.match(app, /delete table\.dataset\.region/);
+});
