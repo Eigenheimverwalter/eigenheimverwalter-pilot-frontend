@@ -23,3 +23,9 @@ test('Partner reads remain property- and partner-scoped',()=>{
   assert.match(source,/x\.partnerId===partner\?\.id/);
   assert.match(source,/publicRuntimeUser/);
 });
+
+test('customer, equipment and broker detail views are Supabase-native',()=>{
+  for(const fragment of ['productionCustomerId','equipmentId','brokerFileId'])assert.ok(source.includes(fragment));
+  assert.match(bridge,/production\\\/customers/);
+  assert.match(bridge,/properties\\\/\[\^\/\]\+\\\/equipment/);
+});

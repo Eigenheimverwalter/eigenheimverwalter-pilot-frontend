@@ -16,6 +16,8 @@ const dynamicSupported=[
   /^\/api\/broker\/sales-files\/[^/]+(?:\/(?:document-status|address-verification|mandate|closing|release))?$/,
   /^\/api\/customer-actions\/[^/]+\/respond$/,
   /^\/api\/partner-opportunities\/[^/]+\/complete$/
+  ,/^\/api\/production\/customers\/[^/]+$/,
+  /^\/api\/properties\/[^/]+\/equipment$/
 ];
 const supportsPath=path=>supported.has(normalizedPath(path))||dynamicSupported.some(pattern=>pattern.test(normalizedPath(path)));
 const documentUploads=[/^\/api\/cases\/[^/]+\/documents$/, /^\/api\/broker\/sales-files\/[^/]+\/documents$/, /^\/api\/equipment\/[^/]+\/offers$/, /^\/api\/production\/properties\/[^/]+\/land-register$/];
