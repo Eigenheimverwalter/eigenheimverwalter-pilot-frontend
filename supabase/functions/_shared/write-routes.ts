@@ -11,7 +11,11 @@ export async function writeRoute(method:string,path:string,ctx:Context){
   const {snapshot,profile,sourceUserId,service,body}=ctx,state=snapshot.state,admin=isAdmin(profile),partner=sourcePartner(state,sourceUserId);
   const allowedProperties=new Set(scopedProperties(state,profile,sourceUserId).map(x=>x.id));
   let result:unknown,action="",entityType="",entityId="";
-  if(method==="POST"&&path==="/assignments"){
+  if(method==="PATCH"&&path==="/account"){
+    const sourceUser=collection(snapshot,"users").find(x=>String(x.id)===String(sourceUserId));if(!sourceUser)fail("Quellkonto nicht gefunden",404);for(const [key,max] of [["name",120],["phone",50],["address",180],["postalCode",5],["city",100]] as const)if(key in body)sourceUser[key]=clean(body[key],max);if(sourceUser.postalCode&&!/^\d{5}$/.test(String(sourceUser.postalCode)))fail("Postleitzahl muss fünfstellig sein");result={account:{...sourceUser,email:undefined,passwordHash:undefined}};action="account.updated";entityType="portal_user";entityId=profile.id;
+  } else if(method==="POST"&&path==="/referral/invitations"){
+    if(!partner||!["partner_basic","referral_partner"].includes(profile.role))fail("Keine Berechtigung",403);const name=clean(body.name,120),email=clean(body.email,254).toLowerCase(),address=clean(body.address,180),postalCode=String(body.postalCode||"").replace(/\D/g,"").slice(0,5),city=clean(body.city,100),tradeId=profile.role==="referral_partner"?null:String(partner.primaryTradeId||"");if(!name||!email.includes("@")||!address||postalCode.length!==5||!city||body.consentConfirmed!==true)fail("Kundendaten und Einwilligung sind vollständig erforderlich");const siteUrl=clean(body.siteUrl,300);if(!/^https:\/\//.test(siteUrl))fail("Sichere Portaladresse fehlt");const token=crypto.randomUUID()+crypto.randomUUID(),item={id:identifier("ref-invite"),tokenHash:await digest(token),partnerId:partner.id,tradeId,referralOnly:profile.role==="referral_partner",name,email,address,postalCode,city,status:"pending",createdAt:new Date().toISOString(),expiresAt:new Date(Date.now()+7*86400000).toISOString()};collection(snapshot,"partnerReferralInvitations").unshift(item);result={invitation:{id:item.id,status:item.status,expiresAt:item.expiresAt}};action="referral.invitation.created";entityType="referral_invitation";entityId=item.id;await sendPortalMail("registration",email,"Empfehlung von eigenheimverwalter bestätigen",`${partner.company} hat Sie empfohlen. Bitte prüfen und bestätigen Sie die Angaben:\n${siteUrl.replace(/\/$/,"")}/empfehlung/${token}`);
+  } else if(method==="POST"&&path==="/assignments"){
     if(!admin)fail("Keine Berechtigung",403); const rows=collection(snapshot,"assignments");
     const partnerId=clean(body.partnerId,100),propertyId=clean(body.propertyId,100),tradeId=clean(body.tradeId,100);
     if(!array(state.partners).some(x=>x.id===partnerId)||!array(state.properties).some(x=>x.id===propertyId)||!tradeId)fail("Partner, Objekt und Gewerk sind erforderlich");
@@ -66,5 +70,6 @@ export async function writeRoute(method:string,path:string,ctx:Context){
     }
   }
   await replaceRuntime(service,snapshot,profile.id,action,entityType,entityId,{sourceUserId});
+  if(method==="PATCH"&&path==="/account")await service.from("portal_users").update({display_name:clean(body.name||profile.display_name,120),updated_at:new Date().toISOString()}).eq("id",profile.id);
   return {status:method==="POST"?201:200,body:result};
 }

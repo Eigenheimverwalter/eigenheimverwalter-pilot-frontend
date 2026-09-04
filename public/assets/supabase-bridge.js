@@ -11,6 +11,7 @@ const supported=new Set([
   '/api/analytics/overview','/api/system-overview'
   ,'/api/partner-performance','/api/broker-ranking','/api/property-ranking','/api/referral'
   ,'/api/support-view/users','/api/support-view/start','/api/support-view/stop','/api/customer-invitations'
+  ,'/api/partner-basic/profile','/api/partner-basic/dashboard','/api/partner-basic/broker-properties','/api/referral/invitations'
 ]);
 const normalizedPath=path=>String(path||'').split('?')[0];
 const dynamicSupported=[
@@ -68,7 +69,7 @@ window.ehvSupabaseBridge={
       if(!response.ok)return responseError(response);return response.json();
     }
     const route=path.replace(/^\/api/,''),supportTarget=sessionStorage.getItem('ehv-support-target');
-    if(path==='/api/customer-invitations'&&options.body){const payload=JSON.parse(options.body);payload.siteUrl=location.origin;options={...options,body:JSON.stringify(payload)}}
+    if(['/api/customer-invitations','/api/referral/invitations'].includes(path)&&options.body){const payload=JSON.parse(options.body);payload.siteUrl=location.origin;options={...options,body:JSON.stringify(payload)}}
     const response=await fetch(`${config.supabaseUrl}/functions/v1/portal-api${route}`,{
       ...options,
       headers:{Authorization:`Bearer ${session.access_token}`,apikey:config.supabasePublishableKey,'Content-Type':'application/json',...(supportTarget?{'x-ehv-support-user':supportTarget}:{}),...(options.headers||{})},

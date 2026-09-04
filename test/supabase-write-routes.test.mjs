@@ -7,7 +7,7 @@ const api=fs.readFileSync(new URL('../supabase/functions/portal-api/index.ts',im
 const bridge=fs.readFileSync(new URL('../public/assets/supabase-bridge.js',import.meta.url),'utf8');
 
 test('central mutations use the atomic audited runtime function',()=>{
-  for(const route of ['/assignments','/cases','/valuations','/campaigns','/partners','/customer-invitations'])assert.ok(writes.includes(`path==="${route}"`),`${route} fehlt`);
+  for(const route of ['/account','/referral/invitations','/assignments','/cases','/valuations','/campaigns','/partners','/customer-invitations'])assert.ok(writes.includes(`path==="${route}"`),`${route} fehlt`);
   assert.match(writes,/await replaceRuntime/);
   assert.match(writes,/allowedProperties\.has/);
   assert.match(api,/writeRoute\(req\.method/);
