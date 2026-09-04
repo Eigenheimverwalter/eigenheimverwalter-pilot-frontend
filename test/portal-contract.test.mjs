@@ -39,3 +39,18 @@ test('Kunden- und Partnerkarten filtern die Tabellen unmittelbar und kombinierba
   assert.match(app, /table\.addEventListener\('regionfilter',apply\)/);
   assert.match(app, /delete table\.dataset\.region/);
 });
+
+test('Lesende Partneransicht startet ausschließlich aus der Partnertabelle', () => {
+  assert.doesNotMatch(app, /data-menu="support"/);
+  assert.doesNotMatch(app, /Partneransicht für Support/);
+  assert.match(app, /class="primary partner-360"/);
+  assert.match(app, /startPartnerSupportView\(b\.dataset\.id\)/);
+  assert.match(app, /body:JSON\.stringify\(\{partnerId\}\)/);
+});
+
+test('Admin Plus bearbeitet Rollen ohne separates Benutzerzugangsmenü', () => {
+  assert.doesNotMatch(app, /data-menu="access"/);
+  assert.match(app, /class="primary save-partner-role"/);
+  assert.match(app, /partner-role-templates\/\$\{encodeURIComponent\(card\.dataset\.roleId\)\}/);
+  assert.match(app, /body:JSON\.stringify\(\{title,status,permissions\}\)/);
+});

@@ -50,5 +50,6 @@ test('Supabase support view is admin-only, read-only and audited',()=>{
   assert.match(source,/support-view\/users/);assert.match(source,/support-view\/start/);assert.match(source,/support-view\/stop/);
   assert.match(source,/x-ehv-support-user/);assert.match(source,/Support-Sicht ist ausschließlich lesend/);
   assert.match(source,/support_view\.started/);assert.match(source,/support_view\.stopped/);
+  assert.match(source,/body\.partnerId/);assert.match(source,/identity_imports/);assert.match(source,/auth_user_id/);
   assert.match(bridge,/ehv-support-target/);
 });

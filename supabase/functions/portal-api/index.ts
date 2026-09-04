@@ -57,7 +57,20 @@ Deno.serve(async (req) => {
     return json({users:(profiles||[]).map(item=>({id:item.id,name:item.display_name,role:item.role})),mode:"read_only",notice:"Support-Sicht übernimmt ausschließlich die effektiven Leserechte. Änderungen sind gesperrt."});
   }
   if(req.method==="POST"&&routePath==="/support-view/start"){
-    if(!isAdmin(profile))return json({error:"Keine Berechtigung"},403);const body=await req.json().catch(()=>({})),targetId=String(body.userId||"");const {data:target}=await serviceClient.from("portal_users").select("id,display_name,role,status").eq("id",targetId).eq("status","active").maybeSingle();if(!target||!["crafts_partner","broker_partner","partner_basic"].includes(target.role))return json({error:"Bitte einen aktiven Partnerzugang auswählen"},422);await serviceClient.from("audit_events").insert({actor_user_id:profile.id,action:"support_view.started",entity_type:"portal_user",entity_id:target.id,metadata:{targetRole:target.role,readOnly:true}});return json({user:{id:target.id,name:target.display_name,role:target.role},csrf:null,supportView:{actor:{id:profile.id,name:profile.display_name,role:profile.role},target:{id:target.id,name:target.display_name,role:target.role},readOnly:true}});
+    if(!isAdmin(profile))return json({error:"Keine Berechtigung"},403);
+    const body=await req.json().catch(()=>({})) as Record<string,unknown>;
+    let targetId=String(body.userId||"");
+    if(body.partnerId){
+      const snapshot=await loadRuntime(serviceClient),selected=array(snapshot.state.partners).find(item=>String(item.id)===String(body.partnerId));
+      if(!selected||selected.status!=="active"||!selected.userId)return json({error:"Für diesen Partner ist kein aktiver Portalzugang verknüpft"},422);
+      const {data:identity,error:identityError}=await serviceClient.from("identity_imports").select("auth_user_id").eq("source_user_id",String(selected.userId)).maybeSingle();
+      if(identityError||!identity?.auth_user_id)return json({error:"Der verknüpfte Partnerzugang konnte nicht aufgelöst werden"},422);
+      targetId=String(identity.auth_user_id);
+    }
+    const {data:target}=await serviceClient.from("portal_users").select("id,display_name,role,status").eq("id",targetId).eq("status","active").maybeSingle();
+    if(!target||!["crafts_partner","broker_partner","partner_basic"].includes(target.role))return json({error:"Bitte einen aktiven Partnerzugang auswählen"},422);
+    await serviceClient.from("audit_events").insert({actor_user_id:profile.id,action:"support_view.started",entity_type:"portal_user",entity_id:target.id,metadata:{partnerId:body.partnerId||null,targetRole:target.role,readOnly:true}});
+    return json({user:{id:target.id,name:target.display_name,role:target.role},csrf:null,supportView:{actor:{id:profile.id,name:profile.display_name,role:profile.role},target:{id:target.id,name:target.display_name,role:target.role},readOnly:true}});
   }
   if(req.method==="POST"&&routePath==="/support-view/stop"){await serviceClient.from("audit_events").insert({actor_user_id:profile.id,action:"support_view.stopped",entity_type:"portal_user",entity_id:profile.id,metadata:{readOnly:true}});return json({user:{id:profile.id,name:profile.display_name,email:user.email,role:profile.role},csrf:null,supportView:null});}
   let effectiveProfile=profile,effectiveSourceUserId=sourceUserId,effectiveEmail=user.email||null,supportView:null|Record<string,unknown>=null;
