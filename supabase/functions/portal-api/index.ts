@@ -4,6 +4,7 @@ import {
   type PortalProfile,
 } from "../_shared/runtime.ts";
 import { readRoute } from "../_shared/read-routes.ts";
+import { writeRoute } from "../_shared/write-routes.ts";
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
   status,
@@ -58,6 +59,16 @@ Deno.serve(async (req) => {
       if(result)return json(result.body,result.status);
     } catch (error) {
       return json({ error: error instanceof Error ? error.message : "Datenzugriff fehlgeschlagen" }, Number((error as {status?:number}).status||503));
+    }
+  }
+  if (["POST","PATCH","DELETE"].includes(req.method)) {
+    try {
+      const routePath=url.pathname.replace(/^.*\/portal-api/,"")||"/";
+      const body=req.method==="DELETE"?{}:await req.json().catch(()=>{throw Object.assign(new Error("Ungültiges JSON"),{status:400})});
+      const result=await writeRoute(req.method,routePath,{service:serviceClient,snapshot:await loadRuntime(serviceClient),profile,sourceUserId,body});
+      if(result)return json(result.body,result.status);
+    } catch(error) {
+      return json({error:error instanceof Error?error.message:"Änderung fehlgeschlagen"},Number((error as {status?:number}).status||500));
     }
   }
   return json({ error: "Route nicht gefunden" }, 404);
