@@ -9,7 +9,6 @@ const importer=fs.readFileSync(new URL('../scripts/import-production-mirror.mjs'
 const documentImporter=fs.readFileSync(new URL('../scripts/import-production-documents.mjs',import.meta.url),'utf8');
 const workflow=fs.readFileSync(new URL('../.github/workflows/supabase-production-mirror-import.yml',import.meta.url),'utf8');
 const deployWorkflow=fs.readFileSync(new URL('../.github/workflows/supabase-deploy.yml',import.meta.url),'utf8');
-const temporaryImporter=fs.readFileSync(new URL('../supabase/functions/production-document-import/index.ts',import.meta.url),'utf8');
 
 test('confidential production mirror has a separate token-protected export',()=>{
   assert.match(server,/\/api\/migration\/production-export/);
@@ -51,9 +50,8 @@ test('available production files are uploaded privately and linked idempotently'
   assert.match(deployWorkflow,/import-production-documents\.mjs/);
 });
 
-test('local confidential files use a temporary GitHub-authorized direct import path',()=>{
-  assert.match(temporaryImporter,/api\.github\.com\/user/);
-  assert.match(temporaryImporter,/collaborators/);
-  assert.match(temporaryImporter,/ehv-sensitive-documents/);
-  assert.match(temporaryImporter,/migration\.local_production_documents\.finalized/);
+test('deployment verifies migrated documents and removes the temporary import function',()=>{
+  assert.match(deployWorkflow,/functions delete production-document-import/);
+  assert.match(deployWorkflow,/migrated_document_count/);
+  assert.match(deployWorkflow,/-ge 93/);
 });
