@@ -1,7 +1,7 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import { array, authenticate, identifier, isAdmin, loadRuntime, replaceRuntime, scopedProperties } from "../_shared/runtime.ts";
 
-const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{...corsHeaders,"Content-Type":"application/json","Cache-Control":"no-store"}});
+const jsonResponse=(req:Request,body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{...corsHeaders(req),"Content-Type":"application/json","Cache-Control":"no-store"}});
 const classes=new Set(["service","offer","invoice","equipment","land_register","sales_file","broker_contract","notarial_contract","other"]);
 const buckets:Record<string,string>={service:"ehv-service-documents",offer:"ehv-sales-documents",invoice:"ehv-service-documents",equipment:"ehv-service-documents",land_register:"ehv-sensitive-documents",sales_file:"ehv-sales-documents",broker_contract:"ehv-sales-documents",notarial_contract:"ehv-sensitive-documents",other:"ehv-sensitive-documents"};
 const extensions:Record<string,string>={"application/pdf":"pdf","image/png":"png","image/jpeg":"jpg"};
@@ -20,7 +20,8 @@ const legacyTarget=(route:string,state:Record<string,unknown>)=>{
 };
 
 Deno.serve(async req=>{
-  if(req.method==="OPTIONS")return new Response(null,{status:204,headers:corsHeaders});
+  const json=(body:unknown,status=200)=>jsonResponse(req,body,status);
+  if(req.method==="OPTIONS")return new Response(null,{status:204,headers:corsHeaders(req)});
   let auth;try{auth=await authenticate(req.headers.get("Authorization"));}catch(error){return json({error:error instanceof Error?error.message:"Nicht angemeldet"},Number((error as {status?:number}).status||401));}
   const {user,profile,sourceUserId,service}=auth,url=new URL(req.url),documentId=url.searchParams.get("id"),requestedPropertyId=url.searchParams.get("propertyId"),requestedClass=url.searchParams.get("class");
   try{
@@ -56,7 +57,7 @@ Deno.serve(async req=>{
     }
     if(req.method==="DELETE"){
       const owner=document.uploaded_by===user.id,admin=["super_admin","admin_light"].includes(profile.role);if(!owner&&!admin)return json({error:"Keine Löschberechtigung"},403);
-      await service.from("documents").update({deleted_at:new Date().toISOString()}).eq("id",document.id);await service.from("audit_events").insert({actor_user_id:user.id,action:"document.deleted",entity_type:"document",entity_id:document.id,metadata:{propertyId:document.source_property_id}});return new Response(null,{status:204,headers:corsHeaders});
+      await service.from("documents").update({deleted_at:new Date().toISOString()}).eq("id",document.id);await service.from("audit_events").insert({actor_user_id:user.id,action:"document.deleted",entity_type:"document",entity_id:document.id,metadata:{propertyId:document.source_property_id}});return new Response(null,{status:204,headers:corsHeaders(req)});
     }
     return json({error:"Methode nicht unterstützt"},405);
   }catch(error){return json({error:error instanceof Error?error.message:"Dokumentenverarbeitung fehlgeschlagen"},Number((error as {status?:number}).status||500));}

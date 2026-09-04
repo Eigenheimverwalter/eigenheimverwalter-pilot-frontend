@@ -6,9 +6,9 @@ import {
 import { readRoute } from "../_shared/read-routes.ts";
 import { writeRoute } from "../_shared/write-routes.ts";
 
-const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
+const jsonResponse = (req:Request,body: unknown, status = 200) => new Response(JSON.stringify(body), {
   status,
-  headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" },
+  headers: { ...corsHeaders(req), "Content-Type": "application/json", "Cache-Control": "no-store" },
 });
 
 const projectRef = "rpniwtshbwjuesoeztyt";
@@ -34,7 +34,8 @@ const dashboard = (state: Record<string, unknown>, profile: PortalProfile, sourc
 };
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
+  const json=(body:unknown,status=200)=>jsonResponse(req,body,status);
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders(req) });
   const url = new URL(req.url);
   if (req.method === "GET" && url.pathname.endsWith("/health")) {
     return json({ service: "ehv-pilot-portal-api", projectRef, status: "ok", version: "0.1.0" });

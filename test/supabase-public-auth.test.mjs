@@ -45,3 +45,18 @@ test('public auth routes are origin-limited and routed without Render',()=>{
   assert.match(ui,/ehvSupabaseBridge/);assert.match(ui,/updatePassword/);
   assert.match(workflow,/portal-public/);
 });
+
+test('Supabase responses echo only allow-listed browser origins',()=>{
+  const cors=fs.readFileSync(new URL('../supabase/functions/_shared/cors.ts',import.meta.url),'utf8');
+  const portalApi=fs.readFileSync(new URL('../supabase/functions/portal-api/index.ts',import.meta.url),'utf8');
+  const documentApi=fs.readFileSync(new URL('../supabase/functions/document-api/index.ts',import.meta.url),'utf8');
+  assert.match(cors,/req\?\.headers\.get\("Origin"\)/);
+  assert.match(cors,/host === "eigenheimverwalter\.github\.io"/);
+  assert.doesNotMatch(cors,/endsWith\("\.github\.io"\)/);
+  assert.doesNotMatch(cors,/endsWith\("\.onrender\.com"\)/);
+  assert.match(cors,/if \(origin\) headers\["Access-Control-Allow-Origin"\] = origin/);
+  assert.match(cors,/"Vary": "Origin"/);
+  assert.match(portalApi,/corsHeaders\(req\)/);
+  assert.match(source,/corsHeaders\(req\)/);
+  assert.match(documentApi,/corsHeaders\(req\)/);
+});
