@@ -18,3 +18,12 @@ test('dynamic entity writes are routed to Supabase',()=>{
   assert.match(bridge,/cases\|partners\|equipment/);
   assert.ok(bridge.includes("'/api/valuations'"));
 });
+
+test('service, broker and opportunity workflows persist through Supabase',()=>{
+  for(const fragment of ['service-records','document-status','address-verification','mandate','closing','release','customer-actions','partner-opportunities']){
+    assert.ok(writes.includes(fragment),`${fragment} fehlt in den Schreibregeln`);
+    assert.ok(bridge.includes(fragment),`${fragment} fehlt in der Frontend-Weiterleitung`);
+  }
+  assert.match(writes,/allowedProperties\.has/);
+  assert.match(writes,/profile\.role!=="broker_partner"/);
+});

@@ -10,7 +10,13 @@ const supported=new Set([
   '/api/partner-coverage','/api/partner-geography','/api/customer-coverage'
 ]);
 const normalizedPath=path=>String(path||'').split('?')[0];
-const dynamicSupported=[/^\/api\/(?:cases|partners|equipment)\/[^/]+$/];
+const dynamicSupported=[
+  /^\/api\/(?:cases|partners|equipment|service-records)\/[^/]+$/,
+  /^\/api\/equipment\/[^/]+\/service-records$/,
+  /^\/api\/broker\/sales-files\/[^/]+(?:\/(?:document-status|address-verification|mandate|closing|release))?$/,
+  /^\/api\/customer-actions\/[^/]+\/respond$/,
+  /^\/api\/partner-opportunities\/[^/]+\/complete$/
+];
 const supportsPath=path=>supported.has(normalizedPath(path))||dynamicSupported.some(pattern=>pattern.test(normalizedPath(path)));
 const documentUploads=[/^\/api\/cases\/[^/]+\/documents$/, /^\/api\/broker\/sales-files\/[^/]+\/documents$/, /^\/api\/equipment\/[^/]+\/offers$/, /^\/api\/production\/properties\/[^/]+\/land-register$/];
 const isDocumentUpload=path=>documentUploads.some(pattern=>pattern.test(normalizedPath(path)));
