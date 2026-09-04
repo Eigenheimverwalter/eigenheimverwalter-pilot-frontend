@@ -88,6 +88,10 @@ test('CI configures only the concrete Pilot GitHub Pages auth path',()=>{
 test('CI proves a real Supabase login and cleans its scoped smoke identity',()=>{
   assert.match(workflow,/bash scripts\/smoke-pilot-auth\.sh/);
   assert.match(authSmoke,/grant_type=password/);
+  assert.match(authSmoke,/admin\/generate_link/);
+  assert.match(authSmoke,/type:\"recovery\"/);
+  assert.match(authSmoke,/auth\/v1\/verify/);
+  assert.match(authSmoke,/auth\/v1\/user/);
   assert.match(authSmoke,/portal-api\/me/);
   assert.match(authSmoke,/portal-api\/dashboard/);
   assert.match(authSmoke,/role-profiles/);
