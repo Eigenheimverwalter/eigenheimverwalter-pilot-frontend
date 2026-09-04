@@ -68,11 +68,13 @@ test('deployment requires an active info admin without logging identity data',()
 });
 
 test('admin bootstrap is fixed to info and never stores an initial password',()=>{
-  const workflow=fs.readFileSync('.github/workflows/pilot-admin-bootstrap.yml','utf8');
-  assert.match(workflow,/ADMIN_EMAIL: info@eigenheimverwalter\.de/);
-  assert.match(workflow,/openssl rand -base64 48/);
-  assert.match(workflow,/role:\"super_admin\"/);
-  assert.match(workflow,/portal-public\/password\/forgot/);
-  assert.doesNotMatch(workflow,/ChangeMe123/);
-  assert.doesNotMatch(workflow,/admin_password/i);
+  const workflow=fs.readFileSync('.github/workflows/supabase-deploy.yml','utf8');
+  const bootstrap=fs.readFileSync('scripts/bootstrap-pilot-admin.sh','utf8');
+  assert.match(workflow,/bash scripts\/bootstrap-pilot-admin\.sh/);
+  assert.match(bootstrap,/admin_email='info@eigenheimverwalter\.de'/);
+  assert.match(bootstrap,/openssl rand -base64 48/);
+  assert.match(bootstrap,/role:\"super_admin\"/);
+  assert.match(bootstrap,/portal-public\/password\/forgot/);
+  assert.doesNotMatch(bootstrap,/ChangeMe123/);
+  assert.doesNotMatch(bootstrap,/admin_password/i);
 });
