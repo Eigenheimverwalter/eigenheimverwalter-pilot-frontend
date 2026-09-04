@@ -58,6 +58,14 @@ test('campaign preview, approvals, activation and archival are Supabase-native',
   assert.match(bridge,/campaigns\\\/\[\^\/\]\+/);
 });
 
+test('role and partner-role administration no longer falls through to Render',()=>{
+  for(const marker of ['partner_role.created','partner_role.updated','role_profile.updated'])assert.ok(writes.includes(marker),`${marker} fehlt`);
+  assert.match(writes,/partnerRolePermissions/);
+  assert.match(writes,/rolePermissions/);
+  assert.match(bridge,/role-profiles\\\/\[\^\/\]\+/);
+  assert.match(bridge,/partner-role-templates\\\/\[\^\/\]\+/);
+});
+
 test('dynamic entity writes are routed to Supabase',()=>{
   assert.match(bridge,/dynamicSupported/);
   assert.match(bridge,/cases\|partners\|equipment/);

@@ -25,6 +25,8 @@ const dynamicSupported=[
   /^\/api\/partners\/[^/]+\/license$/,
   /^\/api\/partners\/[^/]+\/email$/,
   /^\/api\/trigger-definitions\/[^/]+$/,
+  /^\/api\/role-profiles\/[^/]+$/,
+  /^\/api\/partner-role-templates\/[^/]+$/,
   /^\/api\/campaigns\/[^/]+(?:\/(?:preview|source-verify|approve|activate))?$/,
   /^\/api\/broker\/sales-files\/[^/]+(?:\/(?:document-status|address-verification|mandate|closing|release))?$/,
   /^\/api\/customer-actions\/[^/]+\/respond$/,
