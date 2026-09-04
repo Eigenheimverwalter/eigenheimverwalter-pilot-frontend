@@ -28,7 +28,7 @@ const dynamicSupported=[
 const supportsPath=path=>supported.has(normalizedPath(path))||dynamicSupported.some(pattern=>pattern.test(normalizedPath(path)));
 const documentUploads=[/^\/api\/cases\/[^/]+\/documents$/, /^\/api\/broker\/sales-files\/[^/]+\/documents$/, /^\/api\/equipment\/[^/]+\/offers$/, /^\/api\/production\/properties\/[^/]+\/land-register$/];
 const isDocumentUpload=path=>documentUploads.some(pattern=>pattern.test(normalizedPath(path)));
-const publicPaths=[/^\/api\/partner-basic\/trades$/, /^\/api\/partner-basic\/register$/, /^\/api\/password\/forgot$/, /^\/api\/postal-codes(?:\?.*)?$/, /^\/api\/referrals\/[^/]+(?:\/leads)?$/, /^\/api\/referral-invitations\/[^/]+$/, /^\/api\/customer-registration\/[^/]+$/];
+const publicPaths=[/^\/api\/partner-basic\/trades$/, /^\/api\/partner-basic\/register$/, /^\/api\/password\/forgot$/, /^\/api\/postal-codes(?:\?.*)?$/, /^\/api\/referrals\/[^/]+(?:\/leads)?$/, /^\/api\/referral-invitations\/[^/]+$/, /^\/api\/customer-registration\/[^/]+$/, /^\/api\/partner-invitations\/[^/]+$/];
 const isPublicPath=path=>publicPaths.some(pattern=>pattern.test(normalizedPath(path)));
 let client=null;
 
@@ -71,7 +71,7 @@ window.ehvSupabaseBridge={
       if(!response.ok)return responseError(response);return response.json();
     }
     const route=path.replace(/^\/api/,''),supportTarget=sessionStorage.getItem('ehv-support-target');
-    if(['/api/customer-invitations','/api/referral/invitations'].includes(path)&&options.body){const payload=JSON.parse(options.body);payload.siteUrl=location.origin;options={...options,body:JSON.stringify(payload)}}
+    if(['/api/customer-invitations','/api/referral/invitations','/api/partners'].includes(path)&&options.body){const payload=JSON.parse(options.body);payload.siteUrl=location.origin;options={...options,body:JSON.stringify(payload)}}
     const response=await fetch(`${config.supabaseUrl}/functions/v1/portal-api${route}`,{
       ...options,
       headers:{Authorization:`Bearer ${session.access_token}`,apikey:config.supabasePublishableKey,'Content-Type':'application/json',...(supportTarget?{'x-ehv-support-user':supportTarget}:{}),...(options.headers||{})},

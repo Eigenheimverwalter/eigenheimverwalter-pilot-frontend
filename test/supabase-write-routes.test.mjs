@@ -19,6 +19,11 @@ test('customer invitations use expiring hashed tokens and registration mail',()=
   assert.ok(writes.indexOf('await replaceRuntime')<writes.lastIndexOf('await sendPortalMail'),'Mailversand muss nach atomarer Speicherung erfolgen');
 });
 
+test('partner creation validates a single trade and persists invitation before partner mail',()=>{
+  assert.match(writes,/Pro Partnerkonto muss genau ein Gewerk/);assert.match(writes,/partnerInvitations/);
+  assert.match(writes,/channel:"partner"/);assert.match(bridge,/\['\/api\/customer-invitations','\/api\/referral\/invitations','\/api\/partners'\]/);
+});
+
 test('dynamic entity writes are routed to Supabase',()=>{
   assert.match(bridge,/dynamicSupported/);
   assert.match(bridge,/cases\|partners\|equipment/);

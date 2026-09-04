@@ -17,12 +17,18 @@ test('public registration uses Supabase Auth and registration mail without stori
 });
 
 test('public referral and customer invitation flows are Supabase-native',()=>{
-  for(const fragment of ['referrals','partnerReferralInvitations','customer-registration','customerInvitations'])assert.ok(source.includes(fragment));
+  for(const fragment of ['referrals','partnerReferralInvitations','customer-registration','customerInvitations','partner-invitations','partnerInvitations'])assert.ok(source.includes(fragment));
   assert.match(source,/referral\.invitation\.accepted/);assert.match(source,/customer\.registration\.completed/);
   assert.match(referral,/supabase-bridge/);assert.match(customerRegistration,/supabase-bridge/);
   assert.doesNotMatch(referral,/await fetch\(path/);assert.doesNotMatch(customerRegistration,/await fetch\(path/);
   assert.match(source,/registrationCompleted:true/);assert.match(source,/snapshot\.state\.customers/);assert.match(source,/snapshot\.state\.properties/);
   assert.match(source,/auth\.admin\.deleteUser/);
+});
+
+test('full partner invitations activate a scoped Supabase identity',()=>{
+  assert.match(source,/pilot_partner_invitation/);assert.match(source,/crafts_partner/);assert.match(source,/broker_partner/);
+  assert.match(source,/partner\.invitation\.accepted/);assert.match(source,/identity_imports/);
+  assert.match(bridge,/partner-invitations/);
 });
 
 test('public auth routes are origin-limited and routed without Render',()=>{
