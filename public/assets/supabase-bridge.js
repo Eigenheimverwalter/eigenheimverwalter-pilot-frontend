@@ -14,6 +14,7 @@ const supported=new Set([
   ,'/api/partner-basic/profile','/api/partner-basic/dashboard','/api/partner-basic/broker-properties','/api/referral/invitations'
   ,'/api/system/mail-test'
   ,'/api/trigger-definitions','/api/trigger-events'
+  ,'/api/production/customers/restore-all'
 ]);
 const normalizedPath=path=>String(path||'').split('?')[0];
 const dynamicSupported=[

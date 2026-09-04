@@ -39,3 +39,11 @@ test('partner detail and license summaries no longer fall back to Render',()=>{
   assert.match(source,/partnerLicenseSummary/);assert.match(source,/const partnerId=path\.match/);
   assert.match(bridge,/partners\\\/\[\^\/\]\+\\\/license/);
 });
+
+test('production customer reads filter soft deletions and sort newest registrations first',()=>{
+  assert.match(source,/productionCustomerDeletions/);
+  assert.match(source,/filter\(x=>!deleted/);
+  assert.match(source,/Date\.parse/);
+  assert.match(source,/direction:"descending"/);
+  assert.match(source,/status:410/);
+});

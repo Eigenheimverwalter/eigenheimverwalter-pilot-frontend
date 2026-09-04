@@ -40,6 +40,16 @@ test('trigger configuration and event processing are Supabase-native',()=>{
   assert.match(writes,/trigger_event\.processed/);assert.match(bridge,/trigger-definitions/);assert.match(bridge,/trigger-events/);
 });
 
+test('production customer edits, soft deletion and restore are Supabase-native',()=>{
+  assert.match(writes,/\/production\/customers\/restore-all/);
+  assert.match(writes,/productionCustomerDeletions/);
+  assert.match(writes,/production\.customer\.updated/);
+  assert.match(writes,/production\.customer\.deleted/);
+  for(const field of ['first_name','last_name','phone_number','postal_code'])assert.ok(writes.includes(`"${field}"`),`${field} muss im App-Exportformat erhalten bleiben`);
+  assert.ok(bridge.includes("'/api/production/customers/restore-all'"));
+  assert.match(bridge,/production\\\/customers\\\/\[\^\/\]\+/);
+});
+
 test('dynamic entity writes are routed to Supabase',()=>{
   assert.match(bridge,/dynamicSupported/);
   assert.match(bridge,/cases\|partners\|equipment/);
