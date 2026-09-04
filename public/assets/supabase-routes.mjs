@@ -8,7 +8,7 @@ export const supported=new Set([
   '/api/partner-performance','/api/broker-ranking','/api/property-ranking','/api/referral',
   '/api/support-view/users','/api/support-view/start','/api/support-view/stop','/api/customer-invitations',
   '/api/partner-basic/profile','/api/partner-basic/dashboard','/api/partner-basic/broker-properties',
-  '/api/referral/invitations','/api/system/mail-test','/api/trigger-definitions','/api/trigger-events',
+  '/api/referral/invitations','/api/system/mail-test','/api/trigger-definitions','/api/trigger-events','/api/weather/dwd/preview',
   '/api/weather/dwd/sync','/api/production/customers/restore-all','/api/broker/sales-files'
 ]);
 export const normalizedPath=path=>String(path||'').split('?')[0];

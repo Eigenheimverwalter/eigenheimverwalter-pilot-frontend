@@ -88,12 +88,27 @@ unset password recovery_password recovery_link recovery_token_hash recovery_sess
 me=$(curl --fail --silent --show-error "${api}/functions/v1/portal-api/me" \
   -H "Authorization: Bearer ${access_token}" -H "Origin: https://eigenheimverwalter.github.io")
 jq -e --arg role "$smoke_role" '.user.role==$role and .user.status=="active"' >/dev/null <<< "$me"
+echo 'Authentifizierte Pilot-Sitzung bestätigt.'
 
 dashboard=$(curl --fail --silent --show-error "${api}/functions/v1/portal-api/dashboard" \
   -H "Authorization: Bearer ${access_token}" -H "Origin: https://eigenheimverwalter.github.io")
 jq -e '.source=="supabase" and (.kpis|type=="object")' >/dev/null <<< "$dashboard"
 property_id=$(jq -r '.properties[0].id // empty' <<< "$dashboard")
 test -n "$property_id"
+
+analytics=$(curl --fail --silent --show-error "${api}/functions/v1/portal-api/analytics/overview" \
+  -H "Authorization: Bearer ${access_token}" -H "Origin: https://eigenheimverwalter.github.io")
+jq -e '.summary.registered>=0 and (.regions|type=="object") and (.profiles|type=="array")' >/dev/null <<< "$analytics"
+geography=$(curl --fail --silent --show-error "${api}/functions/v1/portal-api/partner-geography" \
+  -H "Authorization: Bearer ${access_token}" -H "Origin: https://eigenheimverwalter.github.io")
+jq -e '(.regions|type=="object") and (.profiles|type=="array") and (.summary.active>=0)' >/dev/null <<< "$geography"
+opportunities=$(curl --fail --silent --show-error "${api}/functions/v1/portal-api/opportunity-engine" \
+  -H "Authorization: Bearer ${access_token}" -H "Origin: https://eigenheimverwalter.github.io")
+jq -e '.scope=="admin_light_overview" and (.kpis.events>=0) and (.kpis.openRate>=0) and (.queue|type=="object")' >/dev/null <<< "$opportunities"
+dwd=$(curl --fail --silent --show-error "${api}/functions/v1/portal-api/weather/dwd/preview" \
+  -H "Authorization: Bearer ${access_token}" -H "Origin: https://eigenheimverwalter.github.io")
+jq -e '.provider=="DWD" and .received>0 and .mapped>0 and (.samples|type=="array")' >/dev/null <<< "$dwd"
+echo 'Regionale KPIs, Ereignis-KPIs und DWD-Livefeed bestätigt.'
 
 upload_payload=$(jq -nc --arg property "$property_id" \
   '{propertyId:$property,documentClass:"other",entityType:"ci_smoke",entityId:"ephemeral",name:"pilot-upload-smoke.png",content:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="}')
