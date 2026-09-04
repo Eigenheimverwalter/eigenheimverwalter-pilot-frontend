@@ -6,6 +6,8 @@ const supported=new Set([
   '/api/role-profiles','/api/partner-role-templates','/api/admin/users',
   '/api/opportunity-engine','/api/partner/workbench','/api/audit','/api/postal-codes',
   '/api/portfolio/risks'
+  ,'/api/admin-light-dashboard','/api/broker-dashboard','/api/broker/customers',
+  '/api/partner-coverage','/api/partner-geography','/api/customer-coverage'
 ]);
 const normalizedPath=path=>String(path||'').split('?')[0];
 const dynamicSupported=[/^\/api\/(?:cases|partners|equipment)\/[^/]+$/];
