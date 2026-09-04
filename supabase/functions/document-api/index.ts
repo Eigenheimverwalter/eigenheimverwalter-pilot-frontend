@@ -1,5 +1,5 @@
 import { corsHeaders } from "../_shared/cors.ts";
-import { array, authenticate, identifier, loadRuntime, replaceRuntime, scopedProperties } from "../_shared/runtime.ts";
+import { array, authenticate, identifier, isAdmin, loadRuntime, replaceRuntime, scopedProperties } from "../_shared/runtime.ts";
 
 const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{...corsHeaders,"Content-Type":"application/json","Cache-Control":"no-store"}});
 const classes=new Set(["service","offer","invoice","equipment","land_register","sales_file","broker_contract","notarial_contract","other"]);
@@ -25,6 +25,7 @@ Deno.serve(async req=>{
   const {user,profile,sourceUserId,service}=auth,url=new URL(req.url),documentId=url.searchParams.get("id"),requestedPropertyId=url.searchParams.get("propertyId"),requestedClass=url.searchParams.get("class");
   try{
     const snapshot=await loadRuntime(service),allowed=new Set(scopedProperties(snapshot.state,profile,sourceUserId).map(x=>String(x.id)));
+    if(isAdmin(profile)){const mirror=snapshot.state.productionMirror as Record<string,unknown>|undefined,tables=mirror?.tables as Record<string,unknown>|undefined;for(const property of array(tables?.properties))allowed.add(String(property.id));}
     if(req.method==="POST"){
       const body=await req.json(),target=legacyTarget(String(body.legacyRoute||""),snapshot.state),propertyId=String(body.propertyId||target?.entity.propertyId||target?.entity.id||""),documentClass=String(body.documentClass||target?.documentClass||"other"),name=safe(body.name),file=decode(String(body.content||""));
       if(!allowed.has(propertyId))return json({error:"Kein Zugriff auf dieses Objekt"},403);if(!classes.has(documentClass)||!name)return json({error:"Dokumentklasse und Dateiname sind erforderlich"},422);
@@ -46,7 +47,7 @@ Deno.serve(async req=>{
     }
     if(!documentId&&!requestedPropertyId)return json({error:"Dokument-ID fehlt"},422);
     let query=service.from("documents").select("*").is("deleted_at",null);
-    query=documentId?query.eq("id",documentId):query.eq("source_property_id",requestedPropertyId!).eq("document_class",requestedClass||"land_register").order("created_at",{ascending:false}).limit(1);
+    query=documentId?(documentId.match(/^[0-9a-f]{8}-[0-9a-f-]{27}$/i)?query.eq("id",documentId):query.eq("source_entity_type","production_property_file").eq("source_entity_id",documentId)):query.eq("source_property_id",requestedPropertyId!).eq("document_class",requestedClass||"land_register").order("created_at",{ascending:false}).limit(1);
     const {data:documents,error}=await query;const document=Array.isArray(documents)?documents[0]:documents;if(error||!document)return json({error:"Dokument nicht gefunden"},404);
     if(!document.source_property_id||!allowed.has(String(document.source_property_id)))return json({error:"Dokument nicht freigegeben"},403);
     if(req.method==="GET"){

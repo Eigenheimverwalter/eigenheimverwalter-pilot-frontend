@@ -73,6 +73,18 @@ jobs:
             --output tmp/source/production-mirror.json
           node scripts/import-production-mirror.mjs tmp/source/production-mirror.json | tee tmp/production-import-result.json
           jq -e '.status == "validated" and .customers > 0 and .properties > 0' tmp/production-import-result.json >/dev/null
+      - name: Import available production documents
+        shell: bash
+        env:
+          PILOT_MIGRATION_EXPORT_URL: ${{ secrets.PILOT_MIGRATION_EXPORT_URL }}
+          PILOT_MIGRATION_EXPORT_TOKEN: ${{ secrets.PILOT_MIGRATION_EXPORT_TOKEN }}
+          SUPABASE_URL: https://rpniwtshbwjuesoeztyt.supabase.co
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+          export PILOT_MIGRATION_EXPORT_BASE="${PILOT_MIGRATION_EXPORT_URL%/api/migration/export}"
+          node scripts/import-production-documents.mjs tmp/source/production-mirror.json | tee tmp/production-document-import-result.json
+          jq -e '.status == "validated" and .total > 0 and .available > 0 and .failed == 0' tmp/production-document-import-result.json >/dev/null
       - name: Smoke-test Pilot backend
         shell: bash
         env:

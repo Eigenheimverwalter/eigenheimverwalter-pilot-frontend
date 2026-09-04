@@ -6,7 +6,9 @@ const server=fs.readFileSync(new URL('../server.mjs',import.meta.url),'utf8');
 const reads=fs.readFileSync(new URL('../supabase/functions/_shared/read-routes.ts',import.meta.url),'utf8');
 const writes=fs.readFileSync(new URL('../supabase/functions/_shared/write-routes.ts',import.meta.url),'utf8');
 const importer=fs.readFileSync(new URL('../scripts/import-production-mirror.mjs',import.meta.url),'utf8');
+const documentImporter=fs.readFileSync(new URL('../scripts/import-production-documents.mjs',import.meta.url),'utf8');
 const workflow=fs.readFileSync(new URL('../.github/workflows/supabase-production-mirror-import.yml',import.meta.url),'utf8');
+const deployWorkflow=fs.readFileSync(new URL('../.github/workflows/supabase-deploy.yml',import.meta.url),'utf8');
 
 test('confidential production mirror has a separate token-protected export',()=>{
   assert.match(server,/\/api\/migration\/production-export/);
@@ -36,4 +38,12 @@ test('production customer views and overrides use only the imported confidential
   assert.match(reads,/sourceUserCount:productionUsers\.length/);
   assert.match(writes,/state\.productionMirror/);
   assert.match(writes,/productionCustomerOverrides=overrides/);
+});
+
+test('available production files are uploaded privately and linked idempotently',()=>{
+  assert.match(documentImporter,/ehv-sensitive-documents/);
+  assert.match(documentImporter,/source_entity_type:'production_property_file'/);
+  assert.match(documentImporter,/on_conflict=source_entity_type,source_entity_id/);
+  assert.match(documentImporter,/replace_portal_runtime_state/);
+  assert.match(deployWorkflow,/import-production-documents\.mjs/);
 });
