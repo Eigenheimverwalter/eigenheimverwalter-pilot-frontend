@@ -10,9 +10,6 @@ if(!supabaseUrl||!serviceKey||!exportBase||!exportToken)throw new Error('Supabas
 const files=source?.tables?.property_files;
 if(source?.meta?.classification!=='CONFIDENTIAL_CUSTOMER_DATA'||!Array.isArray(files))throw new Error('Ungültiger Produktivdaten-Mirror');
 const headers={apikey:serviceKey,Authorization:`Bearer ${serviceKey}`,'Content-Type':'application/json'};
-const adminResponse=await fetch(`${supabaseUrl}/rest/v1/portal_users?select=id&role=in.(super_admin,admin_light)&status=eq.active&limit=1`,{headers});
-if(!adminResponse.ok)throw new Error(`Migrationsverantwortlicher konnte nicht ermittelt werden (${adminResponse.status})`);
-const [admin]=await adminResponse.json();if(!admin?.id)throw new Error('Kein aktiver administrativer Pilot-Zugang vorhanden');
 const result={available:0,missing:0,unsupported:0,failed:0,documents:[]};
 const extension=mime=>({'application/pdf':'pdf','image/png':'png','image/jpeg':'jpg'}[mime]);
 const upload=async record=>{
@@ -26,7 +23,7 @@ const upload=async record=>{
   const sha256=crypto.createHash('sha256').update(bytes).digest('hex'),bucket='ehv-sensitive-documents',objectPath=`production/${record.property_id}/${record.id}-${sha256}.${ext}`;
   const storageResponse=await fetch(`${supabaseUrl}/storage/v1/object/${bucket}/${objectPath}`,{method:'POST',headers:{apikey:serviceKey,Authorization:`Bearer ${serviceKey}`,'Content-Type':mime,'x-upsert':'true'},body:bytes});
   if(!storageResponse.ok){result.failed++;return;}
-  const metadata={property_id:null,source_property_id:String(record.property_id),source_entity_type:'production_property_file',source_entity_id:String(record.id),document_class:'other',bucket_id:bucket,object_path:objectPath,original_name:String(record.file).slice(0,180),mime_type:mime,size_bytes:bytes.length,sha256,uploaded_by:admin.id,created_at:record.created_at||new Date().toISOString(),deleted_at:null};
+  const metadata={property_id:null,source_property_id:String(record.property_id),source_entity_type:'production_property_file',source_entity_id:String(record.id),document_class:'other',bucket_id:bucket,object_path:objectPath,original_name:String(record.file).slice(0,180),mime_type:mime,size_bytes:bytes.length,sha256,uploaded_by:null,created_at:record.created_at||new Date().toISOString(),deleted_at:null};
   const metadataResponse=await fetch(`${supabaseUrl}/rest/v1/documents?on_conflict=source_entity_type,source_entity_id`,{method:'POST',headers:{...headers,Prefer:'resolution=merge-duplicates,return=representation'},body:JSON.stringify(metadata)});
   if(!metadataResponse.ok){result.failed++;return;}
   const [document]=await metadataResponse.json();result.available++;result.documents.push({sourceId:String(record.id),documentId:document.id,bucket,objectPath});
@@ -39,6 +36,6 @@ const [current]=await stateResponse.json(),bySource=new Map(result.documents.map
 const mirror=current?.payload?.productionMirror,nextFiles=mirror?.tables?.property_files?.map(item=>{const imported=bySource.get(String(item.id));return imported?{...item,fileAvailable:true,supabaseDocumentId:imported.documentId,storageBucket:imported.bucket,storageObjectPath:imported.objectPath}:{...item,fileAvailable:false};});
 if(!nextFiles)throw new Error('Produktivspiegel fehlt im aktuellen Laufzeitstand');
 const next={...current.payload,productionMirror:{...mirror,tables:{...mirror.tables,property_files:nextFiles}}};
-const replace=await fetch(`${supabaseUrl}/rest/v1/rpc/replace_portal_runtime_state`,{method:'POST',headers,body:JSON.stringify({expected_revision:current.revision,next_payload:next,audit_actor:admin.id,audit_action:'migration.production_documents.merged',audit_entity_type:'production_documents',audit_entity_id:'source',audit_metadata:{available:result.available,missing:result.missing,unsupported:result.unsupported,total:files.length}})});
+const replace=await fetch(`${supabaseUrl}/rest/v1/rpc/replace_portal_runtime_state`,{method:'POST',headers,body:JSON.stringify({expected_revision:current.revision,next_payload:next,audit_actor:null,audit_action:'migration.production_documents.merged',audit_entity_type:'production_documents',audit_entity_id:'source',audit_metadata:{available:result.available,missing:result.missing,unsupported:result.unsupported,total:files.length}})});
 if(!replace.ok)throw new Error(`Dokumentstatus konnte nicht atomar gespeichert werden (${replace.status})`);
 console.log(JSON.stringify({status:'validated',total:files.length,available:result.available,missing:result.missing,unsupported:result.unsupported,failed:result.failed},null,2));

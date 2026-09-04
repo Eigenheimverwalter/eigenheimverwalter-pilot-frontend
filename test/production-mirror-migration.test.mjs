@@ -44,6 +44,7 @@ test('available production files are uploaded privately and linked idempotently'
   assert.match(documentImporter,/ehv-sensitive-documents/);
   assert.match(documentImporter,/source_entity_type:'production_property_file'/);
   assert.match(documentImporter,/on_conflict=source_entity_type,source_entity_id/);
+  assert.match(documentImporter,/uploaded_by:null/);
   assert.match(documentImporter,/replace_portal_runtime_state/);
   assert.match(deployWorkflow,/import-production-documents\.mjs/);
 });
