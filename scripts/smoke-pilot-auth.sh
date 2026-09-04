@@ -112,7 +112,8 @@ echo 'Regionale KPIs, Ereignis-KPIs und DWD-Livefeed bestätigt.'
 
 upload_payload=$(jq -nc --arg property "$property_id" \
   '{propertyId:$property,documentClass:"other",entityType:"ci_smoke",entityId:"ephemeral",name:"pilot-upload-smoke.png",content:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="}')
-uploaded=$(curl --fail --silent --show-error -X POST "${api}/functions/v1/document-api" \
+echo 'Privaten Dokumenten-Lebenszyklus prüfen.'
+uploaded=$(curl --fail --silent --show-error --retry 3 --retry-all-errors --retry-delay 2 -X POST "${api}/functions/v1/document-api" \
   -H "apikey: ${SUPABASE_PUBLISHABLE_KEY}" -H "Authorization: Bearer ${access_token}" \
   -H "Origin: https://eigenheimverwalter.github.io" -H 'Content-Type: application/json' \
   --data "$upload_payload")
@@ -124,7 +125,7 @@ document_bucket=$(jq -r '.[0].bucket_id // empty' <<< "$document_record")
 document_path=$(jq -r '.[0].object_path // empty' <<< "$document_record")
 test -n "$document_bucket" && test -n "$document_path"
 
-viewed=$(curl --fail --silent --show-error \
+viewed=$(curl --fail --silent --show-error --retry 3 --retry-all-errors --retry-delay 2 \
   "${api}/functions/v1/document-api?id=${document_id}" \
   -H "apikey: ${SUPABASE_PUBLISHABLE_KEY}" -H "Authorization: Bearer ${access_token}" \
   -H "Origin: https://eigenheimverwalter.github.io")
