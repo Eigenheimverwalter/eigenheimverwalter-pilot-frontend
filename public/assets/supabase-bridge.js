@@ -10,6 +10,8 @@ const supported=new Set([
 const normalizedPath=path=>String(path||'').split('?')[0];
 const dynamicSupported=[/^\/api\/(?:cases|partners|equipment)\/[^/]+$/];
 const supportsPath=path=>supported.has(normalizedPath(path))||dynamicSupported.some(pattern=>pattern.test(normalizedPath(path)));
+const documentUploads=[/^\/api\/cases\/[^/]+\/documents$/, /^\/api\/broker\/sales-files\/[^/]+\/documents$/, /^\/api\/equipment\/[^/]+\/offers$/, /^\/api\/production\/properties\/[^/]+\/land-register$/];
+const isDocumentUpload=path=>documentUploads.some(pattern=>pattern.test(normalizedPath(path)));
 let client=null;
 
 const responseError=async response=>{
@@ -38,9 +40,14 @@ window.ehvSupabaseBridge={
       if(error)throw error;
       return null;
     }
-    if(!supportsPath(path))return null;
+    if(!supportsPath(path)&&!isDocumentUpload(path))return null;
     const {data:{session}}=await client.auth.getSession();
     if(!session)throw Error('Nicht angemeldet');
+    if(isDocumentUpload(path)){
+      const payload=JSON.parse(options.body||'{}');payload.legacyRoute=normalizedPath(path);
+      const response=await fetch(`${config.supabaseUrl}/functions/v1/document-api`,{method:'POST',headers:{Authorization:`Bearer ${session.access_token}`,apikey:config.supabasePublishableKey,'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      if(!response.ok)return responseError(response);return response.json();
+    }
     const route=path.replace(/^\/api/,'');
     const response=await fetch(`${config.supabaseUrl}/functions/v1/portal-api${route}`,{
       ...options,
@@ -51,5 +58,5 @@ window.ehvSupabaseBridge={
     if(path==='/api/me')return {user:{id:data.user.id,name:data.user.display_name,email:data.user.email,role:data.user.role},csrf:null,supportView:null};
     return data;
   },
-  handles(path){return Boolean(enabled)&&(path==='/api/login'||path==='/api/logout'||supportsPath(path));},
+  handles(path){return Boolean(enabled)&&(path==='/api/login'||path==='/api/logout'||supportsPath(path)||isDocumentUpload(path));},
 };
