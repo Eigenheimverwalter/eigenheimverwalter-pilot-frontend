@@ -12,7 +12,9 @@ test('Supabase Portal API schützt alle Fachdaten durch eine gültige Sitzung',(
 });
 
 test('Supabase Portal API stellt den ersten kompatiblen Leseumfang bereit',()=>{
-  for(const route of ['/me','/dashboard','/customers','/partners'])assert.ok(source.includes(`endsWith("${route}")`),`${route} fehlt`);
+  const reads=fs.readFileSync(new URL('../supabase/functions/_shared/read-routes.ts',import.meta.url),'utf8');
+  for(const route of ['/me','/dashboard'])assert.ok(source.includes(`endsWith("${route}")`),`${route} fehlt`);
+  for(const route of ['/customers','/partners'])assert.ok(reads.includes(`path==="${route}"`),`${route} fehlt`);
   for(const field of ['openCases','salesFiles','recentCases','properties'])assert.ok(source.includes(field),`${field} fehlt`);
 });
 

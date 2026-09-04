@@ -3,6 +3,7 @@ import {
   array, authenticate, isAdmin, loadRuntime, scopedProperties, sourcePartner,
   type PortalProfile,
 } from "../_shared/runtime.ts";
+import { readRoute } from "../_shared/read-routes.ts";
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
   status,
@@ -50,21 +51,14 @@ Deno.serve(async (req) => {
     try { return json(dashboard((await loadRuntime(serviceClient)).state, profile, sourceUserId)); }
     catch (error) { return json({ error: error instanceof Error ? error.message : "Datenzugriff fehlgeschlagen" }, 503); }
   }
-  if (req.method === "GET" && url.pathname.endsWith("/customers")) {
-    if (!isAdmin(profile)) return json({ error: "Keine Berechtigung" }, 403);
-    try { const state = (await loadRuntime(serviceClient)).state; return json({ customers: array(state.customers), source: "supabase" }); }
-    catch (error) { return json({ error: error instanceof Error ? error.message : "Datenzugriff fehlgeschlagen" }, 503); }
-  }
-  if (req.method === "GET" && url.pathname.endsWith("/partners")) {
-    if (!isAdmin(profile)) return json({ error: "Keine Berechtigung" }, 403);
+  if (req.method === "GET") {
     try {
-      const state = (await loadRuntime(serviceClient)).state;
-      return json({
-        partners: array(state.partners), trades: array(state.trades), organizations: array(state.partnerOrganizations),
-        roleTemplates: array(state.partnerRoleTemplates), source: "supabase",
-      });
+      const routePath=url.pathname.replace(/^.*\/portal-api/,"")||"/";
+      const result=readRoute(routePath,(await loadRuntime(serviceClient)).state,profile,sourceUserId,user.email||null);
+      if(result)return json(result.body,result.status);
+    } catch (error) {
+      return json({ error: error instanceof Error ? error.message : "Datenzugriff fehlgeschlagen" }, Number((error as {status?:number}).status||503));
     }
-    catch (error) { return json({ error: error instanceof Error ? error.message : "Datenzugriff fehlgeschlagen" }, 503); }
   }
   return json({ error: "Route nicht gefunden" }, 404);
 });
