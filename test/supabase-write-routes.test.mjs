@@ -15,7 +15,8 @@ test('central mutations use the atomic audited runtime function',()=>{
 
 test('customer invitations use expiring hashed tokens and registration mail',()=>{
   assert.match(writes,/tokenHash:await digest/);assert.match(writes,/expiresAt/);
-  assert.match(writes,/sendPortalMail\("registration"/);assert.match(bridge,/siteUrl=location\.origin/);
+  assert.match(writes,/mailAfterCommit=\{channel:"registration"/);assert.match(bridge,/siteUrl=location\.origin/);
+  assert.ok(writes.indexOf('await replaceRuntime')<writes.lastIndexOf('await sendPortalMail'),'Mailversand muss nach atomarer Speicherung erfolgen');
 });
 
 test('dynamic entity writes are routed to Supabase',()=>{

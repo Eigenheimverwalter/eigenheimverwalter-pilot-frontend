@@ -21,6 +21,8 @@ test('public referral and customer invitation flows are Supabase-native',()=>{
   assert.match(source,/referral\.invitation\.accepted/);assert.match(source,/customer\.registration\.completed/);
   assert.match(referral,/supabase-bridge/);assert.match(customerRegistration,/supabase-bridge/);
   assert.doesNotMatch(referral,/await fetch\(path/);assert.doesNotMatch(customerRegistration,/await fetch\(path/);
+  assert.match(source,/registrationCompleted:true/);assert.match(source,/snapshot\.state\.customers/);assert.match(source,/snapshot\.state\.properties/);
+  assert.match(source,/auth\.admin\.deleteUser/);
 });
 
 test('public auth routes are origin-limited and routed without Render',()=>{
