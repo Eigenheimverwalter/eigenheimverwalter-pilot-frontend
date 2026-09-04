@@ -44,18 +44,30 @@ Deno.serve(async (req) => {
   try { auth = await authenticate(req.headers.get("Authorization")); }
   catch (error) { return json({ error: error instanceof Error ? error.message : "Nicht angemeldet" }, Number((error as {status?:number}).status || 401)); }
   const { user, profile, sourceUserId, service: serviceClient } = auth;
+  const routePath=url.pathname.replace(/^.*\/portal-api/,"")||"/";
+  if(req.method==="GET"&&routePath==="/support-view/users"){
+    if(!isAdmin(profile))return json({error:"Keine Berechtigung"},403);
+    const {data:profiles,error}=await serviceClient.from("portal_users").select("id,display_name,role,status").eq("status","active").in("role",["crafts_partner","broker_partner","partner_basic"]);if(error)return json({error:"Partnerzugänge konnten nicht geladen werden"},503);
+    return json({users:(profiles||[]).map(item=>({id:item.id,name:item.display_name,role:item.role})),mode:"read_only",notice:"Support-Sicht übernimmt ausschließlich die effektiven Leserechte. Änderungen sind gesperrt."});
+  }
+  if(req.method==="POST"&&routePath==="/support-view/start"){
+    if(!isAdmin(profile))return json({error:"Keine Berechtigung"},403);const body=await req.json().catch(()=>({})),targetId=String(body.userId||"");const {data:target}=await serviceClient.from("portal_users").select("id,display_name,role,status").eq("id",targetId).eq("status","active").maybeSingle();if(!target||!["crafts_partner","broker_partner","partner_basic"].includes(target.role))return json({error:"Bitte einen aktiven Partnerzugang auswählen"},422);await serviceClient.from("audit_events").insert({actor_user_id:profile.id,action:"support_view.started",entity_type:"portal_user",entity_id:target.id,metadata:{targetRole:target.role,readOnly:true}});return json({user:{id:target.id,name:target.display_name,role:target.role},csrf:null,supportView:{actor:{id:profile.id,name:profile.display_name,role:profile.role},target:{id:target.id,name:target.display_name,role:target.role},readOnly:true}});
+  }
+  if(req.method==="POST"&&routePath==="/support-view/stop"){await serviceClient.from("audit_events").insert({actor_user_id:profile.id,action:"support_view.stopped",entity_type:"portal_user",entity_id:profile.id,metadata:{readOnly:true}});return json({user:{id:profile.id,name:profile.display_name,email:user.email,role:profile.role},csrf:null,supportView:null});}
+  let effectiveProfile=profile,effectiveSourceUserId=sourceUserId,effectiveEmail=user.email||null,supportView:null|Record<string,unknown>=null;
+  const supportTarget=req.headers.get("x-ehv-support-user");
+  if(supportTarget){if(!isAdmin(profile))return json({error:"Keine Berechtigung"},403);if(req.method!=="GET")return json({error:"Support-Sicht ist ausschließlich lesend"},403);const {data:target}=await serviceClient.from("portal_users").select("id,display_name,role,status,created_at").eq("id",supportTarget).eq("status","active").maybeSingle();if(!target)return json({error:"Support-Ziel ist nicht mehr verfügbar"},410);const {data:identity}=await serviceClient.from("identity_imports").select("source_user_id,email").eq("auth_user_id",supportTarget).maybeSingle();effectiveProfile=target as PortalProfile;effectiveSourceUserId=identity?.source_user_id?String(identity.source_user_id):null;effectiveEmail=identity?.email||null;supportView={actor:{id:profile.id,name:profile.display_name,role:profile.role},target:{id:target.id,name:target.display_name,role:target.role},readOnly:true};}
 
   if (req.method === "GET" && url.pathname.endsWith("/me")) {
-    return json({ user: { ...profile, email: user.email } });
+    return json({ user: { ...effectiveProfile, email: effectiveEmail }, supportView });
   }
   if (req.method === "GET" && url.pathname.endsWith("/dashboard")) {
-    try { return json(dashboard((await loadRuntime(serviceClient)).state, profile, sourceUserId)); }
+    try { return json(dashboard((await loadRuntime(serviceClient)).state, effectiveProfile, effectiveSourceUserId)); }
     catch (error) { return json({ error: error instanceof Error ? error.message : "Datenzugriff fehlgeschlagen" }, 503); }
   }
   if (req.method === "GET") {
     try {
-      const routePath=url.pathname.replace(/^.*\/portal-api/,"")||"/";
-      const result=readRoute(routePath,(await loadRuntime(serviceClient)).state,profile,sourceUserId,user.email||null);
+      const result=readRoute(routePath,(await loadRuntime(serviceClient)).state,effectiveProfile,effectiveSourceUserId,effectiveEmail);
       if(result)return json(result.body,result.status);
     } catch (error) {
       return json({ error: error instanceof Error ? error.message : "Datenzugriff fehlgeschlagen" }, Number((error as {status?:number}).status||503));
@@ -63,7 +75,6 @@ Deno.serve(async (req) => {
   }
   if (["POST","PATCH","DELETE"].includes(req.method)) {
     try {
-      const routePath=url.pathname.replace(/^.*\/portal-api/,"")||"/";
       const body=req.method==="DELETE"?{}:await req.json().catch(()=>{throw Object.assign(new Error("Ungültiges JSON"),{status:400})});
       const result=await writeRoute(req.method,routePath,{service:serviceClient,snapshot:await loadRuntime(serviceClient),profile,sourceUserId,body});
       if(result)return json(result.body,result.status);

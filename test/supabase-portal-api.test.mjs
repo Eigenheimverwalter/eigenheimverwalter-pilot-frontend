@@ -4,6 +4,7 @@ import fs from 'node:fs';
 
 const source=fs.readFileSync(new URL('../supabase/functions/portal-api/index.ts',import.meta.url),'utf8');
 const runtime=fs.readFileSync(new URL('../supabase/functions/_shared/runtime.ts',import.meta.url),'utf8');
+const bridge=fs.readFileSync(new URL('../public/assets/supabase-bridge.js',import.meta.url),'utf8');
 
 test('Supabase Portal API schützt alle Fachdaten durch eine gültige Sitzung',()=>{
   assert.match(runtime,/auth\.getUser\(\)/);
@@ -43,4 +44,11 @@ test('Render-Übergang nutzt den dedizierten Pilot-Mailgateway',()=>{
   assert.match(render,/key: MAIL_TRANSPORT\s+value: supabase/);
   assert.match(render,/rpniwtshbwjuesoeztyt\.supabase\.co\/functions\/v1\/portal-mail/);
   for(const key of ['SMTP_PARTNER_PASSWORD','SMTP_REGISTRATION_PASSWORD','SMTP_INFO_PASSWORD'])assert.match(render,new RegExp(`key: ${key}\\s+sync: false`));
+});
+
+test('Supabase support view is admin-only, read-only and audited',()=>{
+  assert.match(source,/support-view\/users/);assert.match(source,/support-view\/start/);assert.match(source,/support-view\/stop/);
+  assert.match(source,/x-ehv-support-user/);assert.match(source,/Support-Sicht ist ausschließlich lesend/);
+  assert.match(source,/support_view\.started/);assert.match(source,/support_view\.stopped/);
+  assert.match(bridge,/ehv-support-target/);
 });

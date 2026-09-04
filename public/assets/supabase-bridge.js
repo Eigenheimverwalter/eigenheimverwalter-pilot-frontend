@@ -10,6 +10,7 @@ const supported=new Set([
   '/api/partner-coverage','/api/partner-geography','/api/customer-coverage',
   '/api/analytics/overview','/api/system-overview'
   ,'/api/partner-performance','/api/broker-ranking','/api/property-ranking','/api/referral'
+  ,'/api/support-view/users','/api/support-view/start','/api/support-view/stop'
 ]);
 const normalizedPath=path=>String(path||'').split('?')[0];
 const dynamicSupported=[
@@ -66,14 +67,16 @@ window.ehvSupabaseBridge={
       const response=await fetch(`${config.supabaseUrl}/functions/v1/document-api`,{method:'POST',headers:{Authorization:`Bearer ${session.access_token}`,apikey:config.supabasePublishableKey,'Content-Type':'application/json'},body:JSON.stringify(payload)});
       if(!response.ok)return responseError(response);return response.json();
     }
-    const route=path.replace(/^\/api/,'');
+    const route=path.replace(/^\/api/,''),supportTarget=sessionStorage.getItem('ehv-support-target');
     const response=await fetch(`${config.supabaseUrl}/functions/v1/portal-api${route}`,{
       ...options,
-      headers:{Authorization:`Bearer ${session.access_token}`,apikey:config.supabasePublishableKey,'Content-Type':'application/json',...(options.headers||{})},
+      headers:{Authorization:`Bearer ${session.access_token}`,apikey:config.supabasePublishableKey,'Content-Type':'application/json',...(supportTarget?{'x-ehv-support-user':supportTarget}:{}),...(options.headers||{})},
     });
     if(!response.ok)return responseError(response);
     const data=await response.json();
-    if(path==='/api/me')return {user:{id:data.user.id,name:data.user.display_name,email:data.user.email,role:data.user.role},csrf:null,supportView:null};
+    if(path==='/api/support-view/start'){sessionStorage.setItem('ehv-support-target',data.supportView.target.id);return data}
+    if(path==='/api/support-view/stop'){sessionStorage.removeItem('ehv-support-target');return data}
+    if(path==='/api/me')return {user:{id:data.user.id,name:data.user.display_name||data.user.name,email:data.user.email,role:data.user.role},csrf:null,supportView:data.supportView||null};
     return data;
   },
   async updatePassword(password){const {error}=await client.auth.updateUser({password});if(error)throw error;return {message:'Das Passwort wurde geändert.'};},
