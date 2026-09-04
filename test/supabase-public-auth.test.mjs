@@ -7,6 +7,7 @@ const ui=fs.readFileSync(new URL('../public/assets/partner-basic.js',import.meta
 const workflow=fs.readFileSync(new URL('../.github/workflows/supabase-deploy.yml',import.meta.url),'utf8');
 const referral=fs.readFileSync(new URL('../public/assets/referral.js',import.meta.url),'utf8');
 const customerRegistration=fs.readFileSync(new URL('../public/assets/customer-registration.js',import.meta.url),'utf8');
+const authConfig=fs.readFileSync(new URL('../scripts/configure-pilot-auth.sh',import.meta.url),'utf8');
 
 test('public registration uses Supabase Auth and registration mail without storing passwords',()=>{
   assert.match(source,/auth\.admin\.generateLink\(\{type:"signup"/);
@@ -59,4 +60,20 @@ test('Supabase responses echo only allow-listed browser origins',()=>{
   assert.match(portalApi,/corsHeaders\(req\)/);
   assert.match(source,/corsHeaders\(req\)/);
   assert.match(documentApi,/corsHeaders\(req\)/);
+});
+
+test('GitHub Pages auth redirects stay inside the Pilot project path',()=>{
+  assert.match(source,/redirectBase/);
+  assert.match(source,/eigenheimverwalter-pilot-frontend/);
+  assert.match(source,/redirectTo:redirectBase\(origin\)/);
+  assert.match(source,/redirectTo:`\$\{redirectBase\(origin\)\}\/passwort-zuruecksetzen`/);
+});
+
+test('CI configures only the concrete Pilot GitHub Pages auth path',()=>{
+  assert.match(workflow,/bash scripts\/configure-pilot-auth\.sh/);
+  assert.match(authConfig,/eigenheimverwalter\.github\.io\/eigenheimverwalter-pilot-frontend/);
+  assert.match(authConfig,/passwort-zuruecksetzen/);
+  assert.match(authConfig,/\$site\+"\/\*\*"/);
+  assert.doesNotMatch(authConfig,/https:\/\/\*\*\.github\.io/);
+  assert.match(authConfig,/current.*uri_allow_list/);
 });
