@@ -1,6 +1,7 @@
 import { array, clean, identifier, isAdmin, replaceRuntime, scopedProperties, sourcePartner, type PortalProfile, type RuntimeSnapshot } from "./runtime.ts";
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sendPortalMail } from "./mail.ts";
+import { normalizeEquipmentFields } from "./equipment-fields.mjs";
 
 type Context={service:SupabaseClient;snapshot:RuntimeSnapshot;profile:PortalProfile;sourceUserId:string|null;body:Record<string,unknown>};
 type MailIntent={channel:"partner"|"registration"|"info";recipientEmail:string;subject:string;message:string};
@@ -66,6 +67,15 @@ export async function writeRoute(method:string,path:string,ctx:Context){
     if(!key||!id)return undefined;const rows=collection(snapshot,key),row=rows.find(x=>String(x.id)===id);if(!row)fail("Datensatz nicht gefunden",404);
     if(partnerId&&!admin)fail("Keine Berechtigung",403);if((caseId||equipmentId)&&!allowedProperties.has(row.propertyId))fail("Kein Zugriff",403);
     if(method==="DELETE"){if(profile.role!=="super_admin")fail("Keine Berechtigung",403);snapshot.state[key]=rows.filter(x=>x!==row);result={deleted:true,id};action=`${entityType||key}.deleted`;}
+    else if(method==="PATCH"&&equipmentId){
+      if(!partner)fail("Fachliche Spezifikationen dürfen nur vom zugeordneten Gewerkepartner gepflegt werden",403);if(row.tradeId!==partner.primaryTradeId)fail("Kein Schreibzugriff auf dieses Equipment",403);
+      const previous={...((row.specifications as Record<string,unknown>)||{})},normalized=normalizeEquipmentFields(String(row.tradeId),body,row),verify=body.verify===true||body.verify==="true";
+      if(normalized.errors.length)fail("Mindestens eine Fachangabe ist ungültig");if(verify&&!normalized.quality.requiredComplete)throw Object.assign(new Error("Fachliche Verifizierung erst nach vollständigen Pflichtangaben möglich"),{status:422,missingRequired:normalized.missingRequired});
+      const firstConfiguration=!row.updatedAt&&!Object.values(previous).some(value=>value!==null&&value!==""&&value!==undefined),now=new Date().toISOString();row.specifications=normalized.values;row.dataQuality=normalized.quality;row.updatedAt=now;row.updatedBy=sourceUserId;
+      for(const [legacy,currentId] of Object.entries({label:"instance_label",year:"year_of_construction",lastMaintenance:"last_maintenance_date",lastModernization:"last_renovation_date"}))if(currentId in normalized.values)row[legacy]=normalized.values[currentId];
+      row.verification={...((row.verification as Record<string,unknown>)||{}),status:verify?"verified":"partial",verifiedAt:verify?now:null,verifiedBy:verify?sourceUserId:null,source:"licensed_partner",fieldCount:Object.values(normalized.values).filter(v=>v!==null&&v!==""&&v!==undefined).length,requiredCount:normalized.schema.requiredCount};
+      const customer=collection(snapshot,"customers").find(x=>x.id===collection(snapshot,"properties").find(p=>p.id===row.propertyId)?.customerId),notification={id:identifier("notification"),userId:customer?.id||null,type:firstConfiguration?"equipment.configured":"equipment.updated",title:firstConfiguration?"Ihre Gewerkakte wurde eingerichtet":"Ihre Gewerkakte wurde aktualisiert",message:`Der Fachpartner ${partner.company} hat die technischen Daten für ${row.label||row.tradeId} ${firstConfiguration?"erstmalig erfasst":"geändert"}.`,propertyId:row.propertyId,equipmentId:row.id,partnerId:partner.id,createdAt:now,status:"queued",channel:"app_push"};collection(snapshot,"notifications").unshift(notification);result={equipment:row,notification:{id:notification.id,status:notification.status,channel:notification.channel},nextStep:{code:"service_record",title:"Nächster Schritt: Serviceheft pflegen",message:"Dokumentieren Sie künftig jede Prüfung, Wartung oder Reparatur mit Datum, Ergebnis und vorhandenen Nachweisen im Serviceheft."}};action=firstConfiguration?"equipment.specification.created":"equipment.specification.updated";
+    }
     else if(method==="PATCH"){const protectedKeys=new Set(["id","userId","propertyId","password","passwordHash"]);for(const [k,v] of Object.entries(body))if(!protectedKeys.has(k))row[k]=typeof v==="string"?clean(v,2000):v;row.updatedAt=new Date().toISOString();result=row;action=`${key}.updated`;}
     else return undefined;entityType=key;entityId=id;
     }

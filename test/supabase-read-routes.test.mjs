@@ -29,3 +29,8 @@ test('customer, equipment and broker detail views are Supabase-native',()=>{
   assert.match(bridge,/production\\\/customers/);
   assert.match(bridge,/properties\\\/\[\^\/\]\+\\\/equipment/);
 });
+
+test('equipment schemas and validated Fachpartner updates are Supabase-native',()=>{
+  assert.match(source,/equipment-schema/);assert.match(source,/equipmentFieldSchema/);
+  assert.match(bridge,/equipment-schema/);assert.match(bridge,/equipment\\\/\[\^\/\]\+\\\/schema/);
+});

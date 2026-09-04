@@ -33,3 +33,8 @@ test('service, broker and opportunity workflows persist through Supabase',()=>{
   assert.match(writes,/allowedProperties\.has/);
   assert.match(writes,/profile\.role!=="broker_partner"/);
 });
+
+test('equipment writes enforce the authoritative form matrix',()=>{
+  assert.match(writes,/normalizeEquipmentFields/);assert.match(writes,/requiredComplete/);
+  assert.match(writes,/equipment\.specification\.created/);assert.match(writes,/channel:"app_push"/);
+});

@@ -1,4 +1,5 @@
 import { array, isAdmin, publicRuntimeUser, scopedProperties, sourcePartner, type PortalProfile, type RuntimeState } from "./runtime.ts";
+import { equipmentFieldSchema } from "./equipment-fields.mjs";
 
 const forbidden=()=>({status:403,body:{error:"Keine Berechtigung"}});
 const ok=(body:unknown)=>({status:200,body});
@@ -9,6 +10,10 @@ export function readRoute(path:string,state:RuntimeState,profile:PortalProfile,s
   const scoped=(key:string)=>array(state[key]).filter(x=>!x.propertyId||propertyIds.has(x.propertyId));
   const customers=array(state.customers),partners=array(state.partners),salesFiles=scoped("salesFiles"),valuations=scoped("valuations"),postal=array(state.postalDirectory);
   const adminOnly=()=>admin?null:forbidden();
+  const equipmentSchemaTrade=path.match(/^\/equipment-schema\/([^/]+)$/)?.[1];
+  const equipmentInstanceSchema=path.match(/^\/equipment\/([^/]+)\/schema$/)?.[1];
+  if(equipmentSchemaTrade){const tradeId=decodeURIComponent(equipmentSchemaTrade),trade=array(state.trades).find(x=>x.id===tradeId&&x.kind==="equipment");if(!trade)return{status:404,body:{error:"Für dieses Gewerk ist kein Equipmentformular vorhanden"}};if(partner&&partner.primaryTradeId!==tradeId)return forbidden();return ok(equipmentFieldSchema(tradeId));}
+  if(equipmentInstanceSchema){const equipment=array(state.equipmentRecords).find(x=>String(x.id)===equipmentInstanceSchema);if(!equipment)return{status:404,body:{error:"Equipment nicht gefunden"}};if(!properties.some(x=>x.id===equipment.propertyId)||partner&&equipment.tradeId!==partner.primaryTradeId)return forbidden();return ok(equipmentFieldSchema(String(equipment.tradeId)));}
   if(path==="/account"){const sourceUser=array(state.users).find(x=>String(x.id)===String(sourceUserId));return ok({account:{id:profile.id,name:profile.display_name,email,role:profile.role,phone:sourceUser?.phone||"",address:sourceUser?.address||"",postalCode:sourceUser?.postalCode||"",city:sourceUser?.city||"",createdAt:profile.created_at,emailImmutable:true},partner,organization:array(state.partnerOrganizations).find(x=>x.id===partner?.organizationId)||null});}
   if(path==="/customers")return admin?ok({customers:array(state.customers),properties,source:"supabase"}):forbidden();
   if(path==="/production/customers")return admin?ok({customers:array(state.customers),counts:{visible:array(state.customers).length,hidden:array(state.productionCustomerDeletions).length},sort:"registeredAt:desc",registrationSummary:{},sourceUserCount:array(state.users).length,hiddenCount:array(state.productionCustomerDeletions).length,importedAt:(state.meta as Record<string,unknown>)?.createdAt||null,pendingSourceSync:false}):forbidden();

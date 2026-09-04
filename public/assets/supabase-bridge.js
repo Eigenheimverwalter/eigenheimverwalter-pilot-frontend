@@ -15,6 +15,8 @@ const supported=new Set([
 ]);
 const normalizedPath=path=>String(path||'').split('?')[0];
 const dynamicSupported=[
+  /^\/api\/equipment-schema\/[^/]+$/,
+  /^\/api\/equipment\/[^/]+\/schema$/,
   /^\/api\/(?:cases|partners|equipment|service-records)\/[^/]+$/,
   /^\/api\/equipment\/[^/]+\/service-records$/,
   /^\/api\/broker\/sales-files\/[^/]+(?:\/(?:document-status|address-verification|mandate|closing|release))?$/,
