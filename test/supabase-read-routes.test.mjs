@@ -6,7 +6,7 @@ const source=fs.readFileSync(new URL('../supabase/functions/_shared/read-routes.
 const bridge=fs.readFileSync(new URL('../public/assets/supabase-bridge.js',import.meta.url),'utf8');
 
 test('Supabase compatibility reads cover the central portal menus',()=>{
-  for(const route of ['/account','/customers','/production/customers','/partners','/assignments','/cases','/sales','/campaigns','/role-profiles','/partner-role-templates','/admin/users','/opportunity-engine','/partner/workbench','/audit','/postal-codes','/portfolio/risks','/admin-light-dashboard','/broker-dashboard','/broker/customers','/partner-coverage','/partner-geography','/customer-coverage','/analytics/overview','/system-overview']){
+  for(const route of ['/account','/customers','/production/customers','/partners','/assignments','/cases','/sales','/campaigns','/role-profiles','/partner-role-templates','/admin/users','/opportunity-engine','/partner/workbench','/audit','/postal-codes','/portfolio/risks','/admin-light-dashboard','/broker-dashboard','/broker/customers','/partner-coverage','/partner-geography','/customer-coverage','/analytics/overview','/system-overview','/partner-performance','/broker-ranking','/property-ranking','/referral']){
     assert.ok(source.includes(`path==="${route}"`),`${route} fehlt`);
     assert.ok(bridge.includes(`'/api${route}'`),`${route} ist im Frontend nicht aktiviert`);
   }

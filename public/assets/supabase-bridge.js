@@ -9,6 +9,7 @@ const supported=new Set([
   ,'/api/admin-light-dashboard','/api/broker-dashboard','/api/broker/customers',
   '/api/partner-coverage','/api/partner-geography','/api/customer-coverage',
   '/api/analytics/overview','/api/system-overview'
+  ,'/api/partner-performance','/api/broker-ranking','/api/property-ranking','/api/referral'
 ]);
 const normalizedPath=path=>String(path||'').split('?')[0];
 const dynamicSupported=[
