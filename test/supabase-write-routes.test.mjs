@@ -29,6 +29,12 @@ test('partner license changes enforce catalog, exclusivity and reservation exten
   assert.match(writes,/partner\.license\.updated/);assert.match(writes,/partnerLicenseSummary/);
 });
 
+test('partner and administrative test mail use the Supabase gateway channels',()=>{
+  assert.match(writes,/partner\.email\.queued/);assert.match(writes,/\/system\/mail-test/);
+  assert.match(writes,/Nur Admin Plus darf Testmails/);assert.match(bridge,/system\/mail-test/);
+  assert.match(bridge,/partners\\\/\[\^\/\]\+\\\/email/);
+});
+
 test('dynamic entity writes are routed to Supabase',()=>{
   assert.match(bridge,/dynamicSupported/);
   assert.match(bridge,/cases\|partners\|equipment/);

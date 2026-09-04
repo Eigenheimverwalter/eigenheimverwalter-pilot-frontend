@@ -12,6 +12,7 @@ const supported=new Set([
   ,'/api/partner-performance','/api/broker-ranking','/api/property-ranking','/api/referral'
   ,'/api/support-view/users','/api/support-view/start','/api/support-view/stop','/api/customer-invitations'
   ,'/api/partner-basic/profile','/api/partner-basic/dashboard','/api/partner-basic/broker-properties','/api/referral/invitations'
+  ,'/api/system/mail-test'
 ]);
 const normalizedPath=path=>String(path||'').split('?')[0];
 const dynamicSupported=[
@@ -20,6 +21,7 @@ const dynamicSupported=[
   /^\/api\/(?:cases|partners|equipment|service-records)\/[^/]+$/,
   /^\/api\/equipment\/[^/]+\/service-records$/,
   /^\/api\/partners\/[^/]+\/license$/,
+  /^\/api\/partners\/[^/]+\/email$/,
   /^\/api\/broker\/sales-files\/[^/]+(?:\/(?:document-status|address-verification|mandate|closing|release))?$/,
   /^\/api\/customer-actions\/[^/]+\/respond$/,
   /^\/api\/partner-opportunities\/[^/]+\/complete$/
