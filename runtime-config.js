@@ -1,0 +1,1 @@
+window.__EHV_RUNTIME__=Object.freeze({authMode:'supabase',supabaseUrl:'https://rpniwtshbwjuesoeztyt.supabase.co',supabasePublishableKey:"sb_publishable_X6U14ef9UJMgstVo3MaMcQ_8eTNvU-i",legacyApiBase:'',siteBaseUrl:"https://eigenheimverwalter.github.io/eigenheimverwalter-pilot-frontend",basePath:"/eigenheimverwalter-pilot-frontend"});
