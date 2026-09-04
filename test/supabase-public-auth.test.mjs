@@ -4,6 +4,7 @@ import fs from 'node:fs';
 const source=fs.readFileSync(new URL('../supabase/functions/portal-public/index.ts',import.meta.url),'utf8');
 const bridge=fs.readFileSync(new URL('../public/assets/supabase-bridge.js',import.meta.url),'utf8')+fs.readFileSync(new URL('../public/assets/supabase-routes.mjs',import.meta.url),'utf8');
 const ui=fs.readFileSync(new URL('../public/assets/partner-basic.js',import.meta.url),'utf8');
+const app=fs.readFileSync(new URL('../public/assets/app.js',import.meta.url),'utf8');
 const workflow=fs.readFileSync(new URL('../.github/workflows/supabase-deploy.yml',import.meta.url),'utf8');
 const referral=fs.readFileSync(new URL('../public/assets/referral.js',import.meta.url),'utf8');
 const customerRegistration=fs.readFileSync(new URL('../public/assets/customer-registration.js',import.meta.url),'utf8');
@@ -74,6 +75,11 @@ test('password recovery UI recognizes the GitHub Pages project path',()=>{
   assert.match(ui,/pathname\.split\('\/'\)\.filter\(Boolean\)\.at\(-1\)===['"]passwort-zuruecksetzen['"]/);
   assert.doesNotMatch(ui,/pathname===['"]\/passwort-zuruecksetzen['"]/);
   assert.match(ui,/ehvSupabaseBridge\.updatePassword/);
+});
+
+test('Supabase login is handled once without a forced reload loop',()=>{
+  assert.match(ui,/event\.target\.id!==['"]login-form['"]\|\|window\.ehvSupabaseBridge\?\.enabled/);
+  assert.match(app,/\$\('#login-form'\)\.onsubmit=[\s\S]*setup\(d\.user,d\.csrf,d\.supportView\)/);
 });
 
 test('CI configures only the concrete Pilot GitHub Pages auth path',()=>{
