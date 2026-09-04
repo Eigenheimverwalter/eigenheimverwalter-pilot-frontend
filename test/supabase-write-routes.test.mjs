@@ -5,6 +5,7 @@ import fs from 'node:fs';
 const writes=fs.readFileSync(new URL('../supabase/functions/_shared/write-routes.ts',import.meta.url),'utf8');
 const api=fs.readFileSync(new URL('../supabase/functions/portal-api/index.ts',import.meta.url),'utf8');
 const bridge=fs.readFileSync(new URL('../public/assets/supabase-bridge.js',import.meta.url),'utf8');
+const frontend=fs.readFileSync(new URL('../public/assets/app.js',import.meta.url),'utf8');
 
 test('central mutations use the atomic audited runtime function',()=>{
   for(const route of ['/account','/referral/invitations','/assignments','/cases','/valuations','/campaigns','/partners','/customer-invitations'])assert.ok(writes.includes(`path==="${route}"`),`${route} fehlt`);
@@ -71,6 +72,16 @@ test('DWD warning synchronization and opportunity generation run in Supabase',()
   assert.match(writes,/weather\.sync\.completed/);
   assert.match(writes,/externalServiceStatus/);
   assert.match(bridge,/weather\/dwd\/sync/);
+});
+
+test('land-register OCR stays in the browser and both review workflows persist in Supabase',()=>{
+  assert.match(frontend,/localLandRegisterText/);
+  assert.match(frontend,/pdfjs-dist/);
+  assert.match(frontend,/tesseract\.js/);
+  assert.match(frontend,/verifyLandRegisterLocally/);
+  assert.match(writes,/property\.land_register\.ocr_processed/);
+  assert.match(writes,/property\.address\.verified/);
+  assert.match(bridge,/production\\\/properties\\\/\[\^\/\]\+\\\/address-verification/);
 });
 
 test('dynamic entity writes are routed to Supabase',()=>{

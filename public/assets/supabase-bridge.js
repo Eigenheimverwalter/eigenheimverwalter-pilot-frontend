@@ -33,6 +33,7 @@ const dynamicSupported=[
   /^\/api\/customer-actions\/[^/]+\/respond$/,
   /^\/api\/partner-opportunities\/[^/]+\/complete$/
   ,/^\/api\/production\/customers\/[^/]+$/,
+  /^\/api\/production\/properties\/[^/]+\/address-verification$/,
   /^\/api\/properties\/[^/]+\/equipment$/
 ];
 const supportsPath=path=>supported.has(normalizedPath(path))||dynamicSupported.some(pattern=>pattern.test(normalizedPath(path)));
