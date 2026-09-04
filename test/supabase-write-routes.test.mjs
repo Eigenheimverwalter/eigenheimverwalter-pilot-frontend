@@ -24,6 +24,11 @@ test('partner creation validates a single trade and persists invitation before p
   assert.match(writes,/channel:"partner"/);assert.match(bridge,/\['\/api\/customer-invitations','\/api\/referral\/invitations','\/api\/partners'\]/);
 });
 
+test('partner license changes enforce catalog, exclusivity and reservation extension',()=>{
+  assert.match(writes,/applyPartnerLicenseChange/);assert.match(writes,/reservation_date_required/);
+  assert.match(writes,/partner\.license\.updated/);assert.match(writes,/partnerLicenseSummary/);
+});
+
 test('dynamic entity writes are routed to Supabase',()=>{
   assert.match(bridge,/dynamicSupported/);
   assert.match(bridge,/cases\|partners\|equipment/);

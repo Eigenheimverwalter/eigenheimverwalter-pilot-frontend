@@ -19,6 +19,7 @@ const dynamicSupported=[
   /^\/api\/equipment\/[^/]+\/schema$/,
   /^\/api\/(?:cases|partners|equipment|service-records)\/[^/]+$/,
   /^\/api\/equipment\/[^/]+\/service-records$/,
+  /^\/api\/partners\/[^/]+\/license$/,
   /^\/api\/broker\/sales-files\/[^/]+(?:\/(?:document-status|address-verification|mandate|closing|release))?$/,
   /^\/api\/customer-actions\/[^/]+\/respond$/,
   /^\/api\/partner-opportunities\/[^/]+\/complete$/

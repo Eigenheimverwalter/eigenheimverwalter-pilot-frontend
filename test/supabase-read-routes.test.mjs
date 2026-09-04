@@ -34,3 +34,8 @@ test('equipment schemas and validated Fachpartner updates are Supabase-native',(
   assert.match(source,/equipment-schema/);assert.match(source,/equipmentFieldSchema/);
   assert.match(bridge,/equipment-schema/);assert.match(bridge,/equipment\\\/\[\^\/\]\+\\\/schema/);
 });
+
+test('partner detail and license summaries no longer fall back to Render',()=>{
+  assert.match(source,/partnerLicenseSummary/);assert.match(source,/const partnerId=path\.match/);
+  assert.match(bridge,/partners\\\/\[\^\/\]\+\\\/license/);
+});
