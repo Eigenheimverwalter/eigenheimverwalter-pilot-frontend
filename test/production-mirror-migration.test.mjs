@@ -15,6 +15,13 @@ test('confidential production mirror has a separate token-protected export',()=>
   assert.doesNotMatch(server,/productionMigrationSnapshot[\s\S]{0,800}\[\['password',item\]\]/);
 });
 
+test('production document binaries have an authenticated migration-only export',()=>{
+  assert.match(server,/productionMigrationFile=url\.pathname\.match/);
+  assert.match(server,/migration\.production_file_exported/);
+  assert.match(server,/path\.basename\(String\(record\.file/);
+  assert.match(server,/validMigrationExportToken\(req\)/);
+});
+
 test('production mirror merges into the current runtime revision instead of replacing newer work',()=>{
   assert.match(importer,/select=payload,revision/);
   assert.match(importer,/\.\.\.current\.payload,productionMirror:mirror/);
