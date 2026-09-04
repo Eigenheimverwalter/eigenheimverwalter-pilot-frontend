@@ -70,6 +70,12 @@ test('GitHub Pages auth redirects stay inside the Pilot project path',()=>{
   assert.match(source,/redirectTo:`\$\{redirectBase\(origin\)\}\/passwort-zuruecksetzen`/);
 });
 
+test('password recovery UI recognizes the GitHub Pages project path',()=>{
+  assert.match(ui,/pathname\.split\('\/'\)\.filter\(Boolean\)\.at\(-1\)===['"]passwort-zuruecksetzen['"]/);
+  assert.doesNotMatch(ui,/pathname===['"]\/passwort-zuruecksetzen['"]/);
+  assert.match(ui,/ehvSupabaseBridge\.updatePassword/);
+});
+
 test('CI configures only the concrete Pilot GitHub Pages auth path',()=>{
   assert.match(workflow,/bash scripts\/configure-pilot-auth\.sh/);
   assert.match(authConfig,/eigenheimverwalter\.github\.io\/eigenheimverwalter-pilot-frontend/);
