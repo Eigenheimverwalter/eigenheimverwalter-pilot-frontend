@@ -10,6 +10,9 @@ stamp="$(date +%s)-${RANDOM}"
 email="ehv-pilot-smoke-${stamp}@example.invalid"
 source_id="pilot-smoke-${stamp}"
 password="$(openssl rand -base64 36 | tr -d '\n')Aa1!"
+smoke_role="${PILOT_SMOKE_ROLE:-admin_light}"
+mail_recipient="${PILOT_MAIL_SMOKE_RECIPIENT:-}"
+[[ "$smoke_role" == 'admin_light' || "$smoke_role" == 'super_admin' ]] || { echo 'Ungültige Smoke-Rolle.'; exit 1; }
 admin_headers=(-H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}")
 user_id=''
 document_id=''
@@ -40,7 +43,8 @@ cleanup() {
 trap cleanup EXIT
 
 identity=$(jq -nc --arg source "$source_id" --arg email "$email" \
-  '{source_user_id:$source,email:$email,display_name:"Pilot Auth Smoke",role:"admin_light",active:true,activation_status:"pending"}')
+  --arg role "$smoke_role" \
+  '{source_user_id:$source,email:$email,display_name:"Pilot Auth Smoke",role:$role,active:true,activation_status:"pending"}')
 curl --fail --silent --show-error -X POST "${api}/rest/v1/identity_imports" \
   "${admin_headers[@]}" -H 'Content-Type: application/json' -H 'Prefer: return=minimal' \
   --data "$identity"
@@ -60,7 +64,7 @@ unset password session created identity
 
 me=$(curl --fail --silent --show-error "${api}/functions/v1/portal-api/me" \
   -H "Authorization: Bearer ${access_token}" -H "Origin: https://eigenheimverwalter.github.io")
-jq -e '.user.role=="admin_light" and .user.status=="active"' >/dev/null <<< "$me"
+jq -e --arg role "$smoke_role" '.user.role==$role and .user.status=="active"' >/dev/null <<< "$me"
 
 dashboard=$(curl --fail --silent --show-error "${api}/functions/v1/portal-api/dashboard" \
   -H "Authorization: Bearer ${access_token}" -H "Origin: https://eigenheimverwalter.github.io")
@@ -99,5 +103,36 @@ test "$delete_status" = '204'
 acl_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
   "${api}/functions/v1/portal-api/role-profiles" \
   -H "Authorization: Bearer ${access_token}" -H "Origin: https://eigenheimverwalter.github.io")
-test "$acl_status" = '403'
-echo 'Echtes Supabase-Login, Dashboard, Admin-Light-ACL und privater Dokumentzyklus wurden bestätigt.'
+if [[ "$smoke_role" == 'admin_light' ]]; then test "$acl_status" = '403'; else test "$acl_status" = '200'; fi
+
+if [[ -n "$mail_recipient" ]]; then
+  [[ "$smoke_role" == 'super_admin' ]] || { echo 'Mailtest erfordert die isolierte Super-Admin-Smoke-Rolle.'; exit 1; }
+  [[ "$mail_recipient" =~ ^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$ ]] || { echo 'Ungültiger Mailtest-Empfänger.'; exit 1; }
+  for channel in partner registration info; do
+    mail_result=$(curl --fail --silent --show-error -X POST \
+      "${api}/functions/v1/portal-api/system/mail-test" \
+      -H "Authorization: Bearer ${access_token}" -H "Origin: https://eigenheimverwalter.github.io" \
+      -H 'Content-Type: application/json' \
+      --data "$(jq -nc --arg channel "$channel" --arg to "$mail_recipient" '{channel:$channel,to:$to}')")
+    jq -e --arg channel "$channel" '.status=="sent" and .channel==$channel and .delivery.status=="sent"' >/dev/null <<< "$mail_result"
+  done
+  echo 'Alle drei ALL-INKL-Mailkanäle meldeten einen bestätigten Versand.'
+fi
+
+cleanup
+trap - EXIT
+set -e
+encoded_source=$(printf '%s' "$source_id" | jq -sRr @uri)
+identity_left=$(curl --fail --silent --show-error \
+  "${api}/rest/v1/identity_imports?source_user_id=eq.${encoded_source}&select=source_user_id" "${admin_headers[@]}")
+document_left='[]'
+if [[ -n "$document_id" ]]; then
+  document_left=$(curl --fail --silent --show-error \
+    "${api}/rest/v1/documents?id=eq.${document_id}&select=id" "${admin_headers[@]}")
+fi
+auth_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+  "${api}/auth/v1/admin/users/${user_id}" "${admin_headers[@]}")
+test "$(jq 'length' <<< "$identity_left")" = '0'
+test "$(jq 'length' <<< "$document_left")" = '0'
+test "$auth_status" = '404'
+echo 'Echtes Supabase-Login, Dashboard, Rollen-ACL, privater Dokumentzyklus und rückstandsfreie Bereinigung wurden bestätigt.'

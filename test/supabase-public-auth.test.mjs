@@ -90,6 +90,9 @@ test('CI proves a real Supabase login and cleans its scoped smoke identity',()=>
   assert.match(authSmoke,/createSignedUrl|signed_url/);
   assert.match(authSmoke,/storage\/v1\/object/);
   assert.match(authSmoke,/documents\?id=eq/);
+  assert.match(authSmoke,/PILOT_MAIL_SMOKE_RECIPIENT/);
+  assert.match(authSmoke,/for channel in partner registration info/);
+  assert.match(authSmoke,/\.delivery\.status==\"sent\"/);
   assert.match(authSmoke,/trap cleanup EXIT/);
   assert.match(authSmoke,/auth\/v1\/admin\/users\/\$\{user_id\}/);
   assert.doesNotMatch(authSmoke,/ChangeMe123/);
