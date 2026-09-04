@@ -41,17 +41,18 @@ test('production customer views and overrides use only the imported confidential
   assert.match(writes,/productionCustomerOverrides=overrides/);
 });
 
-test('available production files are uploaded privately and linked idempotently',()=>{
+test('available production files have a private idempotent migration utility',()=>{
   assert.match(documentImporter,/ehv-sensitive-documents/);
   assert.match(documentImporter,/source_entity_type:'production_property_file'/);
   assert.match(documentImporter,/on_conflict=source_entity_type,source_entity_id/);
   assert.match(documentImporter,/uploaded_by:null/);
   assert.match(documentImporter,/replace_portal_runtime_state/);
-  assert.match(deployWorkflow,/import-production-documents\.mjs/);
+  assert.doesNotMatch(deployWorkflow,/PILOT_MIGRATION_EXPORT_URL/);
 });
 
 test('deployment verifies migrated documents and no longer deploys the temporary import function',()=>{
   assert.doesNotMatch(deployWorkflow,/functions deploy production-document-import/);
-  assert.match(deployWorkflow,/migrated_document_count/);
-  assert.match(deployWorkflow,/-ge 93/);
+  assert.match(deployWorkflow,/pilot_migration_status/);
+  assert.match(deployWorkflow,/\.customers == 194/);
+  assert.match(deployWorkflow,/\.availableDocuments >= 93/);
 });
