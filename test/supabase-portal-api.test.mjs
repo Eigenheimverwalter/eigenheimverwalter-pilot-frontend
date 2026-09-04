@@ -51,5 +51,7 @@ test('Supabase support view is admin-only, read-only and audited',()=>{
   assert.match(source,/x-ehv-support-user/);assert.match(source,/Support-Sicht ist ausschließlich lesend/);
   assert.match(source,/support_view\.started/);assert.match(source,/support_view\.stopped/);
   assert.match(source,/body\.partnerId/);assert.match(source,/identity_imports/);assert.match(source,/auth_user_id/);
+  assert.match(source,/resolvePartnerPortalUser/);assert.match(source,/\.ilike\("email", email\)/);
+  assert.match(source,/array\(state\.users\)/);assert.match(source,/noch kein aktiver Portal-Login eingerichtet/);
   assert.match(bridge,/ehv-support-target/);
 });

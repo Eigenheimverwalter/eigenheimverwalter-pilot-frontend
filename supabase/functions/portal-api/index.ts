@@ -6,6 +6,7 @@ import {
 import { readRoute } from "../_shared/read-routes.ts";
 import { writeRoute } from "../_shared/write-routes.ts";
 import { DwdWarningProvider } from "../_shared/weather-providers.mjs";
+import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const jsonResponse = (req:Request,body: unknown, status = 200) => new Response(JSON.stringify(body), {
   status,
@@ -13,6 +14,39 @@ const jsonResponse = (req:Request,body: unknown, status = 200) => new Response(J
 });
 
 const projectRef = "rpniwtshbwjuesoeztyt";
+const partnerRoles = ["crafts_partner", "broker_partner", "partner_basic"];
+
+const resolvePartnerPortalUser = async (
+  serviceClient: SupabaseClient,
+  state: Record<string, unknown>,
+  selected: Record<string, unknown>,
+) => {
+  const email = String(selected.email || "").trim().toLowerCase();
+  const linkedUser = array(state.users).find((item) =>
+    String(item.id) === String(selected.userId || "") ||
+    (email && String(item.email || "").trim().toLowerCase() === email)
+  );
+  const sourceIds = [...new Set([selected.userId, linkedUser?.id].filter(Boolean).map(String))];
+  let identity: {auth_user_id?: string | null; source_user_id?: string | null} | null = null;
+  for (const sourceId of sourceIds) {
+    const { data, error } = await serviceClient.from("identity_imports")
+      .select("auth_user_id,source_user_id").eq("source_user_id", sourceId).limit(1).maybeSingle();
+    if (error) throw new Error("Partnerzugang konnte nicht geprüft werden");
+    if (data?.auth_user_id) { identity = data; break; }
+  }
+  if (!identity?.auth_user_id && email) {
+    const { data, error } = await serviceClient.from("identity_imports")
+      .select("auth_user_id,source_user_id").ilike("email", email).not("auth_user_id", "is", null).limit(1).maybeSingle();
+    if (error) throw new Error("Partnerzugang konnte nicht geprüft werden");
+    if (data?.auth_user_id) identity = data;
+  }
+  if (!identity?.auth_user_id) return null;
+  const { data: target, error } = await serviceClient.from("portal_users")
+    .select("id,display_name,role,status").eq("id", identity.auth_user_id).eq("status", "active").limit(1).maybeSingle();
+  if (error) throw new Error("Partnerprofil konnte nicht geprüft werden");
+  if (!target || !partnerRoles.includes(String(target.role))) return null;
+  return { target, sourceUserId: identity.source_user_id || linkedUser?.id || selected.userId || null };
+};
 
 const dashboard = (state: Record<string, unknown>, profile: PortalProfile, sourceUserId: string | null) => {
   const properties = scopedProperties(state, profile, sourceUserId);
@@ -53,7 +87,7 @@ Deno.serve(async (req) => {
   const routePath=url.pathname.replace(/^.*\/portal-api/,"")||"/";
   if(req.method==="GET"&&routePath==="/support-view/users"){
     if(!isAdmin(profile))return json({error:"Keine Berechtigung"},403);
-    const {data:profiles,error}=await serviceClient.from("portal_users").select("id,display_name,role,status").eq("status","active").in("role",["crafts_partner","broker_partner","partner_basic"]);if(error)return json({error:"Partnerzugänge konnten nicht geladen werden"},503);
+    const {data:profiles,error}=await serviceClient.from("portal_users").select("id,display_name,role,status").eq("status","active").in("role",partnerRoles);if(error)return json({error:"Partnerzugänge konnten nicht geladen werden"},503);
     return json({users:(profiles||[]).map(item=>({id:item.id,name:item.display_name,role:item.role})),mode:"read_only",notice:"Support-Sicht übernimmt ausschließlich die effektiven Leserechte. Änderungen sind gesperrt."});
   }
   if(req.method==="POST"&&routePath==="/support-view/start"){
@@ -62,13 +96,14 @@ Deno.serve(async (req) => {
     let targetId=String(body.userId||"");
     if(body.partnerId){
       const snapshot=await loadRuntime(serviceClient),selected=array(snapshot.state.partners).find(item=>String(item.id)===String(body.partnerId));
-      if(!selected||selected.status!=="active"||!selected.userId)return json({error:"Für diesen Partner ist kein aktiver Portalzugang verknüpft"},422);
-      const {data:identity,error:identityError}=await serviceClient.from("identity_imports").select("auth_user_id").eq("source_user_id",String(selected.userId)).maybeSingle();
-      if(identityError||!identity?.auth_user_id)return json({error:"Der verknüpfte Partnerzugang konnte nicht aufgelöst werden"},422);
-      targetId=String(identity.auth_user_id);
+      if(!selected||selected.status!=="active")return json({error:"Für diesen Partner ist kein aktiver Portalzugang verknüpft"},422);
+      let resolved;
+      try{resolved=await resolvePartnerPortalUser(serviceClient,snapshot.state,selected)}catch(error){return json({error:error instanceof Error?error.message:"Partnerzugang konnte nicht geprüft werden"},503)}
+      if(!resolved)return json({error:"Für diesen Partner wurde noch kein aktiver Portal-Login eingerichtet"},422);
+      targetId=String(resolved.target.id);
     }
     const {data:target}=await serviceClient.from("portal_users").select("id,display_name,role,status").eq("id",targetId).eq("status","active").maybeSingle();
-    if(!target||!["crafts_partner","broker_partner","partner_basic"].includes(target.role))return json({error:"Bitte einen aktiven Partnerzugang auswählen"},422);
+    if(!target||!partnerRoles.includes(target.role))return json({error:"Bitte einen aktiven Partnerzugang auswählen"},422);
     await serviceClient.from("audit_events").insert({actor_user_id:profile.id,action:"support_view.started",entity_type:"portal_user",entity_id:target.id,metadata:{partnerId:body.partnerId||null,targetRole:target.role,readOnly:true}});
     return json({user:{id:target.id,name:target.display_name,role:target.role},csrf:null,supportView:{actor:{id:profile.id,name:profile.display_name,role:profile.role},target:{id:target.id,name:target.display_name,role:target.role},readOnly:true}});
   }
