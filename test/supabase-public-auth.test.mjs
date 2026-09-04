@@ -34,6 +34,12 @@ test('full partner invitations activate a scoped Supabase identity',()=>{
   assert.match(bridge,/partner-invitations/);
 });
 
+test('public invitation flow waits for the Supabase bridge and does not fall back to GitHub API paths',()=>{
+  assert.match(ui,/await import\('\.\/supabase-bridge\.js'\)/);
+  assert.match(ui,/if\(window\.__EHV_RUNTIME__\?\.authMode==='supabase'\)throw Error\('Die sichere Portalverbindung/);
+  assert.match(bridge,/if\(isPublicPath\(path\)\)\{[\s\S]*?const supabase=await getClient\(\)/);
+});
+
 test('Basic partner confirmation activates runtime state and failed registration is compensated',()=>{
   const api=fs.readFileSync(new URL('../supabase/functions/portal-api/index.ts',import.meta.url),'utf8');
   assert.match(api,/partner_basic\.email_confirmed/);
