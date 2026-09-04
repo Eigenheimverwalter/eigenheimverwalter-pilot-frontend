@@ -1,11 +1,12 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import {
-  array, authenticate, isAdmin, loadRuntime, replaceRuntime, scopedProperties, sourcePartner,
+  array, authenticate, identifier, isAdmin, loadRuntime, replaceRuntime, scopedProperties, sourcePartner,
   type PortalProfile,
 } from "../_shared/runtime.ts";
 import { readRoute } from "../_shared/read-routes.ts";
 import { writeRoute } from "../_shared/write-routes.ts";
 import { DwdWarningProvider } from "../_shared/weather-providers.mjs";
+import { sendPortalMail } from "../_shared/mail.ts";
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const jsonResponse = (req:Request,body: unknown, status = 200) => new Response(JSON.stringify(body), {
@@ -15,6 +16,16 @@ const jsonResponse = (req:Request,body: unknown, status = 200) => new Response(J
 
 const projectRef = "rpniwtshbwjuesoeztyt";
 const partnerRoles = ["crafts_partner", "broker_partner", "partner_basic"];
+const staffRoles = ["admin_light", "support_staff"];
+const canUseSupportView = (profile: PortalProfile) => isAdmin(profile) || profile.role === "support_staff";
+const safePortalBase = (value: unknown) => {
+  try {
+    const url = new URL(String(value || "")), host = url.hostname.toLowerCase();
+    const allowed = url.protocol === "https:" && (host === "eigenheimverwalter.github.io" || host === "eigenheimverwalter.de" || host.endsWith(".eigenheimverwalter.de") || host === "eigenheimverwalter-pilot.de" || host.endsWith(".eigenheimverwalter-pilot.de") || host === "eigenheimverkauf.com" || host.endsWith(".eigenheimverkauf.com"));
+    if (!allowed) return null;
+    return url.origin + url.pathname.replace(/\/$/, "");
+  } catch { return null; }
+};
 
 const resolvePartnerPortalUser = async (
   serviceClient: SupabaseClient,
@@ -49,9 +60,9 @@ const resolvePartnerPortalUser = async (
 };
 
 const dashboard = (state: Record<string, unknown>, profile: PortalProfile, sourceUserId: string | null) => {
-  const properties = scopedProperties(state, profile, sourceUserId);
+  const properties = profile.role === "support_staff" ? array(state.properties) : scopedProperties(state, profile, sourceUserId);
   const partner = sourcePartner(state, sourceUserId);
-  const partners = isAdmin(profile) ? array(state.partners) : partner ? [partner] : [];
+  const partners = canUseSupportView(profile) ? array(state.partners) : partner ? [partner] : [];
   const propertyIds = new Set(properties.map((item) => item.id));
   const services = array(state.serviceCases).filter((item) => propertyIds.has(item.propertyId));
   const salesFiles = array(state.salesFiles).filter((item) => propertyIds.has(item.propertyId));
@@ -85,13 +96,34 @@ Deno.serve(async (req) => {
     catch(error){if(!String(error instanceof Error?error.message:error).includes("parallel geändert"))return json({error:"Die bestätigte Partnerregistrierung konnte nicht aktiviert werden"},503);}
   }
   const routePath=url.pathname.replace(/^.*\/portal-api/,"")||"/";
+  if(req.method==="GET"&&routePath==="/access-management"){
+    if(profile.role!=="super_admin"||String(user.email||"").toLowerCase()!=="info@eigenheimverwalter.de")return json({error:"Keine Berechtigung"},403);
+    const {data:profiles,error}=await serviceClient.from("portal_users").select("id,display_name,role,status,created_at").in("role",staffRoles).order("created_at",{ascending:false});
+    if(error)return json({error:"Mitarbeiterzugänge konnten nicht geladen werden"},503);
+    const ids=(profiles||[]).map(item=>item.id),{data:identities}=ids.length?await serviceClient.from("identity_imports").select("auth_user_id,email,activation_status").in("auth_user_id",ids):{data:[]};
+    return json({accounts:(profiles||[]).map(item=>{const identity=(identities||[]).find(row=>row.auth_user_id===item.id);return{id:item.id,name:item.display_name,email:identity?.email||"",role:item.role,status:item.status,activationStatus:identity?.activation_status||"activated",createdAt:item.created_at}}),roles:[{id:"admin_light",label:"Admin Light"},{id:"support_staff",label:"Support-Mitarbeiter"}]});
+  }
+  if(req.method==="POST"&&routePath==="/access-management/invitations"){
+    if(profile.role!=="super_admin"||String(user.email||"").toLowerCase()!=="info@eigenheimverwalter.de")return json({error:"Nur der Super-Admin info@eigenheimverwalter.de darf Mitarbeiterzugänge erstellen"},403);
+    const body=await req.json().catch(()=>({})) as Record<string,unknown>,name=String(body.name||"").trim().slice(0,120),email=String(body.email||"").trim().toLowerCase().slice(0,254),role=String(body.role||""),siteUrl=safePortalBase(body.siteUrl);
+    if(!name||!/^\S+@\S+\.\S+$/.test(email)||!staffRoles.includes(role)||!siteUrl)return json({error:"Name, gültige E-Mail, Zugangsart und sichere Portaladresse sind erforderlich"},422);
+    const {data:existing}=await serviceClient.from("identity_imports").select("source_user_id").ilike("email",email).limit(1).maybeSingle();if(existing)return json({error:"Für diese E-Mail-Adresse besteht bereits ein Zugang"},409);
+    const sourceUserId=identifier("u-staff"),temporaryPassword=`${crypto.randomUUID()}Aa1!`;
+    const {error:identityError}=await serviceClient.from("identity_imports").insert({source_user_id:sourceUserId,email,display_name:name,role,active:true,activation_status:"pending"});if(identityError)return json({error:"Mitarbeiteridentität konnte nicht vorbereitet werden"},409);
+    const {data,error}=await serviceClient.auth.admin.generateLink({type:"signup",email,password:temporaryPassword,options:{redirectTo:`${siteUrl}/passwort-zuruecksetzen`}});
+    if(error||!data?.properties?.action_link||!data.user?.id){await serviceClient.from("identity_imports").delete().eq("source_user_id",sourceUserId);return json({error:"Supabase-Zugang konnte nicht vorbereitet werden"},409)}
+    await serviceClient.from("identity_imports").update({auth_user_id:data.user.id,activation_status:"invited"}).eq("source_user_id",sourceUserId);
+    try{await sendPortalMail("info",email,"Ihr Zugang zum eigenheimverwalter Admin-Portal",`Hallo ${name},\n\nSie wurden als ${role==="admin_light"?"Admin Light":"Support-Mitarbeiter"} eingeladen. Über diesen einmaligen Link bestätigen Sie den Zugang und vergeben anschließend Ihr persönliches Passwort:\n${data.properties.action_link}\n\nDer Link ist vertraulich und darf nicht weitergegeben werden.`)}catch(mailError){await serviceClient.auth.admin.deleteUser(data.user.id);await serviceClient.from("identity_imports").delete().eq("source_user_id",sourceUserId);return json({error:mailError instanceof Error?mailError.message:"Einladungs-E-Mail konnte nicht versendet werden"},502)}
+    await serviceClient.from("audit_events").insert({actor_user_id:profile.id,action:"staff.invitation.created",entity_type:"portal_user",entity_id:data.user.id,metadata:{role,sourceUserId}});
+    return json({account:{id:data.user.id,name,email,role,status:"active",activationStatus:"invited"},delivery:{status:"sent",sender:"info@eigenheimverwalter.de"}},201);
+  }
   if(req.method==="GET"&&routePath==="/support-view/users"){
-    if(!isAdmin(profile))return json({error:"Keine Berechtigung"},403);
+    if(!canUseSupportView(profile))return json({error:"Keine Berechtigung"},403);
     const {data:profiles,error}=await serviceClient.from("portal_users").select("id,display_name,role,status").eq("status","active").in("role",partnerRoles);if(error)return json({error:"Partnerzugänge konnten nicht geladen werden"},503);
     return json({users:(profiles||[]).map(item=>({id:item.id,name:item.display_name,role:item.role})),mode:"read_only",notice:"Support-Sicht übernimmt ausschließlich die effektiven Leserechte. Änderungen sind gesperrt."});
   }
   if(req.method==="POST"&&routePath==="/support-view/start"){
-    if(!isAdmin(profile))return json({error:"Keine Berechtigung"},403);
+    if(!canUseSupportView(profile))return json({error:"Keine Berechtigung"},403);
     const body=await req.json().catch(()=>({})) as Record<string,unknown>;
     let targetId=String(body.userId||"");
     if(body.partnerId){
@@ -108,9 +140,10 @@ Deno.serve(async (req) => {
     return json({user:{id:target.id,name:target.display_name,role:target.role},csrf:null,supportView:{actor:{id:profile.id,name:profile.display_name,role:profile.role},target:{id:target.id,name:target.display_name,role:target.role},readOnly:true}});
   }
   if(req.method==="POST"&&routePath==="/support-view/stop"){await serviceClient.from("audit_events").insert({actor_user_id:profile.id,action:"support_view.stopped",entity_type:"portal_user",entity_id:profile.id,metadata:{readOnly:true}});return json({user:{id:profile.id,name:profile.display_name,email:user.email,role:profile.role},csrf:null,supportView:null});}
+  if(profile.role==="support_staff"&&req.method!=="GET")return json({error:"Support-Mitarbeiter besitzen ausschließlich Leserechte"},403);
   let effectiveProfile=profile,effectiveSourceUserId=sourceUserId,effectiveEmail=user.email||null,supportView:null|Record<string,unknown>=null;
   const supportTarget=req.headers.get("x-ehv-support-user");
-  if(supportTarget){if(!isAdmin(profile))return json({error:"Keine Berechtigung"},403);if(req.method!=="GET")return json({error:"Support-Sicht ist ausschließlich lesend"},403);const {data:target}=await serviceClient.from("portal_users").select("id,display_name,role,status,created_at").eq("id",supportTarget).eq("status","active").maybeSingle();if(!target)return json({error:"Support-Ziel ist nicht mehr verfügbar"},410);const {data:identity}=await serviceClient.from("identity_imports").select("source_user_id,email").eq("auth_user_id",supportTarget).maybeSingle();effectiveProfile=target as PortalProfile;effectiveSourceUserId=identity?.source_user_id?String(identity.source_user_id):null;effectiveEmail=identity?.email||null;supportView={actor:{id:profile.id,name:profile.display_name,role:profile.role},target:{id:target.id,name:target.display_name,role:target.role},readOnly:true};}
+  if(supportTarget){if(!canUseSupportView(profile))return json({error:"Keine Berechtigung"},403);if(req.method!=="GET")return json({error:"Support-Sicht ist ausschließlich lesend"},403);const {data:target}=await serviceClient.from("portal_users").select("id,display_name,role,status,created_at").eq("id",supportTarget).eq("status","active").maybeSingle();if(!target)return json({error:"Support-Ziel ist nicht mehr verfügbar"},410);const {data:identity}=await serviceClient.from("identity_imports").select("source_user_id,email").eq("auth_user_id",supportTarget).maybeSingle();effectiveProfile=target as PortalProfile;effectiveSourceUserId=identity?.source_user_id?String(identity.source_user_id):null;effectiveEmail=identity?.email||null;supportView={actor:{id:profile.id,name:profile.display_name,role:profile.role},target:{id:target.id,name:target.display_name,role:target.role},readOnly:true};}
 
   if (req.method === "GET" && url.pathname.endsWith("/me")) {
     return json({ user: { ...effectiveProfile, email: effectiveEmail }, supportView });

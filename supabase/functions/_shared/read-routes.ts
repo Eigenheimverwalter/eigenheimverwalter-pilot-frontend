@@ -6,7 +6,7 @@ const forbidden=()=>({status:403,body:{error:"Keine Berechtigung"}});
 const ok=(body:unknown)=>({status:200,body});
 
 export function readRoute(path:string,state:RuntimeState,profile:PortalProfile,sourceUserId:string|null,email:string|null){
-  const admin=isAdmin(profile), partner=sourcePartner(state,sourceUserId), properties=scopedProperties(state,profile,sourceUserId);
+  const admin=isAdmin(profile)||profile.role==="support_staff", partner=sourcePartner(state,sourceUserId), properties=profile.role==="support_staff"?array(state.properties):scopedProperties(state,profile,sourceUserId);
   const propertyIds=new Set(properties.map(x=>x.id));
   const scoped=(key:string)=>array(state[key]).filter(x=>!x.propertyId||propertyIds.has(x.propertyId));
   const customers=array(state.customers),partners=array(state.partners),salesFiles=scoped("salesFiles"),valuations=scoped("valuations"),postal=array(state.postalDirectory);

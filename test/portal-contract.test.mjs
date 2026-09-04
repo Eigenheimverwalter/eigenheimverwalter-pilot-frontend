@@ -54,3 +54,11 @@ test('Admin Plus bearbeitet Rollen ohne separates Benutzerzugangsmenü', () => {
   assert.match(app, /partner-role-templates\/\$\{encodeURIComponent\(card\.dataset\.roleId\)\}/);
   assert.match(app, /body:JSON\.stringify\(\{title,status,permissions\}\)/);
 });
+
+test('Zugangsverwaltung lädt Mitarbeiter ein und trennt Admin Light von Support', () => {
+  assert.match(app, /data-menu="roles">Zugangsverwaltung/);
+  assert.match(app, /Mitarbeiterzugang einladen/);
+  assert.match(app, /support_staff:'Support-Mitarbeiter'/);
+  assert.match(app, /support_staff:\['dashboard','production','partners'\]/);
+  assert.match(app, /api\('\/api\/access-management\/invitations'/);
+});

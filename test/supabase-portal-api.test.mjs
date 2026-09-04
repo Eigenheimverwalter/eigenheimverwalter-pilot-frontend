@@ -55,3 +55,11 @@ test('Supabase support view is admin-only, read-only and audited',()=>{
   assert.match(source,/array\(state\.users\)/);assert.match(source,/noch kein aktiver Portal-Login eingerichtet/);
   assert.match(bridge,/ehv-support-target/);
 });
+
+test('Super Admin verwaltet interne Zugänge und Support bleibt strikt lesend',()=>{
+  assert.match(source,/access-management\/invitations/);
+  assert.match(source,/info@eigenheimverwalter\.de/);
+  assert.match(source,/staffRoles = \["admin_light", "support_staff"\]/);
+  assert.match(source,/Support-Mitarbeiter besitzen ausschließlich Leserechte/);
+  assert.match(source,/sendPortalMail\("info",email/);
+});
