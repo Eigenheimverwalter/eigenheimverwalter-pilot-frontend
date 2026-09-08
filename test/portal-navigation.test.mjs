@@ -35,7 +35,7 @@ for (const basePath of ['', '/eigenheimverwalter-pilot-frontend']) {
       FormData: class extends Array { constructor() {super(['password', 'Fixture-only!234'], ['passwordConfirmation', 'Fixture-only!234']);} },
     };
     // Same route adaptation as build-static-frontend.mjs for the published site.
-    const builtSource = source.replace(/^import .*\n/, '').replaceAll("location.pathname.split('/').filter(Boolean)", "location.pathname.split('/').filter(Boolean).slice(-2)");
+    const builtSource = source.replace(/^import .*\r?\n/gm, '').replace(/^export /gm, '').replaceAll("location.pathname.split('/').filter(Boolean)", "location.pathname.split('/').filter(Boolean).slice(-2)");
     vm.runInNewContext(builtSource, context);
     await new Promise(resolve => setImmediate(resolve));
     assert.equal(typeof form.onsubmit, 'function');

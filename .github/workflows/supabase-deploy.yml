@@ -107,6 +107,10 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
         run: bash scripts/smoke-pilot-auth.sh
+      - name: Audit partner referral account assignments (read-only)
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/audit-partner-referrals.mjs
       - name: Verify durable GitHub Pages frontend
         shell: bash
         run: |
