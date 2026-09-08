@@ -12,3 +12,6 @@ verify_jwt = false
 
 [functions.portal-public]
 verify_jwt = false
+
+[functions.portal-sales-onboarding]
+verify_jwt = false

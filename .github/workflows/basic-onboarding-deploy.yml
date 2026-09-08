@@ -1,0 +1,31 @@
+name: Deploy isolated Basic partner invitation
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/basic-sales-invitation]
+    paths: ['supabase/functions/portal-sales-onboarding/**','supabase/functions/portal-public/**','.github/workflows/basic-onboarding-deploy.yml','test/basic-sales-onboarding.test.mjs']
+permissions:
+  contents: read
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: node --test test/basic-sales-onboarding.test.mjs
+      - uses: supabase/setup-cli@v2
+        with:
+          version: 2.116.0
+      - name: Deploy only public invitation and restricted Basic bridge
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          supabase functions deploy portal-public --project-ref rpniwtshbwjuesoeztyt --no-verify-jwt
+          supabase functions deploy portal-sales-onboarding --project-ref rpniwtshbwjuesoeztyt --no-verify-jwt
+      - name: Check unauthorized bridge access
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{}' https://rpniwtshbwjuesoeztyt.supabase.co/functions/v1/portal-sales-onboarding)
+          test "$code" = 401
