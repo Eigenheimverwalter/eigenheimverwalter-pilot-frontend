@@ -7,6 +7,7 @@ import { readRoute } from "../_shared/read-routes.ts";
 import { marketingKitRoute } from "../_shared/marketing-kit-route.ts";
 import { legalDocumentsRoute } from "../_shared/legal-documents-route.ts";
 import { partnerLegalRoute } from "../_shared/partner-legal-route.ts";
+import { partnerOnboardingRoute } from "../_shared/partner-onboarding-route.ts";
 import { writeRoute } from "../_shared/write-routes.ts";
 import { DwdWarningProvider } from "../_shared/weather-providers.mjs";
 import { sendPortalMail } from "../_shared/mail.ts";
@@ -97,8 +98,9 @@ Deno.serve(async (req) => {
   const routePath=url.pathname.replace(/^.*\/portal-api/,"")||"/";
   // Own-onboarding actions must not pass through legacy automatic activation or
   // support impersonation. Entry-source cutover follows in the next phase.
-  if(routePath.startsWith('/partner-onboarding/')){
-    try{const result=await partnerLegalRoute(req,routePath,serviceClient,profile,user);return json(result.body,result.status);}
+  if(routePath==='/partner-onboarding'||routePath.startsWith('/partner-onboarding/')){
+    try{const legalPath=/^\/partner-onboarding\/[^/]+\/legal(?:\/|$)/.test(routePath);
+      const result=await (legalPath?partnerLegalRoute:partnerOnboardingRoute)(req,routePath,serviceClient,profile,user);return json(result.body,result.status);}
     catch(error){return json({error:error instanceof Error?error.message:'Zustimmung fehlgeschlagen',code:(error as {code?:string}).code},Number((error as {status?:number}).status||500));}
   }
   if(sourceUserId&&profile.role==="partner_basic"&&user.email_confirmed_at){
