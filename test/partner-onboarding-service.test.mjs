@@ -59,3 +59,16 @@ test('Real route passes verified actor and maps SQL failures without leaking int
   await assert.rejects(httpFixture({rpcError:{message:'private SQL ONBOARDING_NOT_FOUND'}}).request(),e=>e.status===404&&!e.message.includes('private'));
   await assert.rejects(httpFixture({rpcError:{message:'private connection secret'}}).request(),e=>e.status===503&&!e.message.includes('secret'));
 });
+test('Actual HTTP dispatcher never falls through to legacy activation for central onboarding',async()=>{
+  const strip=s=>stripTypeScriptTypes(s.replace(/^import [\s\S]*?;\r?\n/gm,''),{mode:'strip'});
+  let handler,calls=0;
+  const deps={corsHeaders:()=>({}),authenticate:async()=>({user,profile,sourceUserId:'existing-invited-user',service:{}}),
+    partnerOnboardingRoute:async()=>{calls++;return{status:503,body:{code:'ONBOARDING_NOT_RELEASED'}}},
+    loadRuntime:()=>assert.fail('No legacy email-confirmation activation'),replaceRuntime:()=>assert.fail('No runtime mutation')};
+  new Function('Deno',...Object.keys(deps),strip(read('../supabase/functions/portal-api/index.ts')))({serve:fn=>handler=fn},...Object.values(deps));
+  for(const path of ['/partner-onboarding',`/partner-onboarding/${id}`,`/partner-onboarding/${id}/start`]){
+    const response=await handler(new Request('https://example.invalid/functions/v1/portal-api'+path,{method:'POST',headers:{Authorization:'Bearer test'}}));
+    assert.equal(response.status,503);assert.equal(response.headers.get('cache-control'),'no-store');
+  }
+  assert.equal(calls,3);
+});
