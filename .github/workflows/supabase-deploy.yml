@@ -56,6 +56,7 @@ jobs:
           supabase functions deploy portal-api --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt
           supabase functions deploy portal-mail --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt
           supabase functions deploy portal-public --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt
+          supabase functions deploy portal-sales-onboarding --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       - name: Configure Render-free Pilot auth redirects

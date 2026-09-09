@@ -39,12 +39,15 @@ export function onboardingSummary(flow){
 // This service deliberately cannot write ACTIVE, licences or payment success.
 export class PartnerOnboardingService {
   constructor({store,trades=[]}){this.store=store;this.trades=trades;}
-  async create(input,{actorId=null,source}={}){
+  async create(input,{actorId=null,source,invitationToken=null}={}){
     requireValue(source&&source===input.source,'ONBOARDING_PERMISSION_DENIED',403);
     const normalized=normalizeOnboardingInput(input,this.trades);
     requireValue(!missingOnboardingData(normalized.prefilled_data).includes('email'),'ONBOARDING_INPUT_INVALID');
     requireValue(typeof input.request_key==='string'&&uuid.test(input.request_key),'ONBOARDING_INPUT_INVALID');
-    const token=newToken();
+    // Trusted mail adapters may derive a stable invitation from their durable
+    // outbox key. This option is never accepted by the browser request adapter.
+    requireValue(invitationToken===null||(source==='SALES_OS'&&actorId===null&&typeof invitationToken==='string'&&/^[a-f0-9]{64}$/.test(invitationToken)),'ONBOARDING_INPUT_INVALID');
+    const token=invitationToken??newToken();
     const result=await this.store.create({actorId,input:{...normalized,request_key:input.request_key.toLowerCase()},tokenHash:await hashOnboardingToken(token)});
     return{...onboardingSummary(result.flow),created:result.created,
       // On idempotent replays never overwrite/reveal the existing invitation.

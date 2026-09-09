@@ -138,3 +138,30 @@ Die Stripe-Sandbox-Tarife und 19-%-Steuerrate sind separat in
 
 Stripe-Referenzen: https://docs.stripe.com/webhooks und
 https://docs.stripe.com/checkout/fulfillment (am 09.09.2026 geprüft).
+
+## Phase 4: SalesOS-Adapter und bestehende Outbox
+
+Der eingeschränkte `portal-sales-onboarding`-Einstieg unterstützt jetzt die
+versionierte zentrale Übergabe (`onboardingVersion=3`). Er verwendet die gemeinsame
+Service-Factory, authentifiziert weiterhin das dedizierte Brückentoken und bleibt
+bis zum gemeinsamen Cutover gesperrt. Keine zweite Onboardinglogik/Outbox.
+
+Die SalesOS-Outbox-ID ist der idempotente Einladungsschlüssel. Ein getrennt
+signierter, deterministischer 256-Bit-Linktoken ermöglicht einen Wiederholungsabruf
+nach verlorener Erzeugungsantwort, ohne eine zweite Anmeldung zu erstellen.
+Nur sein Hash wird gespeichert. Die Migration 0006 speichert den Versandversuch
+als Empfangsbestätigung zur bestehenden Outbox: atomarer Claim, kein Doppelversand,
+unsicherer SMTP-Ausgang bleibt unsicher. Verlorene Bestätigungen nach erfolgreichem
+Versand werden bei der Statusabfrage nachgetragen. Partnerdaten, Rollen und Lizenzen
+werden durch diesen Adapter nicht angelegt oder aktiviert.
+
+Der SalesOS-Gewinnabschluss wurde auf einem getrennten Arbeitszweig erweitert:
+Basic/Premium, Partnertyp, Gewerk; inaktiver CRM-Partner, Vertragsstatus draft,
+atomare Outbox und getrennte Statusprojektion. Alle Daten werden vorbelegt.
+Der dortige Datenbankschalter bleibt ebenso geschlossen, bis Phase 5–8 fertig sind.
+Der neue Empfängerlink `/partner-onboarding/{id}#token=...` ist für Phase 5
+vorgesehen und wird vorher nicht an echte Partner versendet.
+
+Tests: realer HTTP-Rolloutschutz, Katalog-/Auswahlvalidierung und tatsächliche
+PostgreSQL-Ausführung von zentraler Erzeugung, Versandclaim, Wiederholung,
+unsicherem Versand und Statusreparatur. Fachlicher Runtime-Bestand unverändert.
