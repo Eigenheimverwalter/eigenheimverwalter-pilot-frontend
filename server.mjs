@@ -165,6 +165,7 @@ const server=http.createServer(async(req,res)=>{try{
   if(req.method==='GET'&&['/partner-registrierung','/passwort-vergessen'].includes(url.pathname))return serve(res,'public/index.html','text/html; charset=utf-8');
   if(req.method==='GET'&&(url.pathname.startsWith('/partner-bestaetigen/')||url.pathname.startsWith('/passwort-zuruecksetzen/')||url.pathname.startsWith('/empfehlung/')))return serve(res,'public/index.html','text/html; charset=utf-8');
   if(req.method==='GET'&&url.pathname.startsWith('/partner-einladung/'))return serve(res,'public/index.html','text/html; charset=utf-8');
+  if(req.method==='GET'&&url.pathname.startsWith('/partner-onboarding/'))return serve(res,'public/partner-onboarding.html','text/html; charset=utf-8');
   if(req.method==='GET'&&url.pathname.startsWith('/ref/'))return serve(res,'public/referral.html','text/html; charset=utf-8');
   if(req.method==='GET'&&url.pathname.startsWith('/registrierung/'))return serve(res,'public/customer-registration.html','text/html; charset=utf-8');
   if(req.method==='GET' && url.pathname.startsWith('/assets/')) return serve(res,`public${url.pathname}`,url.pathname.endsWith('.css')?'text/css':'text/javascript');

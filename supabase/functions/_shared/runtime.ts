@@ -19,14 +19,15 @@ export const userClient = (authorization: string) => createClient(
   { global: { headers: { Authorization: authorization } }, auth: { persistSession: false, autoRefreshToken: false } },
 );
 
-export async function authenticate(authorization: string | null) {
+export async function authenticate(authorization: string | null, options: {onboardingOnly?:boolean} = {}) {
   if (!authorization) throw Object.assign(new Error("Nicht angemeldet"), { status: 401 });
   const client = userClient(authorization);
   const { data: { user }, error } = await client.auth.getUser();
   if (error || !user) throw Object.assign(new Error("Sitzung ungültig"), { status: 401 });
   const { data: profile, error: profileError } = await client.from("portal_users")
     .select("id,display_name,role,status,created_at").eq("id", user.id).single();
-  if (profileError || !profile || profile.status !== "active") {
+  const pendingOnboarding=options.onboardingOnly===true&&profile?.status==='invited'&&profile?.role==='partner_basic';
+  if (profileError || !profile || (profile.status !== "active"&&!pendingOnboarding)) {
     throw Object.assign(new Error("Portalprofil nicht eingerichtet oder nicht aktiv"), { status: 403 });
   }
   const service = serviceClient();

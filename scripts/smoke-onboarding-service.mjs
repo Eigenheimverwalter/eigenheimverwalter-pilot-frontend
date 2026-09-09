@@ -17,4 +17,11 @@ const route=await fetch(base+'/functions/v1/portal-api/partner-onboarding/'+unkn
 must(route.status===503&&(await route.json()).code==='ONBOARDING_NOT_RELEASED','Phase-3 rollout gate not closed');
 const anonymous=await fetch(base+'/functions/v1/portal-api/partner-onboarding/'+unknown);
 must(anonymous.status===401,'Anonymous onboarding access must be denied');
-console.log(JSON.stringify({centralOnboardingSchema:true,privateRpc:true,rolloutGateClosed:true,anonymousDenied:true,readOnly:true,noPartnerActivation:true,noEmail:true,noPayment:true}));
+const entryArgs={p_action:'INSPECT',p_id:unknown,p_token_hash:'0'.repeat(64)};
+const entryRpc=await fetch(base+'/rest/v1/rpc/partner_onboarding_entry',{method:'POST',headers:admin,body:JSON.stringify(entryArgs)});
+must(!entryRpc.ok&&(await entryRpc.json()).message==='ONBOARDING_NOT_FOUND','Invitation entry RPC unavailable or unsafe');
+const entryDenied=await fetch(base+'/rest/v1/rpc/partner_onboarding_entry',{method:'POST',headers:{...admin,Authorization:`Bearer ${token}`},body:JSON.stringify(entryArgs)});
+must(entryDenied.status===403,'Invitation entry RPC must remain private');
+const entryRoute=await fetch(base+'/functions/v1/portal-public/onboarding-invitations/'+unknown+'/inspect',{method:'POST',headers:{Origin:'https://eigenheimverwalter.github.io','Content-Type':'application/json'},body:JSON.stringify({token:'0'.repeat(64)})});
+must(entryRoute.status===503&&(await entryRoute.json()).code==='ONBOARDING_NOT_RELEASED','Public invitation rollout gate not closed');
+console.log(JSON.stringify({centralOnboardingSchema:true,privateRpc:true,rolloutGateClosed:true,anonymousDenied:true,invitationEntryPrivate:true,invitationEntryGateClosed:true,readOnly:true,noPartnerActivation:true,noEmail:true,noPayment:true}));

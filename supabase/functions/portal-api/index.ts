@@ -91,14 +91,16 @@ Deno.serve(async (req) => {
     return json({ service: "ehv-pilot-portal-api", projectRef, status: "ok", version: "0.1.0" });
   }
 
+  const routePath=url.pathname.replace(/^.*\/portal-api/,"")||"/";
+  const ownOnboardingRoute=routePath==='/partner-onboarding'||routePath.startsWith('/partner-onboarding/');
   let auth;
-  try { auth = await authenticate(req.headers.get("Authorization")); }
+  try { auth = await authenticate(req.headers.get("Authorization"),{onboardingOnly:ownOnboardingRoute}); }
   catch (error) { return json({ error: error instanceof Error ? error.message : "Nicht angemeldet" }, Number((error as {status?:number}).status || 401)); }
   const { user, profile, sourceUserId, service: serviceClient } = auth;
-  const routePath=url.pathname.replace(/^.*\/portal-api/,"")||"/";
   // Own-onboarding actions must not pass through legacy automatic activation or
   // support impersonation. Entry-source cutover follows in the next phase.
   if(routePath==='/partner-onboarding'||routePath.startsWith('/partner-onboarding/')){
+    if(profile.status==='invited'&&Deno.env.get('PILOT_PARTNER_ONBOARDING_ENABLED')!=='true')return json({code:'ONBOARDING_NOT_RELEASED',error:'Der neue Partnerprozess ist noch nicht freigegeben.'},503);
     try{const legalPath=/^\/partner-onboarding\/[^/]+\/legal(?:\/|$)/.test(routePath);
       const result=await (legalPath?partnerLegalRoute:partnerOnboardingRoute)(req,routePath,serviceClient,profile,user);return json(result.body,result.status);}
     catch(error){return json({error:error instanceof Error?error.message:'Zustimmung fehlgeschlagen',code:(error as {code?:string}).code},Number((error as {status?:number}).status||500));}

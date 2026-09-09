@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import {checkPartnerLegalAcceptance} from './check-partner-legal-acceptance-sql.mjs';
 import {checkPartnerOnboardingService} from './check-partner-onboarding-service-sql.mjs';
 import {checkSalesOnboarding} from './check-sales-onboarding-sql.mjs';
+import {checkPartnerOnboardingEntry} from './check-partner-onboarding-entry-sql.mjs';
 if(!process.argv[2])throw Error('Path to isolated PGlite module required');
 const {PGlite}=await import(pathToFileURL(resolve(process.argv[2])).href),db=new PGlite();
 const admin='11111111-1111-4111-8111-111111111111',light='22222222-2222-4222-8222-222222222222',onboard='33333333-3333-4333-8333-333333333333';
@@ -51,5 +52,6 @@ try{
   await checkPartnerLegalAcceptance(db,change,admin,light);
   await checkPartnerOnboardingService(db,admin,light);
   await checkSalesOnboarding(db);
+  await checkPartnerOnboardingEntry(db);
   console.log(JSON.stringify({isolatedPostgres:true,migrationExecuted:true,immutableEvidence:true,atomicActiveVersion:true,retention:true,monotonicVersions:true,adminLightPermissions:true,privateStorage:true,atomicAcceptance:true,verifiedOwner:true,upgradeConsentReuse:true,centralOnboardingService:true,sourceIdempotency:true,tokenOwnerBinding:true,productionDataAccess:false}));
 }finally{await db.close()}
