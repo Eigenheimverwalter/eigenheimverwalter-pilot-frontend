@@ -1,4 +1,5 @@
 export const supported=new Set([
+  '/api/marketing-kit',
   '/api/me','/api/dashboard','/api/account','/api/customers','/api/production/customers',
   '/api/partners','/api/assignments','/api/cases','/api/sales','/api/valuations','/api/campaigns',
   '/api/role-profiles','/api/partner-role-templates','/api/admin/users','/api/opportunity-engine',
@@ -14,6 +15,7 @@ export const supported=new Set([
 ]);
 export const normalizedPath=path=>String(path||'').split('?')[0];
 export const dynamicSupported=[
+  /^\/api\/marketing-kit\/[0-9a-f-]{36}(?:\/file)?$/i,
   /^\/api\/equipment-schema\/[^/]+$/, /^\/api\/equipment\/[^/]+\/schema$/,
   /^\/api\/(?:cases|partners|equipment|service-records)\/[^/]+$/, /^\/api\/equipment\/[^/]+\/service-records$/,
   /^\/api\/partners\/[^/]+\/license$/, /^\/api\/partners\/[^/]+\/email$/, /^\/api\/trigger-definitions\/[^/]+$/,
