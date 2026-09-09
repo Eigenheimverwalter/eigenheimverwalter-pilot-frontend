@@ -1,4 +1,4 @@
-import { portalRequest } from './partner-referrals.js?v=20260909-qr-1';
+import { portalRequest } from './partner-referrals.js?v=20260909-app-download';
 const q=s=>document.querySelector(s);
 const h=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const request=portalRequest;

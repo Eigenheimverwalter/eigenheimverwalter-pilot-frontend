@@ -1,4 +1,5 @@
 import { portalRootPath } from './portal-navigation.mjs';
+import { appDownloadPanel } from './app-downloads.mjs';
 import { makeReferralQr } from './referral-qr.mjs';
 import { customerTableHead, propertyRegion } from './customer-overview.mjs';
 
@@ -131,7 +132,7 @@ export async function confirmCustomerReferral() {
       try {
         const fields = new FormData(form);
         await portalRequest(path, {method:'POST', body:JSON.stringify({accepted:fields.has('accepted'), emailConfirmed:fields.has('emailConfirmed'), addressConfirmed:fields.has('addressConfirmed')})});
-        dialog('Empfehlung bestätigt', '<p>Vielen Dank. Ihre bestätigten Angaben wurden gespeichert und die Empfehlung wurde dem Partner zugeordnet.</p>');
+        dialog('Empfehlung bestätigt', '<p>Vielen Dank. Ihre bestätigten Angaben wurden gespeichert und die Empfehlung wurde dem Partner zugeordnet.</p>'+appDownloadPanel());
       } catch (error) {busy = false; q('#confirm-referral-status').textContent = error.message;}
     };
   } catch (error) { errorDialog(error); }

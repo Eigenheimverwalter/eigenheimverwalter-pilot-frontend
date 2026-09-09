@@ -1,4 +1,4 @@
-import {portalRequest} from './partner-referrals.js?v=20260909-qr-1';
+import {portalRequest} from './partner-referrals.js?v=20260909-app-download';
 const q=selector=>document.querySelector(selector);
 const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export const formatMarketingSize=bytes=>bytes<1024?`${bytes} B`:bytes<1024*1024?`${(bytes/1024).toLocaleString('de-DE',{maximumFractionDigits:1})} KB`:`${(bytes/(1024*1024)).toLocaleString('de-DE',{maximumFractionDigits:1})} MB`;

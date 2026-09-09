@@ -1,5 +1,5 @@
 import { customerTableHead, propertyKind, propertyRegion } from './customer-overview.mjs';
-import { portalRequest, mountReferralActions } from './partner-referrals.js?v=20260909-qr-1';
+import { portalRequest, mountReferralActions } from './partner-referrals.js?v=20260909-app-download';
 const $=selector=>document.querySelector(selector);
 const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const get=portalRequest;

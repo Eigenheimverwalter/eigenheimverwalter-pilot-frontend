@@ -1,5 +1,5 @@
-import {portalRequest} from './partner-referrals.js?v=20260909-qr-1';
-import {formatMarketingSize,previewMarketingFile} from './marketing-kit.js?v=20260909-legal-1';
+import {portalRequest} from './partner-referrals.js?v=20260909-app-download';
+import {formatMarketingSize,previewMarketingFile} from './marketing-kit.js?v=20260909-app-download';
 const q=s=>document.querySelector(s),h=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const date=v=>v?new Date(v).toLocaleString('de-DE'):'–';
 const names={DRAFT:'Entwurf',APPROVED:'Freigegeben',ACTIVE:'Aktiv',ARCHIVED:'Archiviert'};

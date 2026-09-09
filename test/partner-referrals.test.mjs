@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {assertNewCustomerEmail} from '../supabase/functions/_shared/customer-invitations.mjs';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {stripTypeScriptTypes} from 'node:module';
@@ -13,7 +14,7 @@ function fixture(role='referral_partner', {trade='ROOF', failMail=false, plan, s
   const partner={id:'p-own',userId:'source-own',company:'Testbetrieb',primaryTradeId:role==='referral_partner'?null:trade,referralOnly:role==='referral_partner',plan:plan||(role==='partner_basic'||role==='referral_partner'?'basic':'premium'),postalCodes:role==='partner_basic'||role==='referral_partner'?[]:['22043'],status,lifecycle:status};
   const state={partners:[partner],users:[],trades:[{id:trade,name:trade}],partnerReferralInvitations:[],referralLeads:[],assignments:[],properties:[],customers:[]};
   const snapshot={state,revision:1}; let sends=0,commits=0,lastMail;
-  const deps={array,clean:(v,n)=>String(v??'').trim().slice(0,n),identifier:p=>p+'-'+crypto.randomUUID(),isAdmin:p=>['super_admin','admin_light'].includes(p.role),sourcePartner:(s,id)=>s.partners.find(p=>p.userId===id),scopedProperties:()=>[],canRecommend,isReferralOnly,replaceRuntime:async()=>{commits++;snapshot.revision++},sendPortalMail:async(...args)=>{sends++;lastMail=args;if(failMail)throw Error('Mailversand fehlgeschlagen');return{status:'sent',sender:'registrierung@eigenheimverwalter.de'}}};
+  const deps={assertNewCustomerEmail,commitCustomerInvitation:async()=>{commits++;snapshot.revision++},array,clean:(v,n)=>String(v??'').trim().slice(0,n),identifier:p=>p+'-'+crypto.randomUUID(),isAdmin:p=>['super_admin','admin_light'].includes(p.role),sourcePartner:(s,id)=>s.partners.find(p=>p.userId===id),scopedProperties:()=>[],canRecommend,isReferralOnly,replaceRuntime:async()=>{commits++;snapshot.revision++},sendPortalMail:async(...args)=>{sends++;lastMail=args;if(failMail)throw Error('Mailversand fehlgeschlagen');return{status:'sent',sender:'registrierung@eigenheimverwalter.de'}}};
   const code=stripTypeScriptTypes(read('../supabase/functions/_shared/write-routes.ts').replace(/^import .*\r?\n/gm,'').replace('export async function writeRoute','async function writeRoute'),{mode:'strip'});
   const write=new Function(...Object.keys(deps),code+';return writeRoute')(...Object.values(deps));
   const body={name:'Kunde Test',email:'kunde@example.invalid',address:'Teststraße 1',postalCode:'22043',city:'Hamburg',consentConfirmed:true,siteUrl:'https://eigenheimverwalter.github.io/eigenheimverwalter-pilot-frontend'};

@@ -1,5 +1,5 @@
-import {portalRequest} from './partner-referrals.js?v=20260909-qr-1';
-import {previewMarketingFile} from './marketing-kit.js?v=20260909-legal-1';
+import {portalRequest} from './partner-referrals.js?v=20260909-app-download';
+import {previewMarketingFile} from './marketing-kit.js?v=20260909-app-download';
 import {legalStepMarkup} from './partner-legal-step.mjs';
 // Phase 2 component; the central onboarding shell supplies the current own flow
 // and next-step callback in phase 3/5. Do not mount it on legacy invitation flows.

@@ -1,5 +1,5 @@
 import { customerTableHead, propertyKind, propertyRegion, equipmentStage } from './customer-overview.mjs';
-import { portalRequest, openCustomerRecommendation, mountReferralActions, renderReferralCustomers, confirmCustomerReferral } from './partner-referrals.js?v=20260909-qr-1';
+import { portalRequest, openCustomerRecommendation, mountReferralActions, renderReferralCustomers, confirmCustomerReferral } from './partner-referrals.js?v=20260909-app-download';
 const el=s=>document.querySelector(s),safe=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const call=portalRequest;
 const authCall=async(path,options={})=>{const me=await call('/api/me');return call(path,{...options,headers:{'X-CSRF-Token':me.csrf,...(options.headers||{})}})};

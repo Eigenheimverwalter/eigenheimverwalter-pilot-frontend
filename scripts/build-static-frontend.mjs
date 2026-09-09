@@ -5,7 +5,7 @@ const source=path.resolve('public'),target=path.resolve(process.argv[2]||'dist')
 if(!publishableKey)throw new Error('SUPABASE_PUBLISHABLE_KEY fehlt');
 fs.rmSync(target,{recursive:true,force:true});fs.cpSync(source,target,{recursive:true});
 const prefix=basePath?`/${basePath}`:'';
-for(const name of ['index.html','customer-registration.html','referral.html']){const file=path.join(target,name),html=fs.readFileSync(file,'utf8').replace('<head>',`<head><base href="${prefix}/">`).replaceAll('="/assets/','="'+prefix+'/assets/');fs.writeFileSync(file,html);}
+for(const name of ['index.html','customer-registration.html','referral.html','app-download.html']){const file=path.join(target,name),html=fs.readFileSync(file,'utf8').replace('<head>',`<head><base href="${prefix}/">`).replaceAll('="/assets/','="'+prefix+'/assets/');fs.writeFileSync(file,html);}
 const passwordResetDirectory=path.join(target,'passwort-zuruecksetzen');
 fs.mkdirSync(passwordResetDirectory,{recursive:true});
 fs.copyFileSync(path.join(target,'index.html'),path.join(passwordResetDirectory,'index.html'));

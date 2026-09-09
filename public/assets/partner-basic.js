@@ -1,4 +1,4 @@
-import { openCustomerRecommendation, renderReferralCustomers } from './partner-referrals.js?v=20260909-qr-1';
+import { openCustomerRecommendation, renderReferralCustomers } from './partner-referrals.js?v=20260909-app-download';
 import { portalRootPath } from './portal-navigation.mjs';
 const loginPath=()=>portalRootPath(window.__EHV_RUNTIME__?.basePath);
 const q=s=>document.querySelector(s),escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

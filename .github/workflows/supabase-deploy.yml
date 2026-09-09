@@ -111,6 +111,10 @@ jobs:
         env:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/audit-partner-referrals.mjs
+      - name: Verify customer invitation directory (read-only)
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/smoke-customer-invitations.mjs
       - name: Verify durable GitHub Pages frontend
         shell: bash
         run: |

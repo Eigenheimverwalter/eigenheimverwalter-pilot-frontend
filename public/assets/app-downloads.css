@@ -1,0 +1,8 @@
+.app-downloads{margin-top:24px;padding-top:24px;border-top:1px solid var(--line,#28464d);text-align:left}
+.app-downloads h2{margin:0 0 10px;font-size:1.25rem}.app-downloads p{line-height:1.6;margin:0 0 12px}
+.app-store-badges{display:flex;flex-wrap:wrap;align-items:center;gap:0 12px;padding:12px 0}
+.app-store-badges a{display:inline-flex;align-items:center;min-height:72px;padding:0 12px}
+.app-store-badges img{display:block;width:auto;height:48px;max-width:100%}.app-store-badges img.google-play-badge{height:72px}
+.app-store-badges a:focus-visible,.app-open-help:focus-visible{outline:3px solid #4eb3ca;outline-offset:4px;border-radius:6px}
+.app-open-help{display:inline-block;margin:4px 0 14px}.app-downloads small{display:block;font-size:.7rem;line-height:1.5;opacity:.75}
+@media(max-width:400px){.app-store-badges{gap:0}.app-store-badges a{padding:0 8px}}
