@@ -1,4 +1,4 @@
-import {normalizedPath,supportsPath,isDocumentUpload,isPublicPath,handlesRoute} from './supabase-routes.mjs?v=20260909-legal-1';
+import {normalizedPath,supportsPath,isDocumentUpload,isPublicPath,handlesRoute} from './supabase-routes.mjs?v=20260909-legal-acceptance-1';
 
 const config=window.__EHV_RUNTIME__||{};
 const enabled=config.authMode==='supabase'&&config.supabaseUrl&&config.supabasePublishableKey;

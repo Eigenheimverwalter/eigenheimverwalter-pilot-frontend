@@ -4,13 +4,14 @@ import {pathToFileURL} from 'node:url';
 import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import assert from 'node:assert/strict';
+import {checkPartnerLegalAcceptance} from './check-partner-legal-acceptance-sql.mjs';
 if(!process.argv[2])throw Error('Path to isolated PGlite module required');
 const {PGlite}=await import(pathToFileURL(resolve(process.argv[2])).href),db=new PGlite();
 const admin='11111111-1111-4111-8111-111111111111',light='22222222-2222-4222-8222-222222222222',onboard='33333333-3333-4333-8333-333333333333';
 try{
   await db.exec(`create role anon; create role authenticated; create role service_role;
     create schema auth; create schema storage;
-    create table auth.users(id uuid primary key);
+    create table auth.users(id uuid primary key,email text,email_confirmed_at timestamptz);
     create table public.portal_users(id uuid primary key,role text,status text);
     create table public.portal_runtime_state(id text primary key,payload jsonb);
     create table public.audit_events(id bigint generated always as identity,actor_user_id uuid,action text,entity_type text,entity_id text,metadata jsonb);
@@ -44,5 +45,7 @@ try{
   const lightDraft=await upload(light);await assert.rejects(change('APPROVE',lightDraft.id,lightDraft.revision,{},light),/LEGAL_PERMISSION_DENIED/);
   assert.equal((await db.query("select public from storage.buckets where id='ehv-legal-documents'")).rows[0].public,false);
   const policies=await db.query("select relname,relrowsecurity from pg_class where relname in ('partner_onboardings','legal_documents','legal_acceptances')");assert.ok(policies.rows.every(r=>r.relrowsecurity));
-  console.log(JSON.stringify({isolatedPostgres:true,migrationExecuted:true,immutableEvidence:true,atomicActiveVersion:true,retention:true,monotonicVersions:true,adminLightPermissions:true,privateStorage:true,productionDataAccess:false}));
+  await db.exec(readFileSync(new URL('../supabase/migrations/202609090003_partner_legal_acceptance.sql',import.meta.url),'utf8'));
+  await checkPartnerLegalAcceptance(db,change,admin,light);
+  console.log(JSON.stringify({isolatedPostgres:true,migrationExecuted:true,immutableEvidence:true,atomicActiveVersion:true,retention:true,monotonicVersions:true,adminLightPermissions:true,privateStorage:true,atomicAcceptance:true,verifiedOwner:true,upgradeConsentReuse:true,productionDataAccess:false}));
 }finally{await db.close()}

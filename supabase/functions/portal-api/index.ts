@@ -6,6 +6,7 @@ import {
 import { readRoute } from "../_shared/read-routes.ts";
 import { marketingKitRoute } from "../_shared/marketing-kit-route.ts";
 import { legalDocumentsRoute } from "../_shared/legal-documents-route.ts";
+import { partnerLegalRoute } from "../_shared/partner-legal-route.ts";
 import { writeRoute } from "../_shared/write-routes.ts";
 import { DwdWarningProvider } from "../_shared/weather-providers.mjs";
 import { sendPortalMail } from "../_shared/mail.ts";
@@ -93,11 +94,17 @@ Deno.serve(async (req) => {
   try { auth = await authenticate(req.headers.get("Authorization")); }
   catch (error) { return json({ error: error instanceof Error ? error.message : "Nicht angemeldet" }, Number((error as {status?:number}).status || 401)); }
   const { user, profile, sourceUserId, service: serviceClient } = auth;
+  const routePath=url.pathname.replace(/^.*\/portal-api/,"")||"/";
+  // Own-onboarding actions must not pass through legacy automatic activation or
+  // support impersonation. Entry-source cutover follows in the next phase.
+  if(routePath.startsWith('/partner-onboarding/')){
+    try{const result=await partnerLegalRoute(req,routePath,serviceClient,profile,user);return json(result.body,result.status);}
+    catch(error){return json({error:error instanceof Error?error.message:'Zustimmung fehlgeschlagen',code:(error as {code?:string}).code},Number((error as {status?:number}).status||500));}
+  }
   if(sourceUserId&&profile.role==="partner_basic"&&user.email_confirmed_at){
     try{const activationSnapshot=await loadRuntime(serviceClient),partner=sourcePartner(activationSnapshot.state,sourceUserId);if(partner&&partner.status==="invited"){partner.status="active";partner.lifecycle="active";partner.activatedAt=new Date().toISOString();await replaceRuntime(serviceClient,activationSnapshot,profile.id,"partner_basic.email_confirmed","partner",String(partner.id),{sourceUserId});}}
     catch(error){if(!String(error instanceof Error?error.message:error).includes("parallel geändert"))return json({error:"Die bestätigte Partnerregistrierung konnte nicht aktiviert werden"},503);}
   }
-  const routePath=url.pathname.replace(/^.*\/portal-api/,"")||"/";
   if(req.method==="GET"&&routePath==="/access-management"){
     if(profile.role!=="super_admin"||String(user.email||"").toLowerCase()!=="info@eigenheimverwalter.de")return json({error:"Keine Berechtigung"},403);
     const {data:profiles,error}=await serviceClient.from("portal_users").select("id,display_name,role,status,created_at").in("role",staffRoles).order("created_at",{ascending:false});

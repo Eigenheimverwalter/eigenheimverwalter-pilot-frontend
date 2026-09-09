@@ -50,3 +50,38 @@ PLZ-Reservierung, der zentrale Transportdienst, die Onboarding-Schrittoberfläch
 SalesOS-Rückmeldung und die Einbindung des 3-Immobilien-Limits noch separat anzubinden.
 Die Reihenfolge und offenen Freischaltungsvoraussetzungen stehen in
 `PARTNER_ONBOARDING_IMPLEMENTATION.md`.
+
+## Phase 2 – Zustimmungs-Engine
+
+- `GET /api/partner-onboarding/{id}/legal` liefert nur für das verifizierte eigene
+  Partnerkonto die aktuellen Pflichtversionen und bereits bestehende Nachweise.
+- `GET .../legal/{documentId}/file` prüft die Zuordnung nochmals, protokolliert
+  den Vorschau-Aufruf und erzeugt einen 60-Sekunden-Link. Der Audit-Eintrag beweist
+  einen angeforderten Abruf, nicht, dass ein Mensch das Dokument tatsächlich las.
+- `POST .../legal` nimmt ausschließlich `{documents:[{id,version,accepted:true}]}`
+  entgegen. Alle Pflichtversionen werden in einer Datenbanktransaktion geprüft.
+  Fehlende Versionen/Checkboxen oder eine zwischenzeitliche neue Version verhindern
+  jede Teilannahme. Doppelklicks erzeugen keine doppelten Nachweise.
+- Mindestens TERMS und PRIVACY bleiben serverseitig Pflicht. Weitere Typen können
+  durch die spätere serverseitige Plankonfiguration ergänzt werden; nicht durch
+  Browserdaten. Ein nicht verfügbares Pflichtdokument blockiert die Zustimmung.
+- Eine Upgrade-Zustimmung kann nur vom selben bestätigten Benutzer für denselben
+  bestehenden Partner, dieselbe E-Mail und exakt dieselbe aktive Version stammen.
+  In diesem Fall wird der alte Nachweis referenziert, kein neuer Zeitpunkt erfunden.
+- Das wiederverwendbare Formular `partner-legal-step.js` zeigt bestehende Nachweise
+  als Text und neue Bestätigungen als **nicht vorausgewählte** Pflichtcheckboxen.
+  Es wird erst mit dem zentralen Dienst an neue Entry-Flows angeschlossen.
+- Annahme setzt höchstens LEGAL_ACCEPTED. Weder Partner noch Lizenz werden dadurch
+  aktiviert, auch nicht bei Premium oder einem gefälschten Formularstatus.
+- Abgelaufene, fremde, unbestätigte und Support-/Admin-Kontexte sind ausgeschlossen.
+  Die Edge-Route läuft vor der alten automatischen Basic-Aktivierung.
+
+`accepted_ip` bleibt derzeit NULL: Für die vorhandene Edge-Proxykette wurde kein
+vertrauenswürdiger Client-IP-Header nachgewiesen. Ein vom Browser manipulierbarer
+Forwarded-Header wird nicht als Beweis gespeichert. User-Agent wird begrenzt und
+von Steuerzeichen bereinigt. IP/User-Agent/E-Mail/Vertragstext gelangen nicht in
+den allgemeinen Audit-Metadatensatz. Die genaue Aufbewahrung ist rechtlich zu klären.
+
+Malware-Vorbereitung: Die bestehende private DRAFT→APPROVED-Sperre ist der
+Integrationspunkt für einen späteren Scanner. MIME-/PDF-Signaturprüfung ist kein
+Virenscan; ohne konfigurierten Scanner wird kein Scan-Erfolg behauptet.

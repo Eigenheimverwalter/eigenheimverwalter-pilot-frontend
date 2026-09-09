@@ -41,6 +41,7 @@ export async function legalDocumentRequest({method,path,body={},profile,roleProf
   const row=await store.get(match[1]);if(!row)fail('Dokument nicht gefunden.',404);
   if(method==='GET'&&match[2]){
     if(row.deletion_requested_at)fail('Die Dateilöschung wurde bereits begonnen.',410);
+    await store.viewed(row.id,profile.id);
     return{status:200,body:{url:await files.signedUrl(row.storage_path,60,row.file_name),expiresIn:60,asset:{...legalDocumentMetadata(row),publishedAt:row.approved_at}}};
   }
   if(match[2]||!['PATCH','DELETE'].includes(method))fail('Methode nicht unterstützt.',405);

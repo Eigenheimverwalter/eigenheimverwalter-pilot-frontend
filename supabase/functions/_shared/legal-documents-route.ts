@@ -15,6 +15,7 @@ export async function legalDocumentsRoute(req:Request,path:string,service:any,pr
   const store={
     list:async()=>{const rows=await checked(service.from('legal_documents').select('*').order('uploaded_at',{ascending:false}),'Rechtsdokumente konnten nicht geladen werden.');const ids=[...new Set(rows.map((r:any)=>r.uploaded_by).filter(Boolean))];const users=ids.length?await checked(service.from('portal_users').select('id,display_name').in('id',ids),'Ersteller konnten nicht geladen werden.'):[];return rows.map((r:any)=>({...r,uploaded_by_name:users.find((u:any)=>u.id===r.uploaded_by)?.display_name}));},
     get:async(id:string)=>await checked(service.from('legal_documents').select('*').eq('id',id).maybeSingle(),'Dokument konnte nicht geprüft werden.'),
+    viewed:async(id:string,actor:string)=>await checked(service.rpc('audit_legal_preview',{p_document:id,p_actor:actor}),'Dokumentaufruf konnte nicht protokolliert werden.'),
     change:async(action:string,id:string,actor:string,revision:number|null,data:any)=>await checked(service.rpc('change_legal_document',{p_action:action,p_id:id,p_actor:actor,p_revision:revision,p_data:data}),'Dokumentänderung konnte nicht bestätigt werden.'),
   };
   const files={

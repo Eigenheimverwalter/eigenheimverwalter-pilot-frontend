@@ -8,7 +8,7 @@ const id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const pdf='data:application/pdf;base64,'+Buffer.from('%PDF-1.4\nLegal test fixture\n%%EOF').toString('base64');
 function fixture(){
   const rows=new Map(),blobs=new Map(),events=[];let failRemove=false,uncertainInsert=false;
-  const store={list:async()=>[...rows.values()],get:async id=>rows.get(id),change:async(action,id,actor,revision,data)=>{
+  const store={viewed:async()=>events.push('VIEWED'),list:async()=>[...rows.values()],get:async id=>rows.get(id),change:async(action,id,actor,revision,data)=>{
     let row=rows.get(id);
     if(action==='UPLOAD'){row={id,...data,version:1,revision:1,status:'DRAFT',uploaded_at:'2026-09-09T00:00:00Z',uploaded_by:actor};rows.set(id,row);if(uncertainInsert)throw Error('response lost');}
     else{if(row.revision!==revision)throw Error('conflict');if(action==='DELETE_COMPLETE'){rows.delete(id);return row;}if(action==='DELETE_PREPARE')row.deletion_requested_at='now';else row.status={APPROVE:'APPROVED',ACTIVATE:'ACTIVE',ARCHIVE:'ARCHIVED'}[action];row.revision++;}
@@ -37,6 +37,7 @@ test('Wrong file type, oversize, missing title/text, missing permission and supp
 test('Uncertain committed insert keeps the legal evidence bytes',async()=>{const f=fixture();f.setUncertainInsert(true);const r=await f.upload();assert.equal(r.status,201);assert.equal(f.blobs.size,1);assert.equal(f.rows.size,1)});
 test('Preview requires permission and issues only short signed URLs',async()=>{
   const f=fixture();await f.upload();const r=await f.request({method:'GET',path:`/legal-documents/${id}/file`});assert.equal(r.body.expiresIn,60);
+  assert.ok(f.events.includes('VIEWED'));
   await assert.rejects(f.request({method:'GET',path:`/legal-documents/${id}/file`,profile:light}),e=>e.status===403);
 });
 test('Admin Light upload permission cannot approve or activate',async()=>{

@@ -66,8 +66,27 @@ dass in einem anderen Secretspeicher keine Stripe-Zugänge existieren.
 - Bestehende aktive Partner werden nicht pauschal gesperrt oder rückwirkend mit
   fingierten Zustimmungen versehen. Neue Eintritte/Upgrades verwenden den neuen
   Ablauf erst nach gemeinsamer, getesteter Umschaltung.
-- Anforderungstext endet bei `legal_document_approved`; mögliche Folgeanforderungen
-  müssen vor endgültiger Abnahme ergänzt werden.
+- Die Ergänzung AH–AQ wurde am 09.09.2026 vollständig gelesen. Der vor weiteren
+  Änderungen ausgegebene A–P-Bericht ist in `PARTNER_ONBOARDING_PRE_IMPLEMENTATION.md`
+  festgehalten. Die dort verlangte Phasenfolge ist verbindlich.
+
+## Ergänzung nach Bestandsprüfung / Phase 2
+
+Der in Phase 1 geprüfte Ausgangsstand oben bleibt als historischer Befund erhalten.
+Die Rechtsdokumentenverwaltung wurde mit PR 25 (`09bda8b`) ausgerollt;
+Backend-Lauf 34344824582 und Frontend-Lauf 34345088760 waren erfolgreich.
+Phase 2 ergänzt jetzt den transaktionalen Zustimmungsschritt, Preview-Audit,
+versionsgenaue Wiederverwendung beim Upgrade und ein wiederverwendbares
+Zustimmungsformular. Keine automatische Aktivierung durch diesen Schritt.
+
+Die Tabellen und Fachregeln sind nicht mit einem fertig integrierten
+`PartnerOnboardingService` gleichzusetzen. Die bestehenden Registrierungswege
+werden erst zusammen mit dessen Freigabesperren umgestellt. Das neue
+Formular ist deshalb noch nicht an alte Einladungslinks angehängt.
+
+Verbindliche weitere Reihenfolge aus AO: 3 zentraler Dienst, 4 SalesOS-Anbindung,
+5 Self-Service, 6 Basic-Limit, 7 PLZ/Stripe/Aktivierung, 8 Regression und Go-live.
+Ein grüner Phase-2-Test ist keine Abnahme der noch nicht angebundenen Phasen.
 
 Stripe-Referenzen: https://docs.stripe.com/webhooks und
 https://docs.stripe.com/checkout/fulfillment (am 09.09.2026 geprüft).
