@@ -92,6 +92,7 @@ echo 'Authentifizierte Pilot-Sitzung bestätigt.'
 
 # Inspect existing Basic accounts without logging in as them or changing them.
 PILOT_SMOKE_ACCESS_TOKEN="$access_token" node scripts/smoke-basic-partner-access.mjs
+PILOT_SMOKE_ACCESS_TOKEN="$access_token" node scripts/smoke-marketing-kit.mjs
 
 dashboard=$(curl --fail --silent --show-error "${api}/functions/v1/portal-api/dashboard" \
   -H "Authorization: Bearer ${access_token}" -H "Origin: https://eigenheimverwalter.github.io")

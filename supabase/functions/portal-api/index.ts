@@ -4,6 +4,7 @@ import {
   type PortalProfile,
 } from "../_shared/runtime.ts";
 import { readRoute } from "../_shared/read-routes.ts";
+import { marketingKitRoute } from "../_shared/marketing-kit-route.ts";
 import { writeRoute } from "../_shared/write-routes.ts";
 import { DwdWarningProvider } from "../_shared/weather-providers.mjs";
 import { sendPortalMail } from "../_shared/mail.ts";
@@ -147,6 +148,13 @@ Deno.serve(async (req) => {
 
   if (req.method === "GET" && routePath === "/me") {
     return json({ user: { ...effectiveProfile, email: effectiveEmail }, supportView });
+  }
+  if (routePath === '/marketing-kit' || routePath.startsWith('/marketing-kit/')) {
+    try {
+      const partner=sourcePartner((await loadRuntime(serviceClient)).state,effectiveSourceUserId);
+      const result=await marketingKitRoute(req,routePath,serviceClient,effectiveProfile,partner,Boolean(supportView));
+      return json(result.body,result.status);
+    } catch(error) {return json({error:error instanceof Error?error.message:'Marketing-Kit fehlgeschlagen'},Number((error as {status?:number}).status||500));}
   }
   if (req.method === "GET" && routePath === "/dashboard") {
     try { return json(dashboard((await loadRuntime(serviceClient)).state, effectiveProfile, effectiveSourceUserId)); }
