@@ -27,3 +27,7 @@ jobs:
         run: git diff --check
       - name: Run complete test suite
         run: npm test
+      - name: Validate additive legal schema in isolated PostgreSQL
+        run: |
+          npm install --prefix "$RUNNER_TEMP/pilot-sql-check" --no-save --ignore-scripts @electric-sql/pglite@0.5.8
+          node scripts/check-onboarding-sql.mjs "$RUNNER_TEMP/pilot-sql-check/node_modules/@electric-sql/pglite/dist/index.js"

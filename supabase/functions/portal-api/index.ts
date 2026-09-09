@@ -5,6 +5,7 @@ import {
 } from "../_shared/runtime.ts";
 import { readRoute } from "../_shared/read-routes.ts";
 import { marketingKitRoute } from "../_shared/marketing-kit-route.ts";
+import { legalDocumentsRoute } from "../_shared/legal-documents-route.ts";
 import { writeRoute } from "../_shared/write-routes.ts";
 import { DwdWarningProvider } from "../_shared/weather-providers.mjs";
 import { sendPortalMail } from "../_shared/mail.ts";
@@ -148,6 +149,13 @@ Deno.serve(async (req) => {
 
   if (req.method === "GET" && routePath === "/me") {
     return json({ user: { ...effectiveProfile, email: effectiveEmail }, supportView });
+  }
+  if (routePath === '/legal-documents' || routePath.startsWith('/legal-documents/')) {
+    try {
+      const snapshot=await loadRuntime(serviceClient);
+      const result=await legalDocumentsRoute(req,routePath,serviceClient,effectiveProfile,snapshot.state,Boolean(supportView));
+      return json(result.body,result.status);
+    } catch(error) {return json({error:error instanceof Error?error.message:'Rechtsdokumentenverwaltung fehlgeschlagen',code:(error as {code?:string}).code},Number((error as {status?:number}).status||500));}
   }
   if (routePath === '/marketing-kit' || routePath.startsWith('/marketing-kit/')) {
     try {

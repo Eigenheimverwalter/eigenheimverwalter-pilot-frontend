@@ -1,0 +1,48 @@
+// Isolated PostgreSQL-engine validation. Never connects to Supabase or a network
+// database. Pass an installed @electric-sql/pglite module file as the first arg.
+import {pathToFileURL} from 'node:url';
+import {readFileSync} from 'node:fs';
+import {resolve} from 'node:path';
+import assert from 'node:assert/strict';
+if(!process.argv[2])throw Error('Path to isolated PGlite module required');
+const {PGlite}=await import(pathToFileURL(resolve(process.argv[2])).href),db=new PGlite();
+const admin='11111111-1111-4111-8111-111111111111',light='22222222-2222-4222-8222-222222222222',onboard='33333333-3333-4333-8333-333333333333';
+try{
+  await db.exec(`create role anon; create role authenticated; create role service_role;
+    create schema auth; create schema storage;
+    create table auth.users(id uuid primary key);
+    create table public.portal_users(id uuid primary key,role text,status text);
+    create table public.portal_runtime_state(id text primary key,payload jsonb);
+    create table public.audit_events(id bigint generated always as identity,actor_user_id uuid,action text,entity_type text,entity_id text,metadata jsonb);
+    create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
+    insert into public.portal_users values('${admin}','super_admin','active'),('${light}','admin_light','active');
+    insert into public.portal_runtime_state values('primary','{}');`);
+  await db.exec(readFileSync(new URL('../supabase/migrations/202609090002_partner_legal_documents.sql',import.meta.url),'utf8'));
+  const change=async(action,id,revision,data={},actor=admin)=>(await db.query('select public.change_legal_document($1,$2,$3,$4,$5) as doc',[action,id,actor,revision,JSON.stringify(data)])).rows[0].doc;
+  const upload=async(actor=admin)=>{const id=crypto.randomUUID();return change('UPLOAD',id,null,{document_type:'TERMS',title:'Isolated SQL fixture',file_name:'fixture.pdf',storage_path:id+'/fixture.pdf',file_size:20,sha256:'a'.repeat(64),acceptance_text:'Test consent'},actor)};
+  const one=await upload();assert.equal(one.version,1);assert.equal(one.status,'DRAFT');
+  await assert.rejects(upload(light),/LEGAL_PERMISSION_DENIED/);
+  const approved=await change('APPROVE',one.id,one.revision);
+  await assert.rejects(change('ACTIVATE',one.id,approved.revision,{effective_from:'2999-01-01'}),/LEGAL_EFFECTIVE_DATE_REQUIRED/);
+  const active=await change('ACTIVATE',one.id,approved.revision,{effective_from:'2026-01-01'});
+  await db.query(`insert into public.partner_onboardings(id,source,requested_plan,partner_type,prefilled_data,identity_verified,status) values($1,'SELF_SERVICE_BASIC','BASIC','REFERRAL',$2,true,'LEGAL_PENDING')`,[onboard,JSON.stringify({email:'fixture@example.invalid'})]);
+  await db.query(`insert into public.legal_acceptances(onboarding_id,legal_document_id,document_type,document_version,accepted_by_email,acceptance_text,accepted_at) values($1,$2,'FORGED',999,'fixture@example.invalid','forged','2000-01-01')`,[onboard,one.id]);
+  const evidence=(await db.query('select * from public.legal_acceptances')).rows[0];assert.equal(evidence.document_version,1);assert.equal(evidence.document_type,'TERMS');assert.equal(evidence.acceptance_text,'Test consent');assert.notEqual(new Date(evidence.accepted_at).getUTCFullYear(),2000);
+  await assert.rejects(db.query('update public.legal_acceptances set document_version=2'),/LEGAL_ACCEPTANCE_IMMUTABLE/);
+  await assert.rejects(db.query('delete from public.legal_acceptances'),/LEGAL_ACCEPTANCE_IMMUTABLE/);
+  await assert.rejects(db.query("update public.legal_documents set storage_path='changed' where id=$1",[one.id]),/LEGAL_DOCUMENT_VERSION_IMMUTABLE/);
+  await assert.rejects(change('DELETE_PREPARE',one.id,active.revision),/LEGAL_DOCUMENT_RETAINED/);
+  const two=await upload(),twoApproved=await change('APPROVE',two.id,two.revision);await change('ACTIVATE',two.id,twoApproved.revision,{effective_from:'2026-01-01'});
+  assert.equal((await db.query("select count(*)::int as n from public.legal_documents where status='ACTIVE'")).rows[0].n,1);
+  assert.equal((await db.query('select status from public.legal_documents where id=$1',[one.id])).rows[0].status,'ARCHIVED');
+  assert.equal((await db.query('select document_version from public.legal_acceptances')).rows[0].document_version,1);
+  await assert.rejects(db.query(`insert into public.legal_acceptances(onboarding_id,legal_document_id,document_type,document_version,accepted_by_email,acceptance_text) values($1,$2,'TERMS',1,'fixture@example.invalid','old')`,[onboard,one.id]),/LEGAL_VERSION_NOT_ACTIVE/);
+  const three=await upload();await assert.rejects(change('APPROVE',three.id,999),/LEGAL_VERSION_CONFLICT/);
+  const hidden=await change('DELETE_PREPARE',three.id,three.revision);await change('DELETE_COMPLETE',three.id,hidden.revision);
+  assert.equal((await upload()).version,4,'Deleted draft numbers must never be reused');
+  await db.query('update public.portal_runtime_state set payload=$1',[JSON.stringify({roleProfiles:[{role:'admin_light',permissions:['legal_documents.read','legal_documents.upload']}]})]);
+  const lightDraft=await upload(light);await assert.rejects(change('APPROVE',lightDraft.id,lightDraft.revision,{},light),/LEGAL_PERMISSION_DENIED/);
+  assert.equal((await db.query("select public from storage.buckets where id='ehv-legal-documents'")).rows[0].public,false);
+  const policies=await db.query("select relname,relrowsecurity from pg_class where relname in ('partner_onboardings','legal_documents','legal_acceptances')");assert.ok(policies.rows.every(r=>r.relrowsecurity));
+  console.log(JSON.stringify({isolatedPostgres:true,migrationExecuted:true,immutableEvidence:true,atomicActiveVersion:true,retention:true,monotonicVersions:true,adminLightPermissions:true,privateStorage:true,productionDataAccess:false}));
+}finally{await db.close()}

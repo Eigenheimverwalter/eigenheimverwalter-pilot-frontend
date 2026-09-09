@@ -1,0 +1,73 @@
+# Zentraler Partnerprozess – Bestandsprüfung und Einführung
+
+Stand der Prüfung: 09.09.2026. Dies ist eine Erweiterung, kein Ersatzsystem.
+
+## Verifizierter Ausgangsstand
+
+- Pilot: `Eigenheimverwalter/eigenheimverwalter-pilot-admin`, main `8349793`;
+  Supabase `rpniwtshbwjuesoeztyt`. API, Public API und Mail-Health liefern HTTP 200.
+- Oberfläche: `eigenheimverwalter-pilot-frontend`; Marketing-Kit in `e70de56` ausgeliefert.
+- SalesOS-Quellcode: `Eigenheimverwalter/eigenheimverwalter-Sales`, nicht das
+  Veröffentlichungsrepository `eigenheimverwalter-Webseite`.
+- Jüngster erfolgreicher Live-Integritätstest: Workflow 34340297477. Enthält Auth,
+  Recovery, ACL, 360°-Lesesicht, Referral, private Dokumente und Marketing-Kit.
+  Dies ist kein neuer vollständiger Datenbankexport.
+- Fachlicher Pilot-Bestand liegt weiterhin im versionierten `portal_runtime_state`.
+  Die relationalen `partners`/`partner_postal_licenses` sind nicht als alternative
+  vollständige Source of Truth zu behandeln. Bestehende Partner-IDs sind teils Text,
+  nicht UUIDs. Keine stillschweigende Umnummerierung oder Doppelanlage.
+
+| Bestand | Wiederverwendung / nötige Änderung |
+|---|---|
+| Supabase Auth + identity_imports | Identität und Passwortprozess erhalten; verifizierte E-Mail allein darf künftig nicht aktivieren |
+| portal-public/partner-basic/register | Vorhandener Self-Service; derzeit Aktivierung beim ersten authentifizierten Request |
+| partner-invitations | Token-Hash, Ablauf, Einmalannahme und Mailversand erhalten; derzeit direkte Aktivierung bei Passwortvergabe |
+| portal-sales-onboarding | Bestehende serverseitige, idempotente Basic-Brücke erhalten; auf zentralen Dienst erweitern |
+| Sales win_lead_and_assign_licenses | Aufgaben-/Versionsprüfungen erhalten; derzeit Lizenzvergabe direkt beim Gewinn |
+| Sales basic_partner_onboarding | Vorhandene Versand-Outbox/Statusabgleich weiterverwenden, nicht daneben eine zweite Sales-Outbox bauen |
+| lib/sales-os-partner-sync.mjs | Import kann derzeit aktiv setzen; bei Umschaltung zentralen Dienst verwenden |
+| /api/partners/{id}/license | Zwei enthaltene PLZ und Lizenzhistorie erhalten; Reservierungen und Onboarding-Gate ergänzen |
+| Referral / assignments | Bestätigung und IDs erhalten; drei eigene Immobilien werden aktuell noch nicht begrenzt |
+| Partner Basic / Makler / Equipment | Vorhandene Dashboards, Schemafelder, Serviceakte, Dokumente und Kundenumfang behalten |
+| roleProfiles / ACL / Support View | Detailrechte ergänzen; kein Schreiben aus Support-Sicht, keine privilegierten Partnerrollen |
+| PLZ-Katalog / Opportunities | Vorhandenen Katalog und aktive Lizenzbelegungen verwenden; keine PLZ-Verfügbarkeit aus fehlenden Datensätzen erfinden |
+| Dokument-API / Marketing-Kit | Private Storage- und Vorschaukonventionen wiederverwenden; Rechtsdokumente wegen Beweiserhalt getrennt versionieren |
+| Audit | Vorhandene audit_events und transaktionale Runtime-Revision verwenden |
+
+## Noch nicht als vorhanden verifiziert
+
+Kein zentraler Onboardingdienst, keine Rechtsannahmen, kein 3-Immobilien-Limit und
+kein Stripe-Lebenszyklus im geprüften Pilot-Code. GitHub-Staging enthält Supabase-
+Konfiguration, aber keine dort sichtbaren Stripe-Secretnamen. Das beweist nicht,
+dass in einem anderen Secretspeicher keine Stripe-Zugänge existieren.
+
+## Einführung ohne harten Schnitt
+
+1. Rechtsdokumentenverwaltung und prüfbare gemeinsame Fachregeln ergänzen.
+2. Gemeinsamen transaktionalen Onboardingdienst mit den bestehenden Entry-Routen
+   verbinden. Die alten Aktivierungsstellen müssen zusammen umgestellt werden.
+3. SalesOS-WON-Dialog, RPC, bestehende Outbox und Rücksynchronisierung gemeinsam
+   erweitern. Kein Pilot-Cutover bei noch direkter Sales-Lizenzvergabe.
+4. Checkout, verifizierten Webhook, transaktionale PLZ-Reservierung, Ablauf und
+   Wiederholung mit Stripe-Testmodus prüfen. Ein Success-Redirect aktiviert nie.
+5. Basic-Limit und Upgrade über bestehende Assignments; überzählige bestätigte
+   Empfehlungen behalten und nach erfolgreichem Upgrade zulassen.
+6. Ende-zu-Ende-Abnahme für alle Quellen, Premium direkt/Upgrade, Double-Clicks,
+   zeitgleiche PLZ-Buchung, neue Rechtsversion während Checkout, abgelaufene Links,
+   verzögerte/mehrfache Webhooks, fehlgeschlagene Zahlung, Mailfehler und ACL.
+
+## Freischaltungsvoraussetzungen
+
+- Fachlich/rechtlich freigegebene PDF-Dokumente mit Versions- und Gültigkeitsdatum;
+  keine generierten Vertragsbedingungen als Ersatz für Freigabe.
+- Bestätigte planabhängige Preise/Stripe-Price-IDs, Währung, Zahlungsintervall,
+  Laufzeit/Kündigungsregeln; diese werden nicht aus alten UI-Preisen abgeleitet.
+- Stripe-Testzugriff und projektspezifisches Webhook-Secret sicher konfiguriert.
+- Bestehende aktive Partner werden nicht pauschal gesperrt oder rückwirkend mit
+  fingierten Zustimmungen versehen. Neue Eintritte/Upgrades verwenden den neuen
+  Ablauf erst nach gemeinsamer, getesteter Umschaltung.
+- Anforderungstext endet bei `legal_document_approved`; mögliche Folgeanforderungen
+  müssen vor endgültiger Abnahme ergänzt werden.
+
+Stripe-Referenzen: https://docs.stripe.com/webhooks und
+https://docs.stripe.com/checkout/fulfillment (am 09.09.2026 geprüft).
