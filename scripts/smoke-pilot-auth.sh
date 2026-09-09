@@ -94,6 +94,7 @@ echo 'Authentifizierte Pilot-Sitzung bestätigt.'
 PILOT_SMOKE_ACCESS_TOKEN="$access_token" node scripts/smoke-basic-partner-access.mjs
 PILOT_SMOKE_ACCESS_TOKEN="$access_token" node scripts/smoke-marketing-kit.mjs
 PILOT_SMOKE_ACCESS_TOKEN="$access_token" node scripts/smoke-legal-access.mjs
+PILOT_SMOKE_ACCESS_TOKEN="$access_token" node scripts/smoke-onboarding-service.mjs
 
 dashboard=$(curl --fail --silent --show-error "${api}/functions/v1/portal-api/dashboard" \
   -H "Authorization: Bearer ${access_token}" -H "Origin: https://eigenheimverwalter.github.io")

@@ -88,5 +88,53 @@ Verbindliche weitere Reihenfolge aus AO: 3 zentraler Dienst, 4 SalesOS-Anbindung
 5 Self-Service, 6 Basic-Limit, 7 PLZ/Stripe/Aktivierung, 8 Regression und Go-live.
 Ein grüner Phase-2-Test ist keine Abnahme der noch nicht angebundenen Phasen.
 
+## Phase 3: zentraler Dienst (09.09.2026)
+
+`PartnerOnboardingService` und ein gemeinsamer Supabase-Adapter verwenden die
+bestehende Tabelle `partner_onboardings` und die vorhandene Rechtsannahme.
+Migration `202609090005` ergänzt ausschließlich Orchestrierungsmetadaten und
+private, transaktionale Funktionen. Keine Partner-/User-IDs werden verändert.
+
+- Erzeugung für alle fünf Entry Sources mit eindeutigem Anfrage-Schlüssel;
+  SalesOS zusätzlich mit Lead-ID. Wiederholungen erzeugen keine zweite Anmeldung.
+- Ein neuer 256-Bit-Linktoken wird nur beim ersten Erzeugen zurückgegeben;
+  gespeichert wird ausschließlich SHA-256. Wiederholungen verraten/rotieren den
+  alten Token nicht. Die Entry-Adapter müssen die Mailzustellung über ihre
+  vorhandene Outbox organisieren; ein verlorener Token erfordert einen späteren
+  expliziten Erneuerungsweg, keinen automatischen zweiten Versand.
+- Start erfordert die bestätigte Supabase-Identität derselben E-Mail und den
+  Token bei erstmaliger Bindung; danach nur diese Identität. Support ausgeschlossen.
+- Datenpflege verwendet Versionen gegen verlorene Updates. E-Mail, Plan, Rollen,
+  Partner-ID und Status sind kein frei beschreibbarer Datenpayload. Nach der
+  Rechtsannahme sind Vertragsdaten in diesem Schritt eingefroren.
+- Bestätigter Einladungsversand kann serverseitig mit einer Referenz aus der
+  bestehenden Mail-Outbox als `INVITED` verbucht werden. Kein neuer Maildienst.
+- Admin Light nutzt bestehende `partners.read`/`partners.write`-Permissions.
+- Erstellung, Versandbestätigung, Start, Datenpflege, Ablauf und Abbruch werden
+  auditiert, ohne E-Mail-Adressen oder Linktokens im allgemeinen Audit-Log.
+- Keine Funktion dieses Bausteins schreibt `ACTIVE`, Zahlungserfolg, Lizenzen,
+  Regionen oder den fachlichen Runtime-Bestand. Basic nach Rechtsannahme meldet
+  ausdrücklich `ACTIVATION_PENDING`, nicht erfolgreich aktiviert.
+
+Die neuen HTTP-Routen sind serverseitig standardmäßig gesperrt
+(`PILOT_PARTNER_ONBOARDING_ENABLED` ist NICHT gesetzt). Sie dürfen erst beim
+gemeinsamen Cutover der Entry-Adapter aktiviert werden. Der bestehende Legal-Step
+bleibt davon unabhängig. Keinen vorhandenen aktiven Partner rückwirkend sperren.
+
+Neue interne Routen: POST `/partner-onboarding`, GET `/partner-onboarding/{id}`,
+POST `/{id}/start`, PATCH `/{id}/data`, POST `/{id}/cancel` jeweils unter
+`/partner-onboarding`. SalesOS/CRM sind nicht aus dem Browser wählbar.
+
+Abnahme: Dienst-/HTTP-Tests und isolierte PostgreSQL-Tests einschließlich
+Wiederholung, Tokenbindung, abweichender Identität, Versionskonflikt, Ablauf,
+Vertragsdaten-Sperre, unverändertem Runtime-Bestand und gesperrter RPC-Ausführung
+für `authenticated`. Der Deploy prüft zusätzlich Schema, private RPC und den
+geschlossenen Rollout-Schalter ohne neue Geschäftsdaten.
+
+Weiter offen: Phasen 4–8 (SalesOS, öffentliche Registrierung/Einladungen,
+Basic-Limit, Checkout/Reservierung/Webhook-Aktivierung und vollständige Abnahme).
+Die Stripe-Sandbox-Tarife und 19-%-Steuerrate sind separat in
+`PILOT_STRIPE_SANDBOX_CONFIGURATION.md` dokumentiert. Noch kein echter Upsell-Test.
+
 Stripe-Referenzen: https://docs.stripe.com/webhooks und
 https://docs.stripe.com/checkout/fulfillment (am 09.09.2026 geprüft).
