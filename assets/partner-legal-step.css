@@ -1,0 +1,7 @@
+[data-partner-legal-step]{max-width:64rem;margin-inline:auto}
+[data-partner-legal-step] th,[data-partner-legal-step] td{vertical-align:top}
+[data-partner-legal-step] td:first-child{overflow-wrap:anywhere}
+[data-partner-legal-step] .legal-consent-row{display:grid;grid-template-columns:1.4rem 1fr;gap:.75rem;align-items:start;margin-block:1.25rem;font-size:1rem;line-height:1.5}
+[data-partner-legal-step] .legal-consent-row input{width:1.25rem;height:1.25rem;margin:.15rem 0 0;accent-color:var(--accent,#49adc4)}
+[data-partner-legal-step] button:disabled{opacity:.55;cursor:not-allowed}
+[data-partner-legal-step] [data-legal-status]:empty{display:none}
