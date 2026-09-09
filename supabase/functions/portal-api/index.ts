@@ -145,10 +145,10 @@ Deno.serve(async (req) => {
   const supportTarget=req.headers.get("x-ehv-support-user");
   if(supportTarget){if(!canUseSupportView(profile))return json({error:"Keine Berechtigung"},403);if(req.method!=="GET")return json({error:"Support-Sicht ist ausschließlich lesend"},403);const {data:target}=await serviceClient.from("portal_users").select("id,display_name,role,status,created_at").eq("id",supportTarget).eq("status","active").maybeSingle();if(!target)return json({error:"Support-Ziel ist nicht mehr verfügbar"},410);const {data:identity}=await serviceClient.from("identity_imports").select("source_user_id,email").eq("auth_user_id",supportTarget).maybeSingle();effectiveProfile=target as PortalProfile;effectiveSourceUserId=identity?.source_user_id?String(identity.source_user_id):null;effectiveEmail=identity?.email||null;supportView={actor:{id:profile.id,name:profile.display_name,role:profile.role},target:{id:target.id,name:target.display_name,role:target.role},readOnly:true};}
 
-  if (req.method === "GET" && url.pathname.endsWith("/me")) {
+  if (req.method === "GET" && routePath === "/me") {
     return json({ user: { ...effectiveProfile, email: effectiveEmail }, supportView });
   }
-  if (req.method === "GET" && url.pathname.endsWith("/dashboard")) {
+  if (req.method === "GET" && routePath === "/dashboard") {
     try { return json(dashboard((await loadRuntime(serviceClient)).state, effectiveProfile, effectiveSourceUserId)); }
     catch (error) { return json({ error: error instanceof Error ? error.message : "Datenzugriff fehlgeschlagen" }, 503); }
   }

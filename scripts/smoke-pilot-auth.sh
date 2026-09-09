@@ -90,6 +90,9 @@ me=$(curl --fail --silent --show-error "${api}/functions/v1/portal-api/me" \
 jq -e --arg role "$smoke_role" '.user.role==$role and .user.status=="active"' >/dev/null <<< "$me"
 echo 'Authentifizierte Pilot-Sitzung bestätigt.'
 
+# Inspect existing Basic accounts without logging in as them or changing them.
+PILOT_SMOKE_ACCESS_TOKEN="$access_token" node scripts/smoke-basic-partner-access.mjs
+
 dashboard=$(curl --fail --silent --show-error "${api}/functions/v1/portal-api/dashboard" \
   -H "Authorization: Bearer ${access_token}" -H "Origin: https://eigenheimverwalter.github.io")
 jq -e '.source=="supabase" and (.kpis|type=="object")' >/dev/null <<< "$dashboard"
