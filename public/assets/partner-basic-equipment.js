@@ -1,6 +1,7 @@
+import { portalRequest } from './partner-referrals.js?v=20260909-qr-1';
 const q=s=>document.querySelector(s);
 const h=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const request=async(path,options={})=>{const response=await fetch(path,{...options,headers:{'Content-Type':'application/json',...(options.headers||{})}}),data=await response.json().catch(()=>({}));if(!response.ok)throw Error(data.error||'Ein Fehler ist aufgetreten');return data};
+const request=portalRequest;
 const write=async(path,options={})=>{const {csrf}=await request('/api/me');return request(path,{...options,headers:{'X-CSRF-Token':csrf,...(options.headers||{})}})};
 const encodeFile=file=>new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(file)});
 const close=()=>q('.basic-equipment-modal')?.remove();
@@ -28,4 +29,4 @@ async function openEquipment(propertyId,equipmentId,tradeName){
   renderDetails();
 }
 
-document.addEventListener('click',event=>{const button=event.target.closest('.basic-equipment');if(!button)return;event.preventDefault();event.stopImmediatePropagation();const tradeName=button.closest('tr')?.children?.[2]?.textContent.trim().replace(' noch nicht eingerichtet','')||'Gewerk';openEquipment(button.dataset.property,button.dataset.equipment,tradeName).catch(error=>alert(error.message))},true);
+document.addEventListener('click',event=>{const button=event.target.closest('.basic-equipment');if(!button)return;event.preventDefault();event.stopImmediatePropagation();const tradeName=button.dataset.tradeName||'Gewerk';openEquipment(button.dataset.property,button.dataset.equipment,tradeName).catch(error=>alert(error.message))},true);

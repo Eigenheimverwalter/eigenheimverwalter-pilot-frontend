@@ -1,0 +1,6 @@
+#partner-referral-actions { padding:1.25rem; margin-bottom:1.25rem; }
+#partner-referral-actions .toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:.75rem; }
+#partner-referral-actions .toolbar > div { flex:1 1 18rem; }
+.partner-qr-code { background:#fff; width:min(100%,22rem); margin:1rem auto; }
+.partner-qr-code svg { display:block; width:100%; height:auto; }
+.customer-action-group { display:flex; flex-wrap:wrap; gap:.5rem; }

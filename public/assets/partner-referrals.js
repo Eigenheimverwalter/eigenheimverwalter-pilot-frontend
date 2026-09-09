@@ -1,4 +1,6 @@
 import { portalRootPath } from './portal-navigation.mjs';
+import { makeReferralQr } from './referral-qr.mjs';
+import { customerTableHead, propertyRegion } from './customer-overview.mjs';
 
 const q = selector => document.querySelector(selector);
 const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
@@ -26,6 +28,23 @@ const errorDialog = error => dialog('Kundenempfehlung', `<p class="error" role="
 export function referralLink(path) {
   if (!/^\/ref\/[^/?#]+$/.test(String(path))) throw new Error('Der persönliche Empfehlungslink ist nicht verfügbar.');
   return new URL(portalRootPath(window.__EHV_RUNTIME__?.basePath) + path.slice(1), location.origin).href;
+}
+
+export async function showPartnerQr() {
+  if (readonly()) return errorDialog(new Error('Die Supportansicht ist ausschließlich lesend.'));
+  try {
+    const d = await portalRequest('/api/referral');
+    if (!d.partner?.canRecommend) throw new Error('Für diesen Zugang ist kein Empfehlungslink freigegeben.');
+    const code = makeReferralQr(referralLink(d.link));
+    dialog('Ihr persönlicher Empfehlungs-QR-Code', `<p><b>${escape(d.partner.company)}</b></p><div class="partner-qr-code" role="img" aria-label="QR-Code zum persönlichen Empfehlungsformular">${code.svg}</div><p>Beim Scannen öffnet sich Ihr Empfehlungsformular. Die Anfrage wird eindeutig Ihrem Partnerkonto zugeordnet.</p><label>Empfehlungslink<input value="${escape(code.link)}" readonly></label><button type="button" class="primary" id="download-partner-qr">QR-Code herunterladen (SVG)</button>`);
+    q('#download-partner-qr').onclick = () => {
+      const url = URL.createObjectURL(new Blob([code.svg],{type:'image/svg+xml'}));
+      const link = document.createElement('a');
+      link.href = url; link.download = 'eigenheimverwalter-partner-qr.svg';
+      document.body.append(link); link.click(); link.remove();
+      setTimeout(() => URL.revokeObjectURL(url),1000);
+    };
+  } catch (error) { errorDialog(error); }
 }
 
 export function recommendationForm(profile) {
@@ -79,6 +98,8 @@ export async function mountReferralActions() {
   if (!d.partner?.canRecommend || container !== q('#content .page')) return;
   container.insertAdjacentHTML('afterbegin', `<section id="partner-referral-actions" class="card"><div class="toolbar"><div><h3>Kundenempfehlungen</h3><p class="muted">Neue Kunden einladen oder Ihren persönlichen Empfehlungslink weitergeben.</p></div><button type="button" class="primary" id="new-customer-recommendation">Neuen Kunden empfehlen</button></div><div class="referral-link"><input id="partner-referral-url" aria-label="Persönlicher Empfehlungslink" value="${escape(referralLink(d.link))}" readonly><button type="button" class="outline" id="copy-partner-referral">Link kopieren</button></div><p id="referral-copy-status" role="status"></p></section>`);
   q('#new-customer-recommendation').onclick = openCustomerRecommendation;
+  q('#new-customer-recommendation').insertAdjacentHTML('afterend','<button type="button" class="outline" id="show-partner-qr">QR-Code</button>');
+  q('#show-partner-qr').onclick = showPartnerQr;
   q('#copy-partner-referral').onclick = async () => {
     try { await navigator.clipboard.writeText(q('#partner-referral-url').value); q('#referral-copy-status').textContent = 'Empfehlungslink kopiert.'; }
     catch { q('#partner-referral-url').select(); q('#referral-copy-status').textContent = 'Bitte den markierten Link manuell kopieren.'; }
@@ -90,7 +111,7 @@ export async function renderReferralCustomers() {
     const d = await portalRequest('/api/referral');
     const labels = {pending:'Bestätigung offen', accepted:'Vom Kunden bestätigt', successful:'Erfolgreicher Tipp', brokerage_in_progress:'Vermittlung durch eigenheimverwalter Makler', won:'Zugeordnet'};
     q('#section-label').textContent = 'KUNDENEMPFEHLUNGEN'; q('#page-title').textContent = 'Kunden und Immobilien';
-    q('#content').innerHTML = `<div class="page"><h3>Ihre empfohlenen Kunden</h3><p class="muted">${d.partner.referralOnly ? 'Sie sehen ausschließlich Namen, maskierte E-Mail-Adressen und die von Ihnen vermittelten Adressen. Weitere Kunden- und Immobiliendaten bleiben gesperrt.' : 'Die Übersicht enthält ausschließlich Empfehlungen Ihres eigenen Partnerkontos.'}</p><div class="card table-wrap"><table><thead><tr><th>Kundenname</th><th>E-Mail</th><th>Adresse</th><th>Empfohlen am</th><th>Status</th></tr></thead><tbody>${d.invitations.map(row => `<tr><td>${escape(row.name)}</td><td>${escape(row.email)}</td><td>${escape(row.address)}<br>${escape(row.postalCode)} ${escape(row.city)}</td><td>${escape(new Date(row.createdAt).toLocaleDateString('de-DE'))}</td><td>${escape(labels[row.status] || row.status)}</td></tr>`).join('') || '<tr><td colspan="5">Noch keine Kunden empfohlen.</td></tr>'}</tbody></table></div></div>`;
+    q('#content').innerHTML = `<div class="page"><h3>Ihre empfohlenen Kunden</h3><p class="muted">${d.partner.referralOnly ? 'Sie sehen ausschließlich Namen, maskierte E-Mail-Adressen und die von Ihnen vermittelten Adressen. Weitere Kunden- und Immobiliendaten bleiben gesperrt.' : 'Die Übersicht enthält ausschließlich Empfehlungen Ihres eigenen Partnerkontos.'}</p><div class="card table-wrap"><table><thead>${customerTableHead('Verkaufsakte / Equipment')}</thead><tbody>${d.invitations.map(row => `<tr><td>${escape(row.name)}<br><small>${escape(row.email)}</small></td><td>${d.partner.referralOnly?'Nicht freigegeben':'Nicht in der Empfehlung erfasst'}</td><td>${propertyRegion(row)}</td><td>${escape(labels[row.status] || row.status)}<br><small>Empfohlen: ${escape(new Date(row.createdAt).toLocaleDateString('de-DE'))}</small></td><td><span class="muted">${d.partner.referralOnly?'Kein Aktenzugriff als Tippgeber':'Aktenzugriff über die bestätigte Kundenzuordnung'}</span></td></tr>`).join('') || '<tr><td colspan="5">Noch keine Kunden empfohlen.</td></tr>'}</tbody></table></div></div>`;
     await mountReferralActions();
     q('#sidebar')?.classList.remove('open');
   } catch (error) { errorDialog(error); }
