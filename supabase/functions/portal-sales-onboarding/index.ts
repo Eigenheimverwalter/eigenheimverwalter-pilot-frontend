@@ -1,4 +1,6 @@
 import {array,clean,loadRuntime,replaceRuntime,serviceClient} from '../_shared/runtime.ts';
+import {createSupabaseOnboardingService} from '../_shared/partner-onboarding-store.mjs';
+import {handleSalesOnboarding} from '../_shared/sales-onboarding-adapter.mjs';
 
 const hex=(bytes:ArrayBuffer)=>[...new Uint8Array(bytes)].map(x=>x.toString(16).padStart(2,'0')).join('');
 const hash=async(value:string)=>hex(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)));
@@ -15,7 +17,20 @@ Deno.serve(async req=>{
  try{
   const body=await req.json(),job=body.job||{},key=String(job.partnerId||'');
   if(!/^[a-f0-9-]{36}$/i.test(key)||job.organizationId!=='00000000-0000-4000-8000-000000000001')return json({error:'Invalid source'},422);
+  if(job.onboardingVersion!==undefined&&![1,3].includes(job.onboardingVersion))return json({error:'Invalid onboarding version'},422);
   const service=serviceClient(),snapshot=await loadRuntime(service),state=snapshot.state;
+  if(job.onboardingVersion===3){
+   // Never fall through into the legacy invitation/activation path.
+   if(Deno.env.get('PILOT_PARTNER_ONBOARDING_ENABLED')!=='true')return json({error:'ONBOARDING_NOT_RELEASED'},503);
+   const trades=array(state.trades);
+   return json(await handleSalesOnboarding({action:body.action,job,secret,db:service,trades,
+    service:createSupabaseOnboardingService(service,trades),portalUrl:portal,
+    sendMail:async(mail:Record<string,unknown>)=>{
+     const gateway=Deno.env.get('PILOT_MAIL_GATEWAY_TOKEN')||'';if(gateway.length<48)throw Error('Mail not configured');
+     const response=await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/portal-mail`,{method:'POST',headers:{'Content-Type':'application/json','x-pilot-mail-token':gateway},body:JSON.stringify({action:'pilot_send_email',...mail}),signal:AbortSignal.timeout(45000)});
+     return response.ok;
+    }}));
+  }
   const partners=collection(state,'partners'),invitations=collection(state,'partnerInvitations');
   let partner=partners.find(p=>p.sourceRefs&& (p.sourceRefs as Record<string,unknown>).salesOsPartnerId===key),invitation=partner?invitations.find(i=>i.partnerId===partner!.id):undefined;
   if(partner&&(!partner.referralOnly||partner.plan!=='basic'))return json({status:'failed',error:'Vorhandenes Partnerkonto benötigt eine manuelle Zuordnung.'});
