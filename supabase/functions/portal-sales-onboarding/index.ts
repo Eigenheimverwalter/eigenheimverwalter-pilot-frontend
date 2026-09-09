@@ -1,6 +1,7 @@
 import {array,clean,loadRuntime,replaceRuntime,serviceClient} from '../_shared/runtime.ts';
 import {createSupabaseOnboardingService} from '../_shared/partner-onboarding-store.mjs';
 import {handleSalesOnboarding} from '../_shared/sales-onboarding-adapter.mjs';
+import {onboardingServiceErrors} from '../_shared/partner-onboarding-service.mjs';
 
 const hex=(bytes:ArrayBuffer)=>[...new Uint8Array(bytes)].map(x=>x.toString(16).padStart(2,'0')).join('');
 const hash=async(value:string)=>hex(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)));
@@ -70,6 +71,10 @@ Deno.serve(async req=>{
    if(!item)throw Error('Invitation missing');item.mailStatus=result;if(result==='sent')item.sentAt=new Date().toISOString();
    try{await replaceRuntime(service,latest,null as unknown as string,'partner.basic.invitation_'+result,'partner',String(partner.id),{sourcePartnerId:key});return json({status:result,sentAt:item.sentAt||null})}catch(error){if(attempt===2)throw error}
   }
- }catch{return json({error:'Basic-Übergabe konnte nicht bestätigt werden.'},503)}
+ }catch(error){
+  const known=onboardingServiceErrors[(error as {code?:string})?.code||''];
+  if(known)return json({status:'failed',error:known[0]});
+  return json({error:'Partner-Übergabe konnte nicht bestätigt werden.'},503);
+ }
  return json({error:'Übergabe fehlgeschlagen'},503);
 });
