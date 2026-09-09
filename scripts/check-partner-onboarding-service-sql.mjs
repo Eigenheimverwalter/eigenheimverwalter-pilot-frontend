@@ -83,6 +83,10 @@ export async function checkPartnerOnboardingService(db,admin,light){
   // Race-shaped repeated calls leave exactly one durable entry/evidence event.
   const repeated=await Promise.all([create(sales,null),create(sales,null)]);assert.ok(repeated.every(x=>!x.created));
   assert.equal((await db.query("select count(*)::int n from public.audit_events where action='partner_onboarding_created' and entity_id=$1",[salesFlow.onboarding_id])).rows[0].n,1);
+  // Delivery acknowledgement can arrive after the receiver already started.
+  const raceInput=input({prefilled_data:{...request.prefilled_data,email:'flow-other@example.invalid'}}),race=await create(raceInput);
+  await service.step('START',race.onboarding_id,{actorId:other,token:race.secure_onboarding_token});
+  assert.equal((await service.confirmInvitation(race.onboarding_id,{actorId:admin,deliveryReference:'mail-race-1'})).onboarding_status,'STARTED');
   const audit=(await db.query("select metadata from public.audit_events where action like 'partner_onboarding_%'")).rows;
   assert.ok(audit.every(x=>!JSON.stringify(x).includes('@')&&!JSON.stringify(x).includes('token')));
   await db.exec('set role authenticated');

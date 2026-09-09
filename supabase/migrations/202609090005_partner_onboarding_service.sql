@@ -183,9 +183,11 @@ begin
     or (flow.source='SALES_OS' and p_actor is not null)
     or (flow.source<>'SALES_OS' and not public.onboarding_admin_allowed(p_actor,'partners.write')) then raise exception 'ONBOARDING_PERMISSION_DENIED'; end if;
   if flow.invitation_delivery_ref=p_delivery_reference then return to_jsonb(flow)-'token_hash'; end if;
-  if flow.expires_at<=now() then raise exception 'ONBOARDING_EXPIRED'; end if;
-  if flow.status<>'CREATED' or flow.invitation_delivery_ref is not null then raise exception 'ONBOARDING_NOT_OPEN'; end if;
-  update public.partner_onboardings set invitation_delivery_ref=p_delivery_reference,status='INVITED',version=version+1,updated_at=now()
+  if flow.invitation_delivery_ref is not null then raise exception 'ONBOARDING_NOT_OPEN'; end if;
+  -- A recipient may click before the sender receives its acknowledgement.
+  -- Record confirmed delivery without rewinding STARTED/LEGAL/terminal states.
+  update public.partner_onboardings set invitation_delivery_ref=p_delivery_reference,
+    status=case when status='CREATED' and expires_at>now() then 'INVITED' else status end,version=version+1,updated_at=now()
     where id=p_id returning * into flow;
   insert into public.audit_events(actor_user_id,action,entity_type,entity_id,metadata)
     values(p_actor,'partner_onboarding_invited','partner_onboarding',p_id::text,jsonb_build_object('source',flow.source,'deliveryReference',p_delivery_reference));
