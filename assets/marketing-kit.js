@@ -49,7 +49,7 @@ export async function renderMarketingKit(){
     });
   }catch(error){q('#content').innerHTML=`<div class="page"><p class="card error" role="alert">${escape(error.message)}</p></div>`;}
 }
-function previewMarketingFile(result){
+export function previewMarketingFile(result){
   q('.marketing-preview')?.remove();const asset=result.asset;
   document.body.insertAdjacentHTML('beforeend',`<div class="modal marketing-preview" role="dialog" aria-modal="true" aria-label="Dateivorschau"><div class="modal-card"><div class="modal-head"><h3>${escape(asset.name)}</h3><button class="close" aria-label="Vorschau schließen">×</button></div><p>${escape(types[asset.mimeType])} · ${formatMarketingSize(asset.size)}</p><div class="marketing-preview-body"></div><p class="muted">Der Dateilink ist kurzzeitig gültig. Falls nötig, die Vorschau erneut öffnen.</p></div></div>`);
   const modal=q('.marketing-preview'),box=modal.querySelector('.marketing-preview-body'),close=modal.querySelector('.close');close.onclick=()=>modal.remove();close.focus();modal.onkeydown=e=>{if(e.key==='Escape')modal.remove()};
