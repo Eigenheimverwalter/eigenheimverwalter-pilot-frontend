@@ -2,7 +2,7 @@ import './supabase-bridge.js?v=20260910-checkout';
 import {isSelfServicePath,selfServiceEmailMarkup,selfServicePasswordMarkup,selfServicePlanMarkup,validSelfServicePassword} from './partner-self-service.mjs';
 import {renderPartnerLegalStep} from './partner-legal-step.js?v=20260909-onboarding-entry';
 import {onboardingLocation,onboardingAuthMarkup,onboardingDataMarkup,escapeOnboarding as esc} from './partner-onboarding-entry.mjs';
-import {renderPremiumStep} from './partner-premium.js?v=20260910-checkout';
+import {renderPremiumStep} from './partner-premium.js?v=20260910-membership';
 const bridge=window.ehvSupabaseBridge,host=document.querySelector('#onboarding-step'),logout=document.querySelector('#onboarding-logout');
 const locationData=onboardingLocation(location.pathname,location.hash),id=locationData.id;
 const selfService=!id&&isSelfServicePath(location.pathname);

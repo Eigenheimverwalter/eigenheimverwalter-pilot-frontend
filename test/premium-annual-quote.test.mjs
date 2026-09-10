@@ -6,6 +6,10 @@ const codes=Array.from({length:11},(_,i)=>String(22000+i));
 test('annual prices: two included, eight extras maximum, exclusive 19 percent VAT',()=>{
   const heating=premiumAnnualQuote('EQUIPMENT_PARTNER',codes.slice(0,2));
   assert.equal(heating.netCents,49900);assert.equal(heating.grossCents,59381);
+  const brokerBase=premiumAnnualQuote('BROKER_PARTNER',codes.slice(0,2));
+  assert.equal(brokerBase.netCents,97900);assert.equal(brokerBase.taxCents,18601);assert.equal(brokerBase.grossCents,116501);
+  const brokerExtra=premiumAnnualQuote('BROKER_PARTNER',codes.slice(0,3));
+  assert.equal(brokerExtra.netCents,110899);assert.equal(brokerExtra.additionalQuantity,1);assert.equal(brokerExtra.grossCents,131970);
   const broker=premiumAnnualQuote('BROKER_PARTNER',codes.slice(0,10));
   assert.equal(broker.additionalQuantity,8);assert.equal(broker.netCents,201892);assert.equal(broker.grossCents,240251);
 });
