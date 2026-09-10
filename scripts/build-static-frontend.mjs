@@ -9,6 +9,10 @@ for(const name of ['index.html','customer-registration.html','referral.html','ap
 const passwordResetDirectory=path.join(target,'passwort-zuruecksetzen');
 fs.mkdirSync(passwordResetDirectory,{recursive:true});
 fs.copyFileSync(path.join(target,'index.html'),path.join(passwordResetDirectory,'index.html'));
+// The public self-service start is a real Pages directory, not a 404 fallback.
+const onboardingDirectory=path.join(target,'partner-onboarding');
+fs.mkdirSync(onboardingDirectory,{recursive:true});
+fs.copyFileSync(path.join(target,'partner-onboarding.html'),path.join(onboardingDirectory,'index.html'));
 const partnerFlow=path.join(target,'assets/partner-basic.js');fs.writeFileSync(partnerFlow,fs.readFileSync(partnerFlow,'utf8').replaceAll("location.pathname.split('/').filter(Boolean)","location.pathname.split('/').filter(Boolean).slice(-2)"));
 fs.writeFileSync(path.join(target,'runtime-config.js'),`window.__EHV_RUNTIME__=Object.freeze({authMode:'supabase',supabaseUrl:'https://rpniwtshbwjuesoeztyt.supabase.co',supabasePublishableKey:${JSON.stringify(publishableKey)},legacyApiBase:'',siteBaseUrl:${JSON.stringify(siteBaseUrl)},basePath:${JSON.stringify(prefix)}});\n`);
 const router=`<!doctype html><meta charset="utf-8"><meta name="referrer" content="no-referrer"><script>const b=${JSON.stringify(prefix||'')},p=location.pathname.slice(b.length),f=p.startsWith('/partner-onboarding/')?'partner-onboarding.html':p.startsWith('/registrierung/')?'customer-registration.html':p.startsWith('/ref/')?'referral.html':'index.html';fetch(b+'/'+f).then(r=>r.text()).then(h=>{document.open();document.write(h);document.close()})<\/script>`;

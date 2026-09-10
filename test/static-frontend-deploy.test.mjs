@@ -24,6 +24,8 @@ test('static build publishes password recovery as a real page',()=>{
 });
 
 test('invitation onboarding has a separate shell on Pages and ALL-INKL, never the legacy auto-login shell',()=>{
+  assert.match(builder,/onboardingDirectory/);
+  assert.match(builder,/copyFileSync\(path\.join\(target,'partner-onboarding.html'\),path\.join\(onboardingDirectory,'index.html'\)\)/);
   assert.match(builder,/p\.startsWith\('\/partner-onboarding\/'\)\?'partner-onboarding\.html'/);
   assert.match(builder,/RewriteRule \^partner-onboarding\/ partner-onboarding\.html/);
   assert.match(builder,/meta name="referrer" content="no-referrer"/);

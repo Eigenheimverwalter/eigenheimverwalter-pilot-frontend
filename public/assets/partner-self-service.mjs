@@ -1,0 +1,13 @@
+import {escapeOnboarding as esc} from './partner-onboarding-entry.mjs';
+export const isSelfServicePath=path=>/\/partner-onboarding\/$/.test(path);
+export function selfServiceEmailMarkup(){return `<section class="card"><h2>Partner werden</h2><p>Bestätigen Sie zuerst Ihre E-Mail-Adresse. Anschließend wählen Sie Basic oder Premium und Ihre Partnerart. Ein bestehender Zugang bleibt unverändert.</p>
+  <form><label>E-Mail-Adresse<input name="email" type="email" maxlength="254" autocomplete="email" required></label><p data-error role="status"></p><button class="primary" type="submit">Bestätigungslink anfordern</button></form>
+  <div class="onboarding-actions"><button type="button" class="outline" data-login>Mit bestehendem Zugang anmelden</button></div></section>`;}
+export function selfServicePasswordMarkup(email){return `<section class="card"><h2>E-Mail bestätigt – Passwort festlegen</h2><p>${esc(email)}</p><p>12–128 Zeichen, Groß-/Kleinbuchstaben, Zahl und Sonderzeichen (!@#$%^&amp;*).</p>
+  <form><label>Neues Passwort<input name="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required></label><label>Passwort wiederholen<input name="passwordConfirmation" type="password" autocomplete="new-password" minlength="12" maxlength="128" required></label><p data-error role="alert"></p><button class="primary" type="submit">Passwort speichern & weiter</button></form></section>`;}
+export function selfServicePlanMarkup(email,trades){return `<section class="card"><h2>Ihre Kooperation auswählen</h2><p>Registrierung für ${esc(email)}. Alle Angaben und Vertragsunterlagen folgen im gemeinsamen Registrierungsprozess.</p><form>
+  <div class="form-grid"><label>Kooperationsart<select name="requested_plan" required><option value="BASIC">Basic – kostenfrei</option><option value="PREMIUM">Premium – kostenpflichtig</option></select></label>
+  <label>Partnerart<select name="partner_type" required><option value="REFERRAL">Tippgeber / Dienstleister</option><option value="EQUIPMENT_PARTNER">Handwerkspartner</option><option value="BROKER_PARTNER">Maklerpartner</option></select></label></div>
+  <label data-equipment hidden>Gewerk<select name="equipment_type" disabled><option value="">Bitte auswählen</option>${trades.map(t=>`<option value="${esc(t.id)}">${esc(t.name)}</option>`).join('')}</select></label>
+  <p data-plan-note>Basic benötigt kein PLZ-Lizenzgebiet und keine Zahlung.</p><p data-error role="alert"></p><button class="primary" type="submit">Registrierung starten</button></form></section>`;}
+export const validSelfServicePassword=(a,b)=>typeof a==='string'&&a===b&&a.length>=12&&a.length<=128&&/[A-Z]/.test(a)&&/[a-z]/.test(a)&&/[0-9]/.test(a)&&/[!@#$%^&*]/.test(a);
