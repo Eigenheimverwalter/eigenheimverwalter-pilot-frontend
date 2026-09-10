@@ -14,7 +14,7 @@ export const partnerLegalErrors=Object.freeze({
   LEGAL_DOCUMENT_NOT_FOUND:['Diese Dokumentversion steht im Onboarding nicht zur Verfügung.',404],
 });
 export function assertPartnerLegalIdentity(profile,user,supportView){
-  if(supportView||!profile||profile.status!=='active'||!['partner_basic','referral_partner','crafts_partner','broker_partner'].includes(profile.role)
+  if(supportView||!profile||!(profile.status==='active'||(profile.status==='invited'&&profile.role==='partner_basic'))||!['partner_basic','referral_partner','crafts_partner','broker_partner'].includes(profile.role)
     ||!user||profile.id!==user.id||!user.email_confirmed_at)fail('Nur das bestätigte Partnerkonto darf diesen Zustimmungsschritt verwenden. Support-Zugriffe sind ausgeschlossen.',403,'ACCEPTANCE_IDENTITY_MISMATCH');
 }
 export async function partnerLegalRequest({method,path,body={},profile,user,supportView=false,store,files,userAgent=''}){

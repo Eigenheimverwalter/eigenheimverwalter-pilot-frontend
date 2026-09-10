@@ -1,4 +1,4 @@
-import {normalizedPath,supportsPath,isDocumentUpload,isPublicPath,handlesRoute} from './supabase-routes.mjs?v=20260909-legal-acceptance-1';
+import {normalizedPath,supportsPath,isDocumentUpload,isPublicPath,handlesRoute} from './supabase-routes.mjs?v=20260909-onboarding-entry';
 
 const config=window.__EHV_RUNTIME__||{};
 const enabled=config.authMode==='supabase'&&config.supabaseUrl&&config.supabasePublishableKey;
@@ -14,7 +14,7 @@ const getClient=async()=>{
 const responseError=async response=>{
   let data={};
   try{data=await response.json()}catch{}
-  throw Error(data.error||`Supabase-Anfrage fehlgeschlagen (${response.status})`);
+  throw Object.assign(Error(data.error||`Supabase-Anfrage fehlgeschlagen (${response.status})`),{status:response.status,code:data.code});
 };
 
 window.ehvSupabaseBridge={
@@ -22,7 +22,15 @@ window.ehvSupabaseBridge={
   async request(path,options={}){
     if(!enabled)return null;
     if(isPublicPath(path)){
-      const response=await fetch(`${config.supabaseUrl}/functions/v1/portal-public${path.replace(/^\/api/,'')}`,{...options,headers:{apikey:config.supabasePublishableKey,'Content-Type':'application/json',...(options.headers||{})}});
+      const headers={apikey:config.supabasePublishableKey,'Content-Type':'application/json',...(options.headers||{})};
+      if(/^\/api\/onboarding-invitations\/[^/]+\/claim$/.test(path)){
+        const supabase=await getClient(),{data:{session}}=await supabase.auth.getSession();
+        if(!session)throw Object.assign(Error('Bitte zuerst anmelden.'),{status:401});
+        headers.Authorization=`Bearer ${session.access_token}`;
+      }
+      const supportTarget=sessionStorage.getItem('ehv-support-target');
+      if(path.startsWith('/api/onboarding-invitations/')&&supportTarget)headers['x-ehv-support-user']=supportTarget;
+      const response=await fetch(`${config.supabaseUrl}/functions/v1/portal-public${path.replace(/^\/api/,'')}`,{...options,headers});
       if(!response.ok)return responseError(response);return response.json();
     }
     const supabase=await getClient();
@@ -63,6 +71,12 @@ window.ehvSupabaseBridge={
     return data;
   },
   async updatePassword(password){const supabase=await getClient(),{error}=await supabase.auth.updateUser({password});if(error)throw error;return {message:'Das Passwort wurde geändert.'};},
+  async signInForOnboarding(email,password){
+    const supabase=await getClient(),{data,error}=await supabase.auth.signInWithPassword({email,password});
+    if(error)throw Error('E-Mail-Adresse oder Passwort ist nicht korrekt.');
+    return data.user;
+  },
+  async onboardingAuthUser(){const supabase=await getClient(),{data,error}=await supabase.auth.getUser();return error?null:data.user;},
   handles(path){return Boolean(enabled)&&handlesRoute(path);},
 };
 

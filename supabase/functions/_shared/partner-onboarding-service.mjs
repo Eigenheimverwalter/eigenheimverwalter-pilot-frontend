@@ -15,6 +15,7 @@ export const onboardingServiceErrors={
   ONBOARDING_PARTNER_LINK_REQUIRED:['Der bestehende Partner muss für diesen Vorgang zugeordnet werden.',409],
   ONBOARDING_DATA_LOCKED:['Die bestätigten Vertragsdaten können in diesem Schritt nicht mehr geändert werden.',409],
   ONBOARDING_INPUT_INVALID:['Die Angaben zur Partnerregistrierung sind ungültig.',422],
+  ONBOARDING_LOGIN_REQUIRED:['Für diese E-Mail-Adresse besteht bereits ein Zugang. Bitte mit dem vorhandenen Passwort anmelden.',409],
   INVALID_ENTRY_SOURCE:['Diese Einstiegsquelle ist ungültig.',422],
   COOPERATION_LEVEL_REQUIRED:['Bitte Basic oder Premium auswählen.',422],
   PARTNER_TYPE_REQUIRED:['Bitte einen gültigen Partnertyp auswählen.',422],
@@ -39,6 +40,15 @@ export function onboardingSummary(flow){
 // This service deliberately cannot write ACTIVE, licences or payment success.
 export class PartnerOnboardingService {
   constructor({store,trades=[]}){this.store=store;this.trades=trades;}
+  async invitation(id,token,{actorId=null}={}){
+    requireValue(uuid.test(String(id))&&typeof token==='string'&&/^[a-f0-9]{64}$/.test(token),'ONBOARDING_NOT_FOUND',404);
+    if(actorId!==null)requireValue(uuid.test(String(actorId)),'ONBOARDING_PERMISSION_DENIED',403);
+    const result=await this.store.entry({id,tokenHash:await hashOnboardingToken(token),actorId,action:actorId?'CLAIM':'INSPECT'});
+    // Inspection returns a narrow, token-protected projection, never the row.
+    if(actorId)return onboardingSummary(result);
+    return {registered:result.registered===true,login_required:result.login_required===true,requested_plan:result.requested_plan,
+      ...(result.registered?{}:{email:result.email,company:result.company,contact_name:result.contact_name})};
+  }
   async create(input,{actorId=null,source,invitationToken=null}={}){
     requireValue(source&&source===input.source,'ONBOARDING_PERMISSION_DENIED',403);
     const normalized=normalizeOnboardingInput(input,this.trades);
@@ -83,9 +93,11 @@ export class PartnerOnboardingService {
 }
 
 export async function partnerOnboardingRequest({method,path,body={},profile,user,supportView=false,service}){
-  requireValue(!supportView&&profile?.status==='active'&&user?.id===profile?.id&&user?.email_confirmed_at,'ONBOARDING_PERMISSION_DENIED',403);
+  const pending=profile?.status==='invited'&&profile?.role==='partner_basic';
+  requireValue(!supportView&&(profile?.status==='active'||pending)&&user?.id===profile?.id&&user?.email_confirmed_at,'ONBOARDING_PERMISSION_DENIED',403);
   requireValue(body&&typeof body==='object'&&!Array.isArray(body),'ONBOARDING_INPUT_INVALID');
   if(path==='/partner-onboarding'&&method==='POST'){
+    requireValue(!pending,'ONBOARDING_PERMISSION_DENIED',403);
     const own=partnerRoles.includes(profile.role);
     requireValue(own||['super_admin','admin_light'].includes(profile.role),'ONBOARDING_PERMISSION_DENIED',403);
     // SALES_OS and CRM_IMPORT are not selectable by an untrusted browser.
