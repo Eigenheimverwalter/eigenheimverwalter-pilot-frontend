@@ -4,8 +4,8 @@ export async function accountLegalLibrary({service,actorId,partner,documentId=nu
   const audience=accountLegalAudience(partner);
   const history=await accountLegalHistory({service,actorId});
   let current=[];
-  if(audience){const result=await service.from('legal_documents').select('id,title,file_name,document_type,version,status,effective_from,acceptance_text,audience,storage_path').eq('audience',audience).eq('status','ACTIVE').is('sandbox_onboarding_id',null).is('deletion_requested_at',null).lte('effective_from',new Date().toISOString());
-    if(result.error)throw Object.assign(new Error('Aktuelle Vertragsunterlagen konnten nicht geladen werden.'),{status:503});current=result.data||[];}
+  if(audience){const result=await service.from('legal_documents').select('id,title,file_name,document_type,version,status,effective_from,acceptance_text,audience,storage_path').in('audience',['COMMON',audience]).eq('status','ACTIVE').is('sandbox_onboarding_id',null).is('deletion_requested_at',null).lte('effective_from',new Date().toISOString());
+    if(result.error)throw Object.assign(new Error('Aktuelle Vertragsunterlagen konnten nicht geladen werden.'),{status:503});current=(result.data||[]).filter(d=>d.document_type==='PRICE_SHEET'?d.audience===audience:d.audience==='COMMON');}
   if(documentId){
     const doc=current.find(d=>d.id===documentId);
     if(!doc)return accountLegalHistory({service,actorId,documentId});

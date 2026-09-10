@@ -2,6 +2,7 @@ import {legalDocumentRequest,legalFileLimit,legalPermissions} from './legal-docu
 import {readMarketingBody} from './marketing-kit-route.ts';
 const bucket='ehv-legal-documents';
 const errorMessages:Record<string,[string,number]>={
+  LEGAL_AUDIENCE_REQUIRED:['Bitte für das Preisblatt Basic, Premium Handwerk oder Premium Makler auswählen.',422],
   LEGAL_DOCUMENT_RETAINED:['Diese Dokumentversion ist freigegeben oder bereits akzeptiert und darf nur archiviert werden.',409],
   LEGAL_VERSION_CONFLICT:['Die Dokumentversion wurde zwischenzeitlich geändert. Bitte neu laden.',409],
   INVALID_LEGAL_TRANSITION:['Diese Statusänderung ist nicht möglich. Bitte den aktuellen Dokumentenstand prüfen.',409],
@@ -9,7 +10,7 @@ const errorMessages:Record<string,[string,number]>={
   LEGAL_DOCUMENT_NOT_FOUND:['Dokument nicht gefunden.',404],
   LEGAL_PERMISSION_DENIED:['Keine Berechtigung.',403],
 };
-const checked=async(promise:PromiseLike<any>,message:string)=>{const r=await promise;if(r.error){const code=Object.keys(errorMessages).find(k=>String(r.error.message).includes(k)),mapped=code?errorMessages[code]:[message,503];throw Object.assign(new Error(String(mapped[0])),{status:mapped[1],code});}return r.data;};
+const checked=async(promise:PromiseLike<any>,message:string)=>{const r=await promise;if(r.error){const code=Object.keys(errorMessages).find(k=>String(r.error.message).includes(k)),rejected=['23505','23514','23502','23503'].includes(r.error.code),mapped=code?errorMessages[code]:rejected?['Die Dokumentdaten wurden nicht gespeichert (Validierungsfehler). Bitte den Dokumentenstand prüfen und den Support informieren.',409]:[message,503];throw Object.assign(new Error(String(mapped[0])),{status:mapped[1],code:code||(rejected?'LEGAL_DOCUMENT_VALIDATION_FAILED':undefined)});}return r.data;};
 export async function legalDocumentsRoute(req:Request,path:string,service:any,profile:any,state:any,supportView:boolean){
   if(!legalPermissions(profile,state.roleProfiles||[],supportView).includes('legal_documents.read'))throw Object.assign(new Error('Für die Rechtsdokumentenverwaltung fehlt die Berechtigung. Der Super Admin kann diese in der Zugangsverwaltung vergeben.'),{status:403,code:'LEGAL_PERMISSION_DENIED'});
   const store={

@@ -63,5 +63,6 @@ try{
   await checkPartnerCheckout(db);
   await checkPartnerCancellation(db);
   await checkLegalAudiences(db);
+  await (await import('./check-common-legal-sql.mjs')).checkCommonLegal(db);
   console.log(JSON.stringify({isolatedPostgres:true,migrationExecuted:true,immutableEvidence:true,atomicActiveVersion:true,retention:true,monotonicVersions:true,adminLightPermissions:true,privateStorage:true,atomicAcceptance:true,verifiedOwner:true,upgradeConsentReuse:true,centralOnboardingService:true,sourceIdempotency:true,tokenOwnerBinding:true,productionDataAccess:false}));
 }finally{await db.close()}

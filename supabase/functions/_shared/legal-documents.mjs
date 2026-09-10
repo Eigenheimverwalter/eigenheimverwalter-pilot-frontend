@@ -19,7 +19,7 @@ export async function legalDocumentRequest({method,path,body={},profile,roleProf
   if(path==='/legal-documents'&&method==='POST'){
     need('upload');
     if(!Object.hasOwn(legalDocumentTypes,body.documentType))fail('Bitte die Dokumentenart auswählen.');
-    if(!Object.hasOwn(legalAudiences,body.audience))fail('Bitte Basic, Premium Handwerk oder Premium Makler als Zielgruppe auswählen.');
+    if(body.documentType==='PRICE_SHEET'&&!Object.hasOwn(legalAudiences,body.audience))fail('Bitte Basic, Premium Handwerk oder Premium Makler als Zielgruppe auswählen.');
     const title=String(body.title||'').trim(),acceptanceText=String(body.acceptanceText||'').trim();
     if(!title||title.length>180||!acceptanceText||acceptanceText.length>2000)fail('Titel und rechtlich freigegebener Bestätigungstext sind erforderlich.');
     const file=decodeMarketingFile(body.name,body.content);
@@ -27,7 +27,7 @@ export async function legalDocumentRequest({method,path,body={},profile,roleProf
     if(file.bytes.length>legalFileLimit(maxBytes))fail('Die Datei überschreitet die konfigurierte maximale Größe.',413);
     const id=newId(),path=`${id}/${id}.pdf`,sha256=[...new Uint8Array(await crypto.subtle.digest('SHA-256',file.bytes))].map(x=>x.toString(16).padStart(2,'0')).join('');
     await files.upload(path,file.bytes,'application/pdf');
-    let row;try{row=await store.change('UPLOAD',id,profile.id,null,{document_type:body.documentType,audience:body.audience,title,file_name:file.name,storage_path:path,file_size:file.bytes.length,sha256,acceptance_text:acceptanceText})}
+    let row;try{row=await store.change('UPLOAD',id,profile.id,null,{document_type:body.documentType,audience:body.documentType==='PRICE_SHEET'?body.audience:'COMMON',title,file_name:file.name,storage_path:path,file_size:file.bytes.length,sha256,acceptance_text:acceptanceText})}
     catch(error){
       // A lost DB response can still mean a successful insert. Verify before
       // deleting bytes; an uncertain committed document must remain available.
