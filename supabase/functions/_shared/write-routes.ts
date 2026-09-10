@@ -9,7 +9,7 @@ import { processTriggerEvent } from "./opportunity-engine.mjs";
 import { DwdWarningProvider } from "./weather-providers.mjs";
 import { compareOwners, compareValue, extractLandRegister } from "./land-register.mjs";
 
-type Context={service:SupabaseClient;snapshot:RuntimeSnapshot;profile:PortalProfile;sourceUserId:string|null;body:Record<string,unknown>};
+type Context={service:SupabaseClient;snapshot:RuntimeSnapshot;profile:PortalProfile;sourceUserId:string|null;body:Record<string,unknown>;onboardingEnabled?:boolean};
 type MailIntent={channel:"partner"|"registration"|"info";recipientEmail:string;subject:string;message:string};
 const fail=(message:string,status=422)=>{throw Object.assign(new Error(message),{status})};
 const collection=(snapshot:RuntimeSnapshot,key:string)=>{const rows=array(snapshot.state[key]);snapshot.state[key]=rows;return rows};
@@ -32,7 +32,7 @@ export async function writeRoute(method:string,path:string,ctx:Context){
     const name=clean(body.name,120),email=clean(body.email,254).toLowerCase(),address=clean(body.address,180),postalCode=String(body.postalCode||"").trim(),city=clean(body.city,100),tradeId=referralOnly?null:String(partner.primaryTradeId||"");
     if(!name||!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)||!address||!/^\d{5}$/.test(postalCode)||!city||body.consentConfirmed!==true)fail("Kundenname, gültige E-Mail, vollständige Adresse und Einwilligung sind erforderlich");
     if(!referralOnly&&!collection(snapshot,"trades").some(x=>x.id===tradeId))fail("Für dieses Partnerkonto fehlt die gültige Gewerkzuordnung",422);
-    if(!basicReferral&&!(Array.isArray(partner.postalCodes)&&partner.postalCodes.includes(postalCode)))fail("Diese Postleitzahl liegt außerhalb Ihres freigegebenen Lizenzgebiets",422);
+    if(!basicReferral&&!(ctx.onboardingEnabled===true&&partner.plan==='premium')&&!(Array.isArray(partner.postalCodes)&&partner.postalCodes.includes(postalCode)))fail("Diese Postleitzahl liegt außerhalb Ihres freigegebenen Lizenzgebiets",422);
     const siteUrl=clean(body.siteUrl,300);let portalUrl;try{portalUrl=new URL(siteUrl)}catch{fail("Sichere Portaladresse fehlt")}
     const allowedHost=portalUrl.protocol==="https:"&&["eigenheimverwalter.github.io","eigenheimverwalter-pilot.de","www.eigenheimverwalter-pilot.de","eigenheimverwalter.de","www.eigenheimverwalter.de"].includes(portalUrl.hostname);
     if(!allowedHost||portalUrl.search||portalUrl.hash||(portalUrl.hostname==="eigenheimverwalter.github.io"&&portalUrl.pathname.replace(/\/$/,"")!=="/eigenheimverwalter-pilot-frontend"))fail("Nicht zugelassene Portaladresse",422);
