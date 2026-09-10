@@ -20,6 +20,9 @@ const responseError=async response=>{
 window.ehvSupabaseBridge={
   enabled:Boolean(enabled),
   async request(path,options={}){
+    // Supabase uses the bearer session, not the legacy cookie/CSRF header.
+    // Sending the obsolete header causes the browser's CORS preflight to fail.
+    if(options.headers){const headers=new Headers(options.headers);headers.delete('X-CSRF-Token');options={...options,headers:Object.fromEntries(headers)};}
     if(!enabled)return null;
     if(isPublicPath(path)){
       const headers={apikey:config.supabasePublishableKey,'Content-Type':'application/json',...(options.headers||{})};
