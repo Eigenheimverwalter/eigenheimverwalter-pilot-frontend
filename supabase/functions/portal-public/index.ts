@@ -56,4 +56,4 @@ Deno.serve(async req=>{const json=(body:unknown,status=200)=>jsonResponse(req,bo
     }
   }
   return json({error:"Route nicht gefunden"},404);
-}catch(error){console.error(error);return json({error:error instanceof Error?error.message:"Öffentlicher Portalvorgang fehlgeschlagen"},[409,422,503].includes(Number((error as {status?:number})?.status))?Number((error as {status?:number}).status):500)}});
+}catch(error){console.error(error);return json({error:error instanceof Error?error.message:"Öffentlicher Portalvorgang fehlgeschlagen"},[409,410,422,503].includes(Number((error as {status?:number})?.status))?Number((error as {status?:number}).status):500)}});
