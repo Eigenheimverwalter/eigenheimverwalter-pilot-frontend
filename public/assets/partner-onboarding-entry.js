@@ -1,4 +1,4 @@
-import './supabase-bridge.js?v=20260910-self-service';
+import './supabase-bridge.js?v=20260910-checkout';
 import {isSelfServicePath,selfServiceEmailMarkup,selfServicePasswordMarkup,selfServicePlanMarkup,validSelfServicePassword} from './partner-self-service.mjs';
 import {renderPartnerLegalStep} from './partner-legal-step.js?v=20260909-onboarding-entry';
 import {onboardingLocation,onboardingAuthMarkup,onboardingDataMarkup,escapeOnboarding as esc} from './partner-onboarding-entry.mjs';

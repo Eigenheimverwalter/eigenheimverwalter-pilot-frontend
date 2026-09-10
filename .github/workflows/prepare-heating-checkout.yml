@@ -1,6 +1,9 @@
 name: Prepare authorized heating checkout test
 on:
   workflow_dispatch:
+  push:
+    branches: [codex/partner-region-reservations]
+    paths: ['.github/workflows/prepare-heating-checkout.yml']
 permissions:
   contents: read
 concurrency:
