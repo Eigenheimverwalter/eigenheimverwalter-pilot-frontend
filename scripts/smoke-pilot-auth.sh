@@ -98,22 +98,23 @@ PILOT_SMOKE_ACCESS_TOKEN="$access_token" node scripts/smoke-onboarding-service.m
 
 dashboard=$(curl --fail --silent --show-error "${api}/functions/v1/portal-api/dashboard" \
   -H "Authorization: Bearer ${access_token}" -H "Origin: https://eigenheimverwalter.github.io")
-jq -e '.source=="supabase" and (.kpis|type=="object")' >/dev/null <<< "$dashboard"
+jq -e '.source=="supabase" and (.kpis|type=="object")' >/dev/null <<< "$dashboard" || { echo 'Dashboard-Vertrag ungültig'; exit 1; }
 property_id=$(jq -r '.properties[0].id // empty' <<< "$dashboard")
-test -n "$property_id"
+test -n "$property_id" || { echo 'Keine Immobilie für isolierten Dokumententest verfügbar'; exit 1; }
 
 analytics=$(curl --fail --silent --show-error "${api}/functions/v1/portal-api/analytics/overview" \
   -H "Authorization: Bearer ${access_token}" -H "Origin: https://eigenheimverwalter.github.io")
-jq -e '.summary.registered>=0 and (.regions|type=="object") and (.profiles|type=="array")' >/dev/null <<< "$analytics"
+jq -e '.summary.registered>=0 and (.regions|type=="object") and (.profiles|type=="array")' >/dev/null <<< "$analytics" || { echo 'Analytics-Vertrag ungültig'; exit 1; }
 geography=$(curl --fail --silent --show-error "${api}/functions/v1/portal-api/partner-geography" \
   -H "Authorization: Bearer ${access_token}" -H "Origin: https://eigenheimverwalter.github.io")
-jq -e '(.regions|type=="object") and (.profiles|type=="array") and (.summary.active>=0)' >/dev/null <<< "$geography"
+jq -e '(.regions|type=="object") and (.profiles|type=="array") and (.summary.active>=0)' >/dev/null <<< "$geography" || { echo 'Regions-Vertrag ungültig'; exit 1; }
 opportunities=$(curl --fail --silent --show-error "${api}/functions/v1/portal-api/opportunity-engine" \
   -H "Authorization: Bearer ${access_token}" -H "Origin: https://eigenheimverwalter.github.io")
-jq -e '.scope=="admin_light_overview" and (.kpis.events>=0) and (.kpis.openRate>=0) and (.queue|type=="object")' >/dev/null <<< "$opportunities"
+jq -e '.scope=="admin_light_overview" and (.kpis.events>=0) and (.kpis.openRate>=0) and (.queue|type=="object")' >/dev/null <<< "$opportunities" || { echo 'Ereignis-Vertrag ungültig'; exit 1; }
 dwd=$(curl --fail --silent --show-error "${api}/functions/v1/portal-api/weather/dwd/preview" \
   -H "Authorization: Bearer ${access_token}" -H "Origin: https://eigenheimverwalter.github.io")
-jq -e '.provider=="DWD" and .received>0 and .mapped>0 and (.samples|type=="array")' >/dev/null <<< "$dwd"
+# No warning is a valid weather state, not a deployment failure.
+jq -e '.provider=="DWD" and (.received|type=="number") and (.mapped|type=="number") and .received>=0 and .mapped>=0 and .mapped<=.received and (.samples|type=="array")' >/dev/null <<< "$dwd" || { echo 'DWD-Vertrag ungültig'; exit 1; }
 echo 'Regionale KPIs, Ereignis-KPIs und DWD-Livefeed bestätigt.'
 
 upload_payload=$(jq -nc --arg property "$property_id" \
