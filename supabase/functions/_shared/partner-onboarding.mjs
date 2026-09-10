@@ -2,6 +2,22 @@
 // never infer activation from a Sales WON, email verification or success URL.
 export const BASIC_PROPERTY_LIMIT = 3;
 export const INCLUDED_POSTAL_CODES = 2;
+export const MAX_POSTAL_CODES = 10;
+export function premiumAnnualQuote(partnerType, postalCodes) {
+  const base = {EQUIPMENT_PARTNER:49900, BROKER_PARTNER:97900}[partnerType];
+  if (!base) throw onboardingError('PREMIUM_PARTNER_TYPE_REQUIRED');
+  if (!Array.isArray(postalCodes) || postalCodes.length < INCLUDED_POSTAL_CODES || postalCodes.length > MAX_POSTAL_CODES
+    || new Set(postalCodes).size !== postalCodes.length || postalCodes.some(code => typeof code !== 'string' || !/^\d{5}$/.test(code))) {
+    throw onboardingError('POSTAL_CODE_SELECTION_INVALID');
+  }
+  const additionalQuantity = postalCodes.length - INCLUDED_POSTAL_CODES;
+  const net = base + additionalQuantity * 12999;
+  const tax = Math.round(net * 19 / 100);
+  // Quote only: availability, legal acceptance and verified payment remain mandatory.
+  return {currency:'EUR', interval:'year', includedPostalCodes:INCLUDED_POSTAL_CODES,
+    totalPostalCodes:postalCodes.length, additionalQuantity, baseNetCents:base,
+    additionalUnitNetCents:12999, netCents:net, taxPercent:19, taxCents:tax, grossCents:net+tax};
+}
 export const onboardingSources = Object.freeze(['SELF_SERVICE_BASIC','SELF_SERVICE_PREMIUM','SALES_OS','ADMIN_INVITE','CRM_IMPORT']);
 export const onboardingStatuses = Object.freeze(['CREATED','INVITED','STARTED','DATA_INCOMPLETE','DATA_COMPLETE','LEGAL_PENDING','LEGAL_ACCEPTED','CHECKOUT_PENDING','PAYMENT_PENDING','PAYMENT_FAILED','READY_FOR_ACTIVATION','ACTIVE','CANCELLED','EXPIRED']);
 export const partnerTypes = Object.freeze(['EQUIPMENT_PARTNER','BROKER_PARTNER','REFERRAL']);
@@ -62,7 +78,12 @@ export function assertActivationAllowed({onboarding,legalState,payment,reservati
     const scope=onboarding.partner_type==='BROKER_PARTNER'?'BROKER':onboarding.equipment_type;
     demand(Boolean(scope),'PREMIUM_REGION_SCOPE_REQUIRED');
     const held=(reservations||[]).filter(r=>r.onboarding_id===onboarding.id&&r.scope===scope&&/^\d{5}$/.test(r.postal_code)&&((r.status==='RESERVED'&&Date.parse(r.expires_at)>Date.parse(now))||r.status==='ACTIVE'));
-    demand(new Set(held.map(r=>r.postal_code)).size===INCLUDED_POSTAL_CODES,'POSTAL_RESERVATION_REQUIRED',409);
+    const selected=onboarding.postal_codes;
+    if(selected){
+      premiumAnnualQuote(onboarding.partner_type,selected);
+      demand(payment.additional_quantity===selected.length-INCLUDED_POSTAL_CODES,'PAYMENT_CONFIRMATION_REQUIRED',403);
+      demand(held.length===selected.length&&selected.every(code=>held.some(r=>r.postal_code===code)),'POSTAL_RESERVATION_REQUIRED',409);
+    }else demand(new Set(held.map(r=>r.postal_code)).size===INCLUDED_POSTAL_CODES,'POSTAL_RESERVATION_REQUIRED',409);
     demand(license?.partner_id===onboarding.partner_id&&license?.onboarding_id===onboarding.id&&license?.status==='READY','LICENSE_REQUIRED',409);
   }
   return true;

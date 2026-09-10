@@ -15,3 +15,6 @@ verify_jwt = false
 
 [functions.portal-sales-onboarding]
 verify_jwt = false
+
+[functions.portal-stripe]
+verify_jwt = false

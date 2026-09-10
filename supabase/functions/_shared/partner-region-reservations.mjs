@@ -1,4 +1,4 @@
-import {assertCheckoutAllowed, INCLUDED_POSTAL_CODES, onboardingError} from './partner-onboarding.mjs';
+import {assertCheckoutAllowed, INCLUDED_POSTAL_CODES, MAX_POSTAL_CODES, onboardingError} from './partner-onboarding.mjs';
 
 const rows=value=>Array.isArray(value)?value:[];
 const fail=(code,status=409)=>{
@@ -8,7 +8,9 @@ const fail=(code,status=409)=>{
 };
 const same=(a,b)=>a.length===b.length&&a.every((v,i)=>v===b[i]);
 const scopeOf=flow=>flow.partner_type==='BROKER_PARTNER'?'BROKER':flow.equipment_type;
-const held=(r,now)=>r.status==='ACTIVE'||(r.status==='RESERVED'&&Date.parse(r.expires_at)>now);
+// Bound checkouts stay locked until a verified Stripe reconciliation, even if
+// webhook delivery is delayed beyond the displayed reservation countdown.
+const held=(r,now)=>r.status==='ACTIVE'||(r.status==='RESERVED'&&(r.checkout_attempt_id||Date.parse(r.expires_at)>now));
 
 // All callers persist this SAME runtime snapshot with replaceRuntime/CAS.
 // A conflict requires reloading and re-running validation, never blind overwrite.
@@ -25,15 +27,15 @@ export function assertPartnerRegionsAvailable(state,{scope,postalCodes,partnerId
 // trusted onboarding adapter, never taken from a browser body. No activation.
 export function reservePartnerRegions(state,{onboarding,legalState,postalCodes,now=Date.now()}){
   assertCheckoutAllowed(onboarding,legalState);
-  if(!onboarding.id||!Number.isFinite(now)||!Array.isArray(postalCodes)||postalCodes.length!==INCLUDED_POSTAL_CODES
-    ||new Set(postalCodes).size!==INCLUDED_POSTAL_CODES)fail('TWO_POSTAL_CODES_REQUIRED',422);
+  if(!onboarding.id||!Number.isFinite(now)||!Array.isArray(postalCodes)||postalCodes.length<INCLUDED_POSTAL_CODES||postalCodes.length>MAX_POSTAL_CODES
+    ||new Set(postalCodes).size!==postalCodes.length)throw Object.assign(onboardingError('POSTAL_CODE_SELECTION_INVALID',422),{message:'Bitte zwei bis zehn unterschiedliche Postleitzahlen auswählen.'});
   const scope=scopeOf(onboarding);
   const codes=[...postalCodes].sort();
   const existing=rows(state.partnerRegionReservations).filter(r=>r.onboarding_id===onboarding.id&&held(r,now));
   if(existing.some(r=>r.status==='ACTIVE'))fail('REGIONS_ALREADY_ACTIVE');
   assertPartnerRegionsAvailable(state,{scope,postalCodes:codes,partnerId:onboarding.existing_partner_id||null,onboardingId:onboarding.id,now});
   if(existing.length){
-    if(existing.length!==INCLUDED_POSTAL_CODES||existing.some(r=>r.scope!==scope)||!same(existing.map(r=>r.postal_code).sort(),codes))fail('RESERVATION_CHANGE_REQUIRES_RELEASE');
+    if(existing.length!==codes.length||existing.some(r=>r.scope!==scope)||!same(existing.map(r=>r.postal_code).sort(),codes))fail('RESERVATION_CHANGE_REQUIRES_RELEASE');
     return existing; // retries must not silently extend the expiry
   }
   if(onboarding.checkout_id)fail('CHECKOUT_RECONCILIATION_REQUIRED');

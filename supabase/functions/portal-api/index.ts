@@ -9,6 +9,7 @@ import { marketingKitRoute } from "../_shared/marketing-kit-route.ts";
 import { legalDocumentsRoute } from "../_shared/legal-documents-route.ts";
 import { partnerLegalRoute } from "../_shared/partner-legal-route.ts";
 import { partnerOnboardingRoute } from "../_shared/partner-onboarding-route.ts";
+import { partnerCheckoutRoute } from "../_shared/partner-checkout-route.ts";
 import { writeRoute } from "../_shared/write-routes.ts";
 import { DwdWarningProvider } from "../_shared/weather-providers.mjs";
 import { sendPortalMail } from "../_shared/mail.ts";
@@ -109,7 +110,8 @@ Deno.serve(async (req) => {
   if(routePath==='/partner-onboarding'||routePath.startsWith('/partner-onboarding/')){
     if(profile.status==='invited'&&Deno.env.get('PILOT_PARTNER_ONBOARDING_ENABLED')!=='true')return json({code:'ONBOARDING_NOT_RELEASED',error:'Der neue Partnerprozess ist noch nicht freigegeben.'},503);
     try{const legalPath=/^\/partner-onboarding\/[^/]+\/legal(?:\/|$)/.test(routePath);
-      const result=await (legalPath?partnerLegalRoute:partnerOnboardingRoute)(req,routePath,serviceClient,profile,user);return json(result.body,result.status);}
+      const checkoutPath=/^\/partner-onboarding\/[^/]+\/(premium|quote|checkout|checkout-cancel)$/.test(routePath);
+      const result=await (checkoutPath?partnerCheckoutRoute:legalPath?partnerLegalRoute:partnerOnboardingRoute)(req,routePath,serviceClient,profile,user);return json(result.body,result.status);}
     catch(error){return json({error:error instanceof Error?error.message:'Zustimmung fehlgeschlagen',code:(error as {code?:string}).code},Number((error as {status?:number}).status||500));}
   }
   if(sourceUserId&&profile.role==="partner_basic"&&user.email_confirmed_at){
