@@ -1,0 +1,21 @@
+name: Heating test account audit
+on:
+  push:
+    branches: [codex/partner-region-reservations]
+    paths: ['scripts/audit-heating-test-account.mjs', '.github/workflows/heating-test-audit.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Read only selected test account
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/audit-heating-test-account.mjs
