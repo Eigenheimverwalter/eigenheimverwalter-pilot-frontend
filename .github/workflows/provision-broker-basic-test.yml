@@ -1,0 +1,30 @@
+name: Prepare authorized Basic broker test
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/partner-region-reservations]
+    paths: ['.github/workflows/provision-broker-basic-test.yml']
+permissions:
+  contents: read
+concurrency:
+  group: broker-basic-test-provision
+  cancel-in-progress: false
+jobs:
+  provision:
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Provision only the authorized Basic broker and synthetic files
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          BROKER_TEST_PASSWORD: ${{ secrets.HEATING_TEST_PASSWORD }}
+        run: node scripts/provision-broker-basic-test.mjs
+      - name: Prepare isolated broker test documents without accepting them
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          TEST_PARTNER_EMAIL: makler_basic@ehv.test
+        run: node scripts/prepare-heating-checkout.mjs
