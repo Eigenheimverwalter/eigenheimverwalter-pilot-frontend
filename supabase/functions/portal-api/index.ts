@@ -4,6 +4,7 @@ import {
   type PortalProfile,
 } from "../_shared/runtime.ts";
 import { readRoute } from "../_shared/read-routes.ts";
+import { accountLegalHistory } from "../_shared/account-legal.mjs";
 import { marketingKitRoute } from "../_shared/marketing-kit-route.ts";
 import { legalDocumentsRoute } from "../_shared/legal-documents-route.ts";
 import { partnerLegalRoute } from "../_shared/partner-legal-route.ts";
@@ -97,6 +98,12 @@ Deno.serve(async (req) => {
   try { auth = await authenticate(req.headers.get("Authorization"),{onboardingOnly:ownOnboardingRoute}); }
   catch (error) { return json({ error: error instanceof Error ? error.message : "Nicht angemeldet" }, Number((error as {status?:number}).status || 401)); }
   const { user, profile, sourceUserId, service: serviceClient } = auth;
+  if(routePath==='/account/legal'||/^\/account\/legal\/[^/]+\/file$/.test(routePath)){
+    if(req.method!=='GET')return json({error:'Methode nicht erlaubt'},405);
+    if(req.headers.get('x-ehv-support-user'))return json({error:'Persönliche Vertragsunterlagen sind nur im eigenen Konto verfügbar.'},403);
+    try{return json(await accountLegalHistory({service:serviceClient,actorId:user.id,documentId:routePath.match(/^\/account\/legal\/([^/]+)\/file$/)?.[1]||null}));}
+    catch(error){return json({error:error instanceof Error?error.message:'Vertragsunterlagen nicht verfügbar'},Number((error as {status?:number}).status||503));}
+  }
   // Own-onboarding actions must not pass through legacy automatic activation or
   // support impersonation. Entry-source cutover follows in the next phase.
   if(routePath==='/partner-onboarding'||routePath.startsWith('/partner-onboarding/')){
