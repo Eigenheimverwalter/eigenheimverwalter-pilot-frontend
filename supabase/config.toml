@@ -18,3 +18,6 @@ verify_jwt = false
 
 [functions.portal-stripe]
 verify_jwt = false
+
+[functions.portal-cancellation-worker]
+verify_jwt = false

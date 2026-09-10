@@ -5,6 +5,7 @@ import {
 } from "../_shared/runtime.ts";
 import { readRoute } from "../_shared/read-routes.ts";
 import { accountLegalHistory } from "../_shared/account-legal.mjs";
+import { partnerCancellationRoute } from "../_shared/partner-cancellation-route.ts";
 import { marketingKitRoute } from "../_shared/marketing-kit-route.ts";
 import { legalDocumentsRoute } from "../_shared/legal-documents-route.ts";
 import { partnerLegalRoute } from "../_shared/partner-legal-route.ts";
@@ -99,6 +100,15 @@ Deno.serve(async (req) => {
   try { auth = await authenticate(req.headers.get("Authorization"),{onboardingOnly:ownOnboardingRoute}); }
   catch (error) { return json({ error: error instanceof Error ? error.message : "Nicht angemeldet" }, Number((error as {status?:number}).status || 401)); }
   const { user, profile, sourceUserId, service: serviceClient } = auth;
+  if(routePath==='/account/cancellation-review'){
+    if(req.method!=='GET'||!isAdmin(profile)||req.headers.get('x-ehv-support-user'))return json({error:'Keine Berechtigung'},403);
+    const {data,error}=await serviceClient.from('partner_cancellations').select('id,partner_id,requested_at,effective_date,status,billing_status,deletion_status').order('requested_at',{ascending:false}).limit(100);
+    return error?json({error:'Kündigungen konnten nicht geladen werden.'},503):json({cancellations:data});
+  }
+  if(routePath==='/account/cancellation'){
+    try{return json(await partnerCancellationRoute(req,serviceClient,profile,user,sourceUserId));}
+    catch(error){return json({error:error instanceof Error?error.message:'Kündigung nicht verfügbar'},Number((error as {status?:number}).status||503));}
+  }
   if(routePath==='/account/legal'||/^\/account\/legal\/[^/]+\/file$/.test(routePath)){
     if(req.method!=='GET')return json({error:'Methode nicht erlaubt'},405);
     if(req.headers.get('x-ehv-support-user'))return json({error:'Persönliche Vertragsunterlagen sind nur im eigenen Konto verfügbar.'},403);
