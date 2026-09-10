@@ -1,5 +1,5 @@
 import { portalRequest } from './partner-referrals.js?v=20260909-app-download';
-import {openPremiumUpgrade} from './partner-upgrade.js?v=20260910-equipment';
+import {openPremiumUpgrade} from './partner-upgrade.js?v=20260910-premium-visible';
 const q=s=>document.querySelector(s);
 const h=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const request=portalRequest;

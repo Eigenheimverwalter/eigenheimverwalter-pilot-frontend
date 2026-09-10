@@ -17,7 +17,7 @@ export const corsHeaders = (req?: Request) => {
   const requested = req?.headers.get("Origin")?.trim() || "";
   const origin = requested ? (allowed(requested) ? requested : "") : configuredOrigin;
   const headers: Record<string, string> = {
-    "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info, x-ehv-support-user",
+    "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info, x-ehv-support-user, x-csrf-token",
     "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
     "Vary": "Origin",
   };
