@@ -25,7 +25,7 @@ export async function checkPartnerOnboardingService(db,admin,light){
   const request=input();
   await assert.rejects(create(request,light),/ONBOARDING_PERMISSION_DENIED/);
   await assert.rejects(create(request,owner),/ONBOARDING_PERMISSION_DENIED/);
-  await assert.rejects(create(input({requested_plan:'PREMIUM'})),/ONBOARDING_INPUT_INVALID/);
+  await assert.rejects(create(input({requested_plan:'PREMIUM'})),/REFERRAL_PREMIUM_NOT_AVAILABLE/);
   const flow=await create(request);assert.equal(flow.onboarding_status,'CREATED');assert.equal(flow.next_step,'START');assert.match(flow.secure_onboarding_token,/^[a-f0-9]{64}$/);
   const again=await create(request);assert.equal(again.onboarding_id,flow.onboarding_id);assert.equal(again.created,false);assert.equal(again.secure_onboarding_token,null);
   const saved=(await db.query('select * from public.partner_onboardings where id=$1',[flow.onboarding_id])).rows[0];

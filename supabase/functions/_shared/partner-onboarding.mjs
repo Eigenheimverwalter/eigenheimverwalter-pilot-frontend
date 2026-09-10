@@ -33,7 +33,8 @@ export function missingOnboardingData(data){
 export function requiredLegalState({documents,acceptances,onboarding,requirements=['TERMS','PRIVACY'],now=new Date().toISOString()}){
   const selected=[],missingTypes=[];
   for(const type of [...new Set(['TERMS','PRIVACY',...requirements])]){
-    const active=documents.filter(d=>d.document_type===type&&d.status==='ACTIVE'&&!d.deletion_requested_at&&d.effective_from&&Date.parse(d.effective_from)<=Date.parse(now));
+    const active=documents.filter(d=>d.document_type===type&&d.status==='ACTIVE'&&!d.deletion_requested_at&&d.effective_from&&Date.parse(d.effective_from)<=Date.parse(now)
+      &&(onboarding.sandbox_only===true?d.sandbox_onboarding_id===onboarding.id:!d.sandbox_onboarding_id));
     // Fail closed for both missing and ambiguous active versions.
     if(active.length!==1){missingTypes.push(type);continue;}selected.push(active[0]);
   }
