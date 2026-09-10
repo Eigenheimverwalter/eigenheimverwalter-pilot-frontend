@@ -4,6 +4,7 @@ const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const partnerRoles=['partner_basic','referral_partner','crafts_partner','broker_partner'];
 const requireValue=(ok,code,status=422)=>{if(!ok)throw onboardingError(code,status)};
 export const onboardingServiceErrors={
+  ONBOARDING_INVITATION_REQUIRED:['Für diese Adresse besteht bereits eine Einladung. Bitte verwenden Sie den persönlichen Einladungslink.',409],
   ONBOARDING_PERMISSION_DENIED:['Keine Berechtigung für diese Partnerregistrierung.',403],
   ONBOARDING_NOT_FOUND:['Partnerregistrierung nicht gefunden.',404],
   ONBOARDING_EXPIRED:['Die Partnerregistrierung ist abgelaufen.',410],
@@ -97,7 +98,6 @@ export async function partnerOnboardingRequest({method,path,body={},profile,user
   requireValue(!supportView&&(profile?.status==='active'||pending)&&user?.id===profile?.id&&user?.email_confirmed_at,'ONBOARDING_PERMISSION_DENIED',403);
   requireValue(body&&typeof body==='object'&&!Array.isArray(body),'ONBOARDING_INPUT_INVALID');
   if(path==='/partner-onboarding'&&method==='POST'){
-    requireValue(!pending,'ONBOARDING_PERMISSION_DENIED',403);
     const own=partnerRoles.includes(profile.role);
     requireValue(own||['super_admin','admin_light'].includes(profile.role),'ONBOARDING_PERMISSION_DENIED',403);
     // SALES_OS and CRM_IMPORT are not selectable by an untrusted browser.

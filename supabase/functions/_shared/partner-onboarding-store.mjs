@@ -13,6 +13,8 @@ export function createSupabaseOnboardingService(db,trades=[]){
     return data;
   };
   return new PartnerOnboardingService({trades,store:{
+    emailRequest:({email,emailHash})=>call('partner_onboarding_email_request',{p_email:email,p_email_hash:emailHash}),
+    selfSession:({actorId})=>call('partner_onboarding_self_session',{p_actor:actorId}),
     entry:({id,tokenHash,actorId,action})=>call('partner_onboarding_entry',{p_action:action,p_id:id,p_token_hash:tokenHash,p_actor:actorId}),
     create:({actorId,input,tokenHash})=>call('create_partner_onboarding',{p_actor:actorId,p_input:input,p_token_hash:tokenHash}),
     step:({action,id,actorId,tokenHash,version,data})=>call('partner_onboarding_step',{p_action:action,p_id:id,p_actor:actorId,p_token_hash:tokenHash,p_version:version,p_data:data}),

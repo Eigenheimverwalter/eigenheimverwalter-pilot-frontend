@@ -1,8 +1,10 @@
-import './supabase-bridge.js?v=20260909-onboarding-entry';
+import './supabase-bridge.js?v=20260910-self-service';
+import {isSelfServicePath,selfServiceEmailMarkup,selfServicePasswordMarkup,selfServicePlanMarkup,validSelfServicePassword} from './partner-self-service.mjs';
 import {renderPartnerLegalStep} from './partner-legal-step.js?v=20260909-onboarding-entry';
 import {onboardingLocation,onboardingAuthMarkup,onboardingDataMarkup,escapeOnboarding as esc} from './partner-onboarding-entry.mjs';
 const bridge=window.ehvSupabaseBridge,host=document.querySelector('#onboarding-step'),logout=document.querySelector('#onboarding-logout');
 const locationData=onboardingLocation(location.pathname,location.hash),id=locationData.id;
+const selfService=!id&&isSelfServicePath(location.pathname);
 let token=locationData.token,invitation=null,busy=false;
 const path=`/api/partner-onboarding/${id}`;
 const request=(url,method='GET',data)=>bridge.request(url,{method,...(data?{body:JSON.stringify(data)}:{})});
@@ -14,6 +16,7 @@ const showError=error=>{
 };
 function authForm(register){
   host.innerHTML=onboardingAuthMarkup(invitation,register);
+  if(selfService)host.querySelector('section>p').textContent='Melden Sie sich mit Ihrer bestätigten E-Mail-Adresse an. Bereits aktive Partner nutzen ihren bestehenden Portalzugang.';
   const form=host.querySelector('form'),status=host.querySelector('[data-error]'),submit=form.querySelector('[type=submit]');
   host.querySelector('[data-toggle-auth]')?.addEventListener('click',()=>authForm(!register));
   host.querySelector('[data-forgot]').onclick=async()=>{
@@ -52,16 +55,55 @@ async function renderFlow(flow){
   host.querySelector('[data-refresh]').onclick=()=>resume().catch(showError);
 }
 async function resume(){
+  if(selfService)return resumeSelfService();
   logout.hidden=false;let flow;
   try{flow=await request(path);}catch(error){if(!token||![403,404].includes(error.status))throw error;flow=await publicRequest('claim');}
   clearToken();await renderFlow(flow);
 }
-logout.onclick=async()=>{if(busy)return;busy=true;try{await request('/api/logout','POST',{});logout.hidden=true;invitation=null;authForm(false);}catch(error){showError(error);}finally{busy=false;}};
+logout.onclick=async()=>{if(busy)return;busy=true;try{await request('/api/logout','POST',{});logout.hidden=true;invitation=null;if(selfService)selfServiceEmail();else authForm(false);}catch(error){showError(error);}finally{busy=false;}};
 async function start(){
   try{
-    if(!id||!bridge?.enabled)throw Error('Bitte öffnen Sie den vollständigen Einladungslink im eigenheimverwalter-Portal.');
+    if((!id&&!selfService)||!bridge?.enabled)throw Error('Bitte öffnen Sie den vollständigen Registrierungslink im eigenheimverwalter-Portal.');
     if(await bridge.onboardingAuthUser())return await resume();
+    if(selfService)return selfServiceEmail();
     if(token){invitation=await publicRequest('inspect');authForm(!invitation.registered&&!invitation.login_required);}else authForm(false);
   }catch(error){showError(error);}
+}
+function selfServiceSubmit(run){
+  const form=host.querySelector('form'),status=host.querySelector('[data-error]'),submit=form.querySelector('[type=submit]');
+  form.onsubmit=async event=>{event.preventDefault();if(busy)return;busy=true;submit.disabled=true;status.textContent='Bitte warten …';
+    try{await run(Object.fromEntries(new FormData(form)),status,form);}catch(error){status.textContent=error.message;}finally{busy=false;submit.disabled=false;}};
+}
+function selfServiceEmail(){
+  host.innerHTML=selfServiceEmailMarkup();host.querySelector('[data-login]').onclick=()=>authForm(false);
+  selfServiceSubmit(async(data,status)=>{const result=await request('/api/onboarding-self-service/email','POST',{email:data.email});status.textContent=result.message;});
+}
+async function resumeSelfService(){
+  logout.hidden=false;
+  const state=await request('/api/onboarding-self-service/session','POST',{});
+  // Supabase consumes its own one-time Auth fragment. Do not persist it ourselves.
+  history.replaceState(null,'',location.pathname);
+  if(state.needs_password){
+    host.innerHTML=selfServicePasswordMarkup(state.email);
+    selfServiceSubmit(async(data,status,form)=>{
+      if(!validSelfServicePassword(data.password,data.passwordConfirmation))throw Error('Bitte identische Passwörter mit den genannten Anforderungen eingeben.');
+      await bridge.updatePassword(data.password);form.reset();await resumeSelfService();
+    });return;
+  }
+  const go=id=>location.assign(new URL(id,location.href).href);
+  if(state.onboarding_id){go(state.onboarding_id);return;}
+  const catalog=await request('/api/partner-basic/trades'),trades=catalog.trades.filter(t=>!['BROKER','broker','whitelabel'].includes(t.id));
+  host.innerHTML=selfServicePlanMarkup(state.email,trades);
+  const form=host.querySelector('form'),kind=form.elements.partner_type,plan=form.elements.requested_plan,equipment=form.elements.equipment_type;
+  const sync=()=>{const premium=plan.value==='PREMIUM';
+    kind.querySelector('[value="REFERRAL"]').disabled=premium;if(premium&&kind.value==='REFERRAL')kind.value='EQUIPMENT_PARTNER';
+    const needsTrade=kind.value==='EQUIPMENT_PARTNER';equipment.disabled=!needsTrade;equipment.required=needsTrade;host.querySelector('[data-equipment]').hidden=!needsTrade;
+    host.querySelector('[data-plan-note]').textContent=premium?'Premium: Zwei PLZ-Lizenzgebiete sind enthalten. Vertrag, Preis und Zahlung bestätigen Sie erst in den folgenden Schritten.':'Basic benötigt kein PLZ-Lizenzgebiet und keine Zahlung.';
+  };plan.onchange=sync;kind.onchange=sync;sync();
+  const requestKey=crypto.randomUUID();
+  selfServiceSubmit(async(data)=>{
+    const result=await request('/api/partner-onboarding','POST',{request_key:requestKey,requested_plan:data.requested_plan,partner_type:data.partner_type,equipment_type:data.equipment_type,prefilled_data:{}});
+    go(result.onboarding_id);
+  });
 }
 start();

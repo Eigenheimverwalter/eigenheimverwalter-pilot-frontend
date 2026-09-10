@@ -1,4 +1,4 @@
-import {normalizedPath,supportsPath,isDocumentUpload,isPublicPath,handlesRoute} from './supabase-routes.mjs?v=20260909-onboarding-entry';
+import {normalizedPath,supportsPath,isDocumentUpload,isPublicPath,handlesRoute} from './supabase-routes.mjs?v=20260910-self-service';
 
 const config=window.__EHV_RUNTIME__||{};
 const enabled=config.authMode==='supabase'&&config.supabaseUrl&&config.supabasePublishableKey;
@@ -23,13 +23,13 @@ window.ehvSupabaseBridge={
     if(!enabled)return null;
     if(isPublicPath(path)){
       const headers={apikey:config.supabasePublishableKey,'Content-Type':'application/json',...(options.headers||{})};
-      if(/^\/api\/onboarding-invitations\/[^/]+\/claim$/.test(path)){
+      if(/^\/api\/onboarding-invitations\/[^/]+\/claim$/.test(path)||path==='/api/onboarding-self-service/session'){
         const supabase=await getClient(),{data:{session}}=await supabase.auth.getSession();
         if(!session)throw Object.assign(Error('Bitte zuerst anmelden.'),{status:401});
         headers.Authorization=`Bearer ${session.access_token}`;
       }
       const supportTarget=sessionStorage.getItem('ehv-support-target');
-      if(path.startsWith('/api/onboarding-invitations/')&&supportTarget)headers['x-ehv-support-user']=supportTarget;
+      if((path.startsWith('/api/onboarding-invitations/')||path.startsWith('/api/onboarding-self-service/'))&&supportTarget)headers['x-ehv-support-user']=supportTarget;
       const response=await fetch(`${config.supabaseUrl}/functions/v1/portal-public${path.replace(/^\/api/,'')}`,{...options,headers});
       if(!response.ok)return responseError(response);return response.json();
     }
