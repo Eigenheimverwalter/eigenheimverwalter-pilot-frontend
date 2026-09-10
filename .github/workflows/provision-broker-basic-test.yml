@@ -21,7 +21,7 @@ jobs:
       - name: Provision only the authorized Basic broker and synthetic files
         env:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          BROKER_TEST_PASSWORD: ${{ secrets.HEATING_TEST_PASSWORD }}
+          BROKER_TEST_PASSWORD: ${{ secrets.BROKER_TEST_PASSWORD }}
         run: node scripts/provision-broker-basic-test.mjs
       - name: Prepare isolated broker test documents without accepting them
         env:
