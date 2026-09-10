@@ -13,7 +13,7 @@ function handlerFor(role,linked=true){
   const readRoute=new Function(...Object.keys(deps),strip(read('../supabase/functions/_shared/read-routes.ts')).replace('export function readRoute','function readRoute')+';return readRoute')(...Object.values(deps));
   let handler;
   const routes={...deps,readRoute,authenticate:async()=>({user:{email:'test@example.invalid'},profile:{id:'auth-own',role,status:'active'},sourceUserId:'source-own',service:{}}),loadRuntime:async()=>({state,revision:1}),corsHeaders:()=>({}),identifier:()=>'',replaceRuntime:()=>{throw Error('No writes allowed')},writeRoute:()=>{throw Error('No writes allowed')}};
-  new Function('Deno',...Object.keys(routes),strip(read('../supabase/functions/portal-api/index.ts')))({serve:fn=>handler=fn},...Object.values(routes));
+  new Function('Deno',...Object.keys(routes),strip(read('../supabase/functions/portal-api/index.ts')))({serve:fn=>handler=fn,env:{get:()=>''}},...Object.values(routes));
   return path=>handler(new Request('https://pilot.invalid/functions/v1/portal-api'+path,{headers:{Authorization:'Bearer test'}}));
 }
 for(const role of ['partner_basic','referral_partner'])test(`${role}: real HTTP dispatcher returns scoped Basic dashboard, not generic dashboard`,async()=>{

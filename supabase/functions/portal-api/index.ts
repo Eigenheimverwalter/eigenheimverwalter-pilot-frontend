@@ -186,7 +186,7 @@ Deno.serve(async (req) => {
   }
   if (req.method === "GET") {
     try {
-      const result=readRoute(routePath,(await loadRuntime(serviceClient)).state,effectiveProfile,effectiveSourceUserId,effectiveEmail);
+      const result=readRoute(routePath,(await loadRuntime(serviceClient)).state,effectiveProfile,effectiveSourceUserId,effectiveEmail,{onboardingEnabled:Deno.env.get('PILOT_PARTNER_ONBOARDING_ENABLED')==='true'});
       if(result)return json(result.body,result.status);
     } catch (error) {
       return json({ error: error instanceof Error ? error.message : "Datenzugriff fehlgeschlagen" }, Number((error as {status?:number}).status||503));
@@ -195,7 +195,7 @@ Deno.serve(async (req) => {
   if (["POST","PATCH","DELETE"].includes(req.method)) {
     try {
       const body=req.method==="DELETE"?{}:await req.json().catch(()=>{throw Object.assign(new Error("Ungültiges JSON"),{status:400})});
-      const result=await writeRoute(req.method,routePath,{service:serviceClient,snapshot:await loadRuntime(serviceClient),profile,sourceUserId,body});
+      const result=await writeRoute(req.method,routePath,{service:serviceClient,snapshot:await loadRuntime(serviceClient),profile,sourceUserId,body,onboardingEnabled:Deno.env.get('PILOT_PARTNER_ONBOARDING_ENABLED')==='true'});
       if(result)return json(result.body,result.status);
     } catch(error) {
       return json({error:error instanceof Error?error.message:"Änderung fehlgeschlagen"},Number((error as {status?:number}).status||500));

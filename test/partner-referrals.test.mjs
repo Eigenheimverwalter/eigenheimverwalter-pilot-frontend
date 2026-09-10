@@ -1,5 +1,6 @@
 import test from 'node:test';
 import {assertNewCustomerEmail} from '../supabase/functions/_shared/customer-invitations.mjs';
+import {confirmPartnerReferral} from '../supabase/functions/_shared/referral-confirmation.mjs';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {stripTypeScriptTypes} from 'node:module';
@@ -10,7 +11,7 @@ import {portalRootPath} from '../public/assets/portal-navigation.mjs';
 
 const read = path => readFileSync(new URL(path,import.meta.url),'utf8');
 const array = value => Array.isArray(value)?value:[];
-function fixture(role='referral_partner', {trade='ROOF', failMail=false, plan, status='active'}={}) {
+function fixture(role='referral_partner', {trade='ROOF', failMail=false, plan, status='active',onboardingEnabled=false}={}) {
   const partner={id:'p-own',userId:'source-own',company:'Testbetrieb',primaryTradeId:role==='referral_partner'?null:trade,referralOnly:role==='referral_partner',plan:plan||(role==='partner_basic'||role==='referral_partner'?'basic':'premium'),postalCodes:role==='partner_basic'||role==='referral_partner'?[]:['22043'],status,lifecycle:status};
   const state={partners:[partner],users:[],trades:[{id:trade,name:trade}],partnerReferralInvitations:[],referralLeads:[],assignments:[],properties:[],customers:[]};
   const snapshot={state,revision:1}; let sends=0,commits=0,lastMail;
@@ -18,7 +19,7 @@ function fixture(role='referral_partner', {trade='ROOF', failMail=false, plan, s
   const code=stripTypeScriptTypes(read('../supabase/functions/_shared/write-routes.ts').replace(/^import .*\r?\n/gm,'').replace('export async function writeRoute','async function writeRoute'),{mode:'strip'});
   const write=new Function(...Object.keys(deps),code+';return writeRoute')(...Object.values(deps));
   const body={name:'Kunde Test',email:'kunde@example.invalid',address:'Teststraße 1',postalCode:'22043',city:'Hamburg',consentConfirmed:true,siteUrl:'https://eigenheimverwalter.github.io/eigenheimverwalter-pilot-frontend'};
-  return{state,snapshot,partner,body,sends:()=>sends,commits:()=>commits,mail:()=>lastMail,post:(overrides={})=>write('POST','/referral/invitations',{snapshot,profile:{id:'auth-own',role},sourceUserId:'source-own',service:{},body:{...body,...overrides}})};
+  return{state,snapshot,partner,body,sends:()=>sends,commits:()=>commits,mail:()=>lastMail,post:(overrides={})=>write('POST','/referral/invitations',{snapshot,profile:{id:'auth-own',role},sourceUserId:'source-own',service:{},body:{...body,...overrides},onboardingEnabled})};
 }
 
 for(const role of ['referral_partner','partner_basic','crafts_partner','broker_partner']) {
@@ -38,6 +39,12 @@ test('internal roles, inactive partners, invalid contact data and external redir
 test('Basic has no territory restriction; licensed partners retain their territory check',async()=>{
   for(const role of ['referral_partner','partner_basic'])assert.equal((await fixture(role).post({postalCode:'80331'})).status,201);
   for(const role of ['crafts_partner','broker_partner'])await assert.rejects(fixture(role).post({postalCode:'80331'}),e=>e.status===422);
+});
+test('Central rollout permits own Premium referrals outside licence regions, not by browser flag',async()=>{
+  for(const role of ['crafts_partner','broker_partner']){
+    assert.equal((await fixture(role,{onboardingEnabled:true}).post({postalCode:'80331'})).status,201);
+    await assert.rejects(fixture(role).post({postalCode:'80331',onboardingEnabled:true}),e=>e.status===422);
+  }
 });
 test('all 16 equipment types retain their own trade for Basic and licensed craft referrals',async()=>{
   const trades=Object.keys(EQUIPMENT_FORM_MATRIX);assert.equal(trades.length,16);
@@ -74,7 +81,7 @@ test('new navigation uses one customer action; obsolete top-right entry and inte
 test('public customer acceptance works once, confirms all fields and never grants a tipster property access',async()=>{
   for(const role of ['referral_partner','partner_basic','crafts_partner','broker_partner']){
     const f=fixture(role,{trade:role==='broker_partner'?'BROKER':'ROOF'});await f.post();const token=f.mail()[3].match(/empfehlung\/([^\s]+)/)[1];let handler;
-    const service={rpc:async()=>({error:null})},deps={array,clean:(v,n)=>String(v??'').trim().slice(0,n),identifier:p=>p+'-'+crypto.randomUUID(),loadRuntime:async()=>f.snapshot,serviceClient:()=>service,corsHeaders:()=>({})};
+    const service={rpc:async()=>({error:null})},deps={confirmPartnerReferral,array,clean:(v,n)=>String(v??'').trim().slice(0,n),identifier:p=>p+'-'+crypto.randomUUID(),loadRuntime:async()=>f.snapshot,serviceClient:()=>service,corsHeaders:()=>({})};
     const code=stripTypeScriptTypes(read('../supabase/functions/portal-public/index.ts').replace(/^import .*\r?\n/gm,''),{mode:'strip'});
     new Function('Deno',...Object.keys(deps),code)({serve:fn=>handler=fn,env:{get:()=>''}},...Object.values(deps));
     const url='https://example.invalid/functions/v1/portal-public/referral-invitations/'+token;
