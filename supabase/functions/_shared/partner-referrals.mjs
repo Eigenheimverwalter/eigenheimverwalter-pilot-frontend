@@ -17,7 +17,7 @@ export function referralOverview(state, partner, role, {onboardingEnabled=false}
     .map(row => ({id:row.id, name:row.name || '', email:maskReferralEmail(row.email), address:row.address || '', postalCode:row.postalCode || '', city:row.city || '', status:row.status, createdAt:row.createdAt,
       ...(onboardingEnabled?{activationStatus:row.activationStatus||leads.find(l=>l.sourceInvitationId===row.id)?.activationStatus||null}:{} )}));
   const trade = list('trades').find(row => row.id === partner.primaryTradeId);
-  const allowance=onboardingEnabled?basicPropertyAllowance(state,partner,null):null;
+  const allowance=onboardingEnabled?basicPropertyAllowance(state,{...partner,referralOnly:isReferralOnly(partner,role)},null):null;
   return {
     partner:{id:partner.id, company:partner.company, tradeId:trade?.id || null, tradeName:trade?.name || 'Allgemeine Empfehlung', referralOnly:isReferralOnly(partner,role), canRecommend:canRecommend(partner,role)},
     link:`/ref/${encodeURIComponent(partner.referralCode || partner.id)}`,

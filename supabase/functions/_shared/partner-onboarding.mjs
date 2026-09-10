@@ -13,6 +13,7 @@ export function normalizeOnboardingInput(input,trades){
   demand(['BASIC','PREMIUM'].includes(input.requested_plan),'COOPERATION_LEVEL_REQUIRED');
   demand(partnerTypes.includes(input.partner_type),'PARTNER_TYPE_REQUIRED');
   demand(!(input.source==='SELF_SERVICE_BASIC'&&input.requested_plan!=='BASIC')&&!(input.source==='SELF_SERVICE_PREMIUM'&&input.requested_plan!=='PREMIUM'),'ENTRY_PLAN_MISMATCH');
+  demand(!(input.partner_type==='REFERRAL'&&input.requested_plan==='PREMIUM'),'REFERRAL_PREMIUM_NOT_AVAILABLE');
   const equipment=input.partner_type==='EQUIPMENT_PARTNER'?text(input.equipment_type,100):null;
   if(equipment!==null)demand(trades.some(t=>t.id===equipment&&t.onboarding!==false&&t.tier!=='legacy'&&!['BROKER','broker','whitelabel'].includes(t.id)),'EQUIPMENT_TYPE_REQUIRED');
   if(input.source==='SALES_OS')demand(text(input.sales_lead_id,160),'SALES_LEAD_REQUIRED');
@@ -66,6 +67,7 @@ export function assertActivationAllowed({onboarding,legalState,payment,reservati
   return true;
 }
 export function basicPropertyAllowance(state,partner,propertyId){
+  if(partner.referralOnly===true||partner.role==='referral_partner'||partner.partner_type==='REFERRAL')return{allowed:true,confirmedProperties:0,limit:null};
   const assignments=Array.isArray(state.assignments)?state.assignments:[];
   const owned=new Set(assignments.filter(a=>a.partnerId===partner.id&&a.status==='active'&&['basic_partner_referral','partner_referral'].includes(a.source)).map(a=>a.propertyId));
   // Tippgeber recommendations intentionally have no equipment assignment.

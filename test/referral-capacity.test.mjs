@@ -14,7 +14,7 @@ function fixture({plan='basic',referralOnly=false}={}){
   const confirm=(item,enabled=true)=>confirmPartnerReferral(state,{item,partner,trade:referralOnly?null:{id:'ROOF',name:'Dach'},body,identifier:p=>p+'-'+crypto.randomUUID(),now,onboardingEnabled:enabled});
   return{state,partner,invite,confirm};
 }
-for(const referralOnly of [false,true])test(`Basic ${referralOnly?'tipster':'craft'}: three active properties, fourth retained without more access`,()=>{
+for(const referralOnly of [false])test(`Basic craft: three active properties, fourth retained without more access`,()=>{
   const f=fixture({referralOnly});for(let i=1;i<=3;i++)assert.equal(f.confirm(f.invite(i)).upgradeRequired,false);
   const before=f.state.assignments.map(a=>structuredClone(a));
   const fourth=f.confirm(f.invite(4));assert.equal(fourth.upgradeRequired,true);assert.equal(fourth.result.registered,true);
@@ -28,6 +28,18 @@ for(const referralOnly of [false,true])test(`Basic ${referralOnly?'tipster':'cra
   assert.deepEqual(view.capacity,{confirmedProperties:3,limit:3,pendingProperties:2,upgradeRequired:true});assert.equal(view.stats.registered,5);assert.equal(view.stats.assigned,3);
   assert.equal(view.invitations.filter(r=>r.activationStatus==='upgrade_required').length,2);assert.ok(!JSON.stringify(view).includes('@example.invalid'));
   if(!referralOnly){const queued=f.state.assignments.filter(a=>a.status==='pending_upgrade');assert.equal(queued.length,2);assert.ok(queued.every(a=>a.accessStart===null));}
+});
+
+test('Tipsters can continue recommending without upsell or property access',()=>{
+  const f=fixture({referralOnly:true});
+  for(let n=1;n<=5;n++)assert.equal(f.confirm(f.invite(n)).upgradeRequired,false);
+  assert.equal(f.state.assignments.length,0);
+  const view=referralOverview(f.state,f.partner,'referral_partner',{onboardingEnabled:true});
+  assert.equal(view.capacity.limit,null);assert.equal(view.capacity.upgradeRequired,false);
+  const source=stripTypeScriptTypes(readFileSync(new URL('../supabase/functions/_shared/runtime.ts',import.meta.url),'utf8').replace(/^import .*\r?\n/gm,''),{mode:'strip'}).replace(/export /g,'');
+  const scoped=new Function(source+';return scopedProperties')();
+  f.state.assignments.push({partnerId:'p',propertyId:f.state.properties[0].id,status:'active'});
+  assert.deepEqual(scoped(f.state,{role:'referral_partner'},'u'),[]);
 });
 test('Premium owns unlimited referred properties outside its protected regions',()=>{
   const f=fixture({plan:'premium'});for(let i=1;i<=5;i++)assert.equal(f.confirm(f.invite(i)).upgradeRequired,false);

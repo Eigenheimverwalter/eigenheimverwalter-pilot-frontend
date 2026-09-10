@@ -4,6 +4,7 @@ const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const partnerRoles=['partner_basic','referral_partner','crafts_partner','broker_partner'];
 const requireValue=(ok,code,status=422)=>{if(!ok)throw onboardingError(code,status)};
 export const onboardingServiceErrors={
+  REFERRAL_PREMIUM_NOT_AVAILABLE:['Tippgeber können kein Premium-Abonnement abschließen.',422],
   ONBOARDING_INVITATION_REQUIRED:['Für diese Adresse besteht bereits eine Einladung. Bitte verwenden Sie den persönlichen Einladungslink.',409],
   ONBOARDING_PERMISSION_DENIED:['Keine Berechtigung für diese Partnerregistrierung.',403],
   ONBOARDING_NOT_FOUND:['Partnerregistrierung nicht gefunden.',404],

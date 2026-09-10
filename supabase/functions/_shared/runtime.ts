@@ -110,6 +110,7 @@ export function scopedProperties(state: RuntimeState, profile: PortalProfile, so
   if (isAdmin(profile)) return properties;
   const partner = sourcePartner(state, sourceUserId);
   if (!partner) return [];
+  if(profile.role==='referral_partner'||partner.referralOnly===true)return [];
   const ids = new Set(array(state.assignments)
     .filter((item) => item.partnerId === partner.id && item.status === "active")
     .map((item) => item.propertyId));
