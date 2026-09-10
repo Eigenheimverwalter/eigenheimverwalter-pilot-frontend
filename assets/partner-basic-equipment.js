@@ -1,4 +1,5 @@
 import { portalRequest } from './partner-referrals.js?v=20260909-app-download';
+import {openPremiumUpgrade} from './partner-upgrade.js?v=20260910-equipment';
 const q=s=>document.querySelector(s);
 const h=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const request=portalRequest;
@@ -17,7 +18,7 @@ const serviceName=type=>({inspection:'Prüfung',maintenance:'Wartung',repair:'Re
 async function openEquipment(propertyId,equipmentId,tradeName){
   if(!equipmentId){
     dialog('Gewerk einrichten',`<form id="basic-create-equipment"><div class="source-note">Es wird ausschließlich <b>${h(tradeName)}</b> für diesen bestätigten Kunden eingerichtet.</div><label>Bezeichnung<input name="label" value="${h(tradeName)}" required></label><button class="primary wide-action">Equipment einrichten</button></form>`);
-    q('#basic-create-equipment').onsubmit=async event=>{event.preventDefault();const result=await write(`/api/properties/${encodeURIComponent(propertyId)}/equipment`,{method:'POST',body:JSON.stringify(Object.fromEntries(new FormData(event.target)))});await openEquipment(propertyId,result.equipment.id,tradeName)};
+    q('#basic-create-equipment').onsubmit=async event=>{event.preventDefault();const form=event.target,button=form.querySelector('button');button.disabled=true;try{const result=await write(`/api/properties/${encodeURIComponent(propertyId)}/equipment`,{method:'POST',body:JSON.stringify(Object.fromEntries(new FormData(form)))});await openEquipment(propertyId,result.equipment.id,tradeName);}catch(error){if(error.code==='BASIC_EQUIPMENT_LIMIT_REACHED'){close();await openPremiumUpgrade();}else{let message=form.querySelector('[role="alert"]');if(!message){message=document.createElement('p');message.setAttribute('role','alert');form.append(message);}message.textContent=error.message;}button.disabled=false;}};
     return;
   }
   const data=await request(`/api/equipment/${encodeURIComponent(equipmentId)}`),schema=await request(`/api/equipment-schema/${encodeURIComponent(data.equipment.tradeId)}`),equipment=data.equipment;
