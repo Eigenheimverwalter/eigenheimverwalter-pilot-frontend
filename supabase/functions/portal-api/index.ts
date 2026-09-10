@@ -205,7 +205,7 @@ Deno.serve(async (req) => {
       const result=await writeRoute(req.method,routePath,{service:serviceClient,snapshot:await loadRuntime(serviceClient),profile,sourceUserId,body,onboardingEnabled:Deno.env.get('PILOT_PARTNER_ONBOARDING_ENABLED')==='true'});
       if(result)return json(result.body,result.status);
     } catch(error) {
-      return json({error:error instanceof Error?error.message:"Änderung fehlgeschlagen"},Number((error as {status?:number}).status||500));
+      return json({error:error instanceof Error?error.message:"Änderung fehlgeschlagen",code:(error as {code?:string}).code},Number((error as {status?:number}).status||500));
     }
   }
   return json({ error: "Route nicht gefunden" }, 404);

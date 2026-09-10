@@ -3,14 +3,14 @@ import assert from 'node:assert/strict';
 import {buildPartnerSandbox,planSandboxCleanup} from '../scripts/partner-sandbox-fixtures.mjs';
 import {basicPropertyAllowance} from '../supabase/functions/_shared/partner-onboarding.mjs';
 import {confirmPartnerReferral} from '../supabase/functions/_shared/referral-confirmation.mjs';
-test('sandbox has two- and three-property Basic scenarios; fourth queues through real domain flow',()=>{
+test('sandbox has two- and three-property Basic scenarios; recommendations do not consume equipment quota',()=>{
   const {state,scenarios,manifest}=buildPartnerSandbox();
   assert.deepEqual(scenarios.map(s=>s.confirmedProperties),[2,3,3]);
   for(const scenario of scenarios){
     const partner=state.partners.find(p=>p.id===scenario.partnerId),item=state.partnerReferralInvitations.find(i=>i.id===scenario.nextInvitationId);
-    assert.equal(basicPropertyAllowance(state,partner).confirmedProperties,scenario.confirmedProperties);
+    assert.equal(basicPropertyAllowance(state,partner).confirmedProperties,0);
     const result=confirmPartnerReferral(state,{partner,item,trade:state.trades.find(t=>t.id===partner.primaryTradeId),body:{accepted:true,emailConfirmed:true,addressConfirmed:true},identifier:()=>crypto.randomUUID(),onboardingEnabled:true});
-    assert.equal(result.upgradeRequired,scenario.confirmedProperties===3);
+    assert.equal(result.upgradeRequired,false);
   }
   assert.equal(manifest.authUserIds.length,0);assert.equal(manifest.stripeObjects.length,0);
   assert.ok(planSandboxCleanup(state,manifest).blockers.length>0,'New test activity requires renewed inventory, never broad deletion');

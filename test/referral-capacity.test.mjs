@@ -14,20 +14,20 @@ function fixture({plan='basic',referralOnly=false}={}){
   const confirm=(item,enabled=true)=>confirmPartnerReferral(state,{item,partner,trade:referralOnly?null:{id:'ROOF',name:'Dach'},body,identifier:p=>p+'-'+crypto.randomUUID(),now,onboardingEnabled:enabled});
   return{state,partner,invite,confirm};
 }
-for(const referralOnly of [false])test(`Basic craft: three active properties, fourth retained without more access`,()=>{
+for(const referralOnly of [false])test(`Basic referrals remain unlimited; equipment alone consumes quota`,()=>{
   const f=fixture({referralOnly});for(let i=1;i<=3;i++)assert.equal(f.confirm(f.invite(i)).upgradeRequired,false);
   const before=f.state.assignments.map(a=>structuredClone(a));
-  const fourth=f.confirm(f.invite(4));assert.equal(fourth.upgradeRequired,true);assert.equal(fourth.result.registered,true);
+  const fourth=f.confirm(f.invite(4));assert.equal(fourth.upgradeRequired,false);assert.equal(fourth.result.registered,true);
   assert.equal(f.state.customers.length,4);assert.equal(f.state.properties.length,4);assert.equal(f.state.referralLeads.length,4);
-  assert.equal(f.state.partnerReferralInvitations.at(-1).status,'accepted');assert.equal(fourth.lead.activationStatus,'upgrade_required');
-  assert.equal(f.state.assignments.filter(a=>a.status==='active').length,referralOnly?0:3);
+  assert.equal(f.state.partnerReferralInvitations.at(-1).status,'accepted');assert.equal(fourth.lead.activationStatus,'active');
+  assert.equal(f.state.assignments.filter(a=>a.status==='active').length,referralOnly?0:4);
   assert.deepEqual(f.state.assignments.slice(0,before.length),before);
-  assert.equal(basicPropertyAllowance(f.state,f.partner,null).confirmedProperties,3);
-  const fifth=f.confirm(f.invite(5));assert.equal(fifth.upgradeRequired,true);
+  assert.equal(basicPropertyAllowance(f.state,f.partner,null).confirmedProperties,0);
+  const fifth=f.confirm(f.invite(5));assert.equal(fifth.upgradeRequired,false);
   const view=referralOverview(f.state,f.partner,referralOnly?'referral_partner':'partner_basic',{onboardingEnabled:true});
-  assert.deepEqual(view.capacity,{confirmedProperties:3,limit:3,pendingProperties:2,upgradeRequired:true});assert.equal(view.stats.registered,5);assert.equal(view.stats.assigned,3);
-  assert.equal(view.invitations.filter(r=>r.activationStatus==='upgrade_required').length,2);assert.ok(!JSON.stringify(view).includes('@example.invalid'));
-  if(!referralOnly){const queued=f.state.assignments.filter(a=>a.status==='pending_upgrade');assert.equal(queued.length,2);assert.ok(queued.every(a=>a.accessStart===null));}
+  assert.deepEqual(view.capacity,{confirmedProperties:0,limit:3,pendingProperties:0,upgradeRequired:false});assert.equal(view.stats.registered,5);assert.equal(view.stats.assigned,5);
+  assert.equal(view.invitations.filter(r=>r.activationStatus==='upgrade_required').length,0);assert.ok(!JSON.stringify(view).includes('@example.invalid'));
+  if(!referralOnly){const queued=f.state.assignments.filter(a=>a.status==='pending_upgrade');assert.equal(queued.length,0);assert.ok(queued.every(a=>a.accessStart===null));}
 });
 
 test('Tipsters can continue recommending without upsell or property access',()=>{
@@ -62,13 +62,13 @@ test('Counting is by unique property, excludes pending and foreign assignments, 
   const item=f.invite(7);Object.assign(item,{email:customer.email,address:property.address,postalCode:property.postalCode});
   assert.equal(f.confirm(item).upgradeRequired,false);assert.deepEqual(f.state.properties.map(p=>p.id),ids);
   f.state.assignments.push({partnerId:'foreign',propertyId:'foreign-property',status:'active',source:'partner_referral'});
-  assert.equal(basicPropertyAllowance(f.state,f.partner,null).confirmedProperties,3);
+  assert.equal(basicPropertyAllowance(f.state,f.partner,null).confirmedProperties,0);
 });
 test('Existing ACL never includes queued property assignments',()=>{
   const f=fixture();for(let i=1;i<=4;i++)f.confirm(f.invite(i));
   const text=stripTypeScriptTypes(readFileSync(new URL('../supabase/functions/_shared/runtime.ts',import.meta.url),'utf8').replace(/^import .*\r?\n/gm,''),{mode:'strip'}).replace(/export /g,'');
   const scoped=new Function(text+';return scopedProperties')();
-  const accessible=scoped(f.state,{role:'partner_basic'},'u');assert.equal(accessible.length,3);assert.ok(!accessible.some(p=>p.id===f.state.properties[3].id));
+  f.state.assignments[3].status='pending_upgrade';const accessible=scoped(f.state,{role:'partner_basic'},'u');assert.equal(accessible.length,3);assert.ok(!accessible.some(p=>p.id===f.state.properties[3].id));
 });
 test('Actual public route uses revision conflict to prevent two simultaneous fourth activations',async()=>{
   const f=fixture();f.confirm(f.invite(1));f.confirm(f.invite(2));
@@ -85,6 +85,6 @@ test('Actual public route uses revision conflict to prevent two simultaneous fou
   const replies=await Promise.all(tokens.map(confirm));assert.deepEqual(replies.map(r=>r.status).sort(),[200,409]);
   assert.equal(persisted.assignments.filter(a=>a.status==='active').length,3);
   const retry=tokens[replies.findIndex(r=>r.status===409)];assert.equal((await confirm(retry)).status,200);
-  assert.equal(persisted.assignments.filter(a=>a.status==='active').length,3);assert.equal(persisted.assignments.filter(a=>a.status==='pending_upgrade').length,1);
+  assert.equal(persisted.assignments.filter(a=>a.status==='active').length,4);assert.equal(persisted.assignments.filter(a=>a.status==='pending_upgrade').length,0);
   assert.equal(persisted.referralLeads.length,4);assert.equal(persisted.customers.length,4);
 });

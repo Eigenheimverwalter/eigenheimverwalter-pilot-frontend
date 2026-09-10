@@ -16,8 +16,9 @@ export function confirmPartnerReferral(state,{item,partner,trade,body,identifier
   if(!customer){customer={id:identifier('c-ref'),name:item.name||item.email,email:item.email,phone:'',propertyIds:[],consent:true,consentAt:now,dataClass:'referral'};list('customers').push(customer);}
   let property=list('properties').find(x=>x.customerId===customer.id&&x.postalCode===item.postalCode&&String(x.address).toLowerCase()===String(item.address).toLowerCase());
   if(!property){property={id:identifier('o-ref'),ehvId:`EHV-REF-${Date.parse(now).toString().slice(-6)}`,customerId:customer.id,address:item.address,postalCode:item.postalCode,city:item.city,type:'Noch nicht erfasst',year:null,area:null,value:null};list('properties').push(property);(customer.propertyIds||=[]).push(property.id);}
-  const allowance=basicPropertyAllowance(state,partner,property.id);
-  const upgradeRequired=onboardingEnabled&&!item.referralOnly&&partner.plan==='basic'&&!allowance.allowed;
+  // Customer confirmation always connects the customer; quota applies only to
+  // creating the partner's trade file, never to referrals or acceptance.
+  const upgradeRequired=false;
   let assignment=null;
   // Own Premium customers are independent of EHV's protected licence regions.
   // The old regional rule remains intact while the central rollout is closed.

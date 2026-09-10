@@ -70,9 +70,10 @@ export function assertActivationAllowed({onboarding,legalState,payment,reservati
 export function basicPropertyAllowance(state,partner,propertyId){
   if(partner.referralOnly===true||partner.role==='referral_partner'||partner.partner_type==='REFERRAL')return{allowed:true,confirmedProperties:0,limit:null};
   const assignments=Array.isArray(state.assignments)?state.assignments:[];
-  const owned=new Set(assignments.filter(a=>a.partnerId===partner.id&&a.status==='active'&&['basic_partner_referral','partner_referral'].includes(a.source)).map(a=>a.propertyId));
-  // Tippgeber recommendations intentionally have no equipment assignment.
-  for(const lead of (state.referralLeads||[]))if(lead.partnerId===partner.id&&lead.propertyId&&lead.sourceInvitationId&&lead.activationStatus!=='upgrade_required'&&['won','accepted','successful','brokerage_in_progress'].includes(lead.status))owned.add(lead.propertyId);
+  const accessible=new Set(assignments.filter(a=>a.partnerId===partner.id&&a.status==='active').map(a=>a.propertyId));
+  // Recommendations and customer acceptance do not consume capacity. A created
+  // trade file does, including drafts; repeated work on that file stays allowed.
+  const owned=new Set((state.equipmentRecords||[]).filter(e=>accessible.has(e.propertyId)&&e.tradeId===partner.primaryTradeId&&e.status!=='deleted').map(e=>e.propertyId));
   return{allowed:partner.plan==='premium'||owned.has(propertyId)||owned.size<BASIC_PROPERTY_LIMIT,confirmedProperties:owned.size,limit:partner.plan==='premium'?null:BASIC_PROPERTY_LIMIT};
 }
 export class PartnerRegionRecommendationService {

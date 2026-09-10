@@ -43,11 +43,11 @@ test('Premium activation needs verified matching payment, both live reservations
 });
 test('Basic activation needs legal consent but no payment or territory',()=>{assert.equal(assertActivationAllowed({onboarding:{...flow,requested_plan:'BASIC'},legalState:legal()}),true);assert.throws(()=>assertActivationAllowed({onboarding:{...flow,requested_plan:'BASIC'},legalState:{accepted:false}}),/LEGAL_ACCEPTANCE_REQUIRED/);});
 test('Basic property limit counts unique own confirmed properties and does not delete referrals',()=>{
-  const state={assignments:[1,2,3].map(n=>({partnerId:'p',propertyId:'p'+n,status:'active',source:'basic_partner_referral'}))};state.assignments.push({...state.assignments[0],tradeId:'other'});const before=JSON.stringify(state);
+  const state={assignments:[1,2,3].map(n=>({partnerId:'p',propertyId:'p'+n,status:'active',source:'basic_partner_referral'}))};state.assignments.push({...state.assignments[0],tradeId:'other'});state.equipmentRecords=[1,2,3].map(n=>({propertyId:'p'+n}));const before=JSON.stringify(state);
   assert.equal(basicPropertyAllowance(state,{id:'p',plan:'basic'},'p4').allowed,false);
   assert.equal(basicPropertyAllowance(state,{id:'p',plan:'basic'},'p1').allowed,true);
   assert.equal(basicPropertyAllowance(state,{id:'p',plan:'premium'},'p4').allowed,true);assert.equal(JSON.stringify(state),before);
-  assert.equal(basicPropertyAllowance({referralLeads:[1,2,3].map(n=>({partnerId:'p',propertyId:'p'+n,sourceInvitationId:'i'+n,status:'won'}))},{id:'p',plan:'basic'},'p4').allowed,false);
+  assert.equal(basicPropertyAllowance({referralLeads:[1,2,3].map(n=>({partnerId:'p',propertyId:'p'+n,sourceInvitationId:'i'+n,status:'won'}))},{id:'p',plan:'basic'},'p4').allowed,true);
 });
 test('region recommendations use existing catalog and disclose missing distance data',()=>{
   const result=new PartnerRegionRecommendationService().recommend({directory:[{postalCode:'22043',city:'Hamburg'},{postalCode:'22045',city:'Hamburg'},{postalCode:'22047',city:'Hamburg'}],partner:{id:'p',postalCode:'22043'},occupied:[{postal_code:'22043',scope:'roof',partner_id:'other'}],scope:'roof',ownProperties:[{postalCode:'22047'}]});
