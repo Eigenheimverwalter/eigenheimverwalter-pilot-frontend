@@ -2,6 +2,7 @@ const uuid='[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
 const route=new RegExp(`^/partner-onboarding/(${uuid})/legal(?:/(${uuid})/file)?$`,'i');
 const fail=(message,status,code)=>{throw Object.assign(new Error(message),{status,code})};
 export const partnerLegalErrors=Object.freeze({
+  LEGAL_AUDIENCE_MISMATCH:['Diese Vertragsunterlagen gehören nicht zu Ihrer Partnerart.',403],
   ONBOARDING_NOT_FOUND:['Partnerregistrierung nicht gefunden.',404],
   ONBOARDING_EXPIRED:['Die Partnerregistrierung ist abgelaufen. Bitte eine neue Einladung anfordern.',410],
   ONBOARDING_NOT_OPEN:['Diese Partnerregistrierung ist nicht mehr offen.',409],

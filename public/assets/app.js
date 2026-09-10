@@ -1,7 +1,7 @@
-import {mountAccountLegal} from './account-legal.js?v=20260910';
+import {mountAccountLegal} from './account-legal.js?v=20260910-audiences';
 import {mountPartnershipCancellation} from './partner-cancellation.js?v=20260910-cancellation';
 import './partner-upgrade.js?v=20260910-broker-ready';
-import {renderMarketingKit} from './marketing-kit.js?v=20260910'; import {renderLegalDocuments} from './legal-documents.js?v=20260909-app-download';
+import {renderMarketingKit} from './marketing-kit.js?v=20260910'; import {renderLegalDocuments} from './legal-documents.js?v=20260910-audiences';
 function openAccessServices(){const plus=state.user.role==='super_admin';$('#section-label').textContent='EINSTELLUNGEN';$('#page-title').textContent='Zugänge, APIs & Versionen';$('#content').innerHTML=`<div class="page"><section class="card"><h2>Rechtsdokumente</h2><p>AGB / Kooperationsbedingungen und Datenschutz versioniert verwalten. Die verfügbaren Aktionen richten sich nach Ihren Zugriffsrechten.</p><button class="primary" id="open-legal-documents">Rechtsdokumente öffnen</button></section>${plus?'<section class="card" style="margin-top:18px"><h2>Zugänge und technische Einstellungen</h2><div class="marketing-actions"><button class="outline" id="open-access-roles">Zugangsverwaltung</button><button class="outline" id="open-system-services">Versionsstand, APIs & externe Dienste</button></div></section>':''}</div>`;$('#open-legal-documents').onclick=renderLegalDocuments;if(plus){$('#open-access-roles').onclick=()=>render('roles');$('#open-system-services').onclick=openSystemOverview;}}
 import { customerTableHead, propertyKind, propertyRegion, equipmentStage } from './customer-overview.mjs';
 import { renderBasicDashboard } from './partner-basic.js?v=20260910-membership';

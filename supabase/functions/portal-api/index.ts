@@ -5,6 +5,7 @@ import {
 } from "../_shared/runtime.ts";
 import { readRoute } from "../_shared/read-routes.ts";
 import { accountLegalHistory } from "../_shared/account-legal.mjs";
+import { accountLegalLibrary } from "../_shared/account-legal-library.mjs";
 import { partnerCancellationRoute } from "../_shared/partner-cancellation-route.ts";
 import { marketingKitRoute } from "../_shared/marketing-kit-route.ts";
 import { legalDocumentsRoute } from "../_shared/legal-documents-route.ts";
@@ -112,7 +113,7 @@ Deno.serve(async (req) => {
   if(routePath==='/account/legal'||/^\/account\/legal\/[^/]+\/file$/.test(routePath)){
     if(req.method!=='GET')return json({error:'Methode nicht erlaubt'},405);
     if(req.headers.get('x-ehv-support-user'))return json({error:'Persönliche Vertragsunterlagen sind nur im eigenen Konto verfügbar.'},403);
-    try{return json(await accountLegalHistory({service:serviceClient,actorId:user.id,documentId:routePath.match(/^\/account\/legal\/([^/]+)\/file$/)?.[1]||null}));}
+    try{const partner=sourcePartner((await loadRuntime(serviceClient)).state,sourceUserId);return json(await accountLegalLibrary({service:serviceClient,actorId:user.id,partner,documentId:routePath.match(/^\/account\/legal\/([^/]+)\/file$/)?.[1]||null}));}
     catch(error){return json({error:error instanceof Error?error.message:'Vertragsunterlagen nicht verfügbar'},Number((error as {status?:number}).status||503));}
   }
   // Own-onboarding actions must not pass through legacy automatic activation or

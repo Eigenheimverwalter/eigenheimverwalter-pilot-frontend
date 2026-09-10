@@ -12,6 +12,7 @@ import {checkPartnerSelfService} from './check-partner-self-service-sql.mjs';
 import {checkSandboxLegal} from './check-sandbox-legal-sql.mjs';
 import {checkPartnerCheckout} from './check-partner-checkout-sql.mjs';
 import {checkPartnerCancellation} from './check-partner-cancellation-sql.mjs';
+import {checkLegalAudiences} from './check-legal-audiences-sql.mjs';
 if(!process.argv[2])throw Error('Path to isolated PGlite module required');
 const {PGlite}=await import(pathToFileURL(resolve(process.argv[2])).href),db=new PGlite();
 const admin='11111111-1111-4111-8111-111111111111',light='22222222-2222-4222-8222-222222222222',onboard='33333333-3333-4333-8333-333333333333';
@@ -61,5 +62,6 @@ try{
   await checkSandboxLegal(db);
   await checkPartnerCheckout(db);
   await checkPartnerCancellation(db);
+  await checkLegalAudiences(db);
   console.log(JSON.stringify({isolatedPostgres:true,migrationExecuted:true,immutableEvidence:true,atomicActiveVersion:true,retention:true,monotonicVersions:true,adminLightPermissions:true,privateStorage:true,atomicAcceptance:true,verifiedOwner:true,upgradeConsentReuse:true,centralOnboardingService:true,sourceIdempotency:true,tokenOwnerBinding:true,productionDataAccess:false}));
 }finally{await db.close()}

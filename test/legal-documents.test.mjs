@@ -16,7 +16,7 @@ function fixture(){
   }};
   const files={upload:async(path,bytes)=>blobs.set(path,bytes),remove:async path=>{if(failRemove)throw Error('storage unavailable');blobs.delete(path)},signedUrl:async(path,seconds)=>{assert.equal(seconds,60);return 'https://example.invalid/signed?expires=60'}};
   const request=args=>legalDocumentRequest({profile:admin,path:'/legal-documents',store,files,newId:()=>id,...args});
-  const upload=()=>request({method:'POST',body:{name:'AGB.pdf',title:'AGB',documentType:'TERMS',acceptanceText:'Ich stimme zu.',content:pdf,status:'ACTIVE',version:99}});
+  const upload=()=>request({method:'POST',body:{name:'AGB.pdf',title:'AGB',documentType:'TERMS',audience:'BASIC',acceptanceText:'Ich stimme zu.',content:pdf,status:'ACTIVE',version:99}});
   return{rows,blobs,events,request,upload,setFailRemove:v=>failRemove=v,setUncertainInsert:v=>uncertainInsert=v};
 }
 test('Legal permissions default to Super Admin; Admin Light uses existing explicit role configuration',()=>{
