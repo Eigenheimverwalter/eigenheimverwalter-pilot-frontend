@@ -35,5 +35,5 @@ export const documentUploads=[/^\/api\/cases\/[^/]+\/documents$/, /^\/api\/broke
 export const publicPaths=[/^\/api\/partner-basic\/trades$/, /^\/api\/partner-basic\/register$/, /^\/api\/password\/forgot$/, /^\/api\/postal-codes$/, /^\/api\/referrals\/[^/]+(?:\/leads)?$/, /^\/api\/referral-invitations\/[^/]+$/, /^\/api\/customer-registration\/[^/]+$/, /^\/api\/partner-invitations\/[^/]+$/];
 export const supportsPath=path=>supported.has(normalizedPath(path))||dynamicSupported.some(pattern=>pattern.test(normalizedPath(path)));
 export const isDocumentUpload=path=>documentUploads.some(pattern=>pattern.test(normalizedPath(path)));
-export const isPublicPath=path=>/^\/api\/onboarding-invitations\/[0-9a-f-]{36}\/(inspect|register|claim)$/i.test(normalizedPath(path))||publicPaths.some(pattern=>pattern.test(normalizedPath(path)));
+export const isPublicPath=path=>/^\/api\/onboarding-self-service\/(email|session)$/.test(normalizedPath(path))||/^\/api\/onboarding-invitations\/[0-9a-f-]{36}\/(inspect|register|claim)$/i.test(normalizedPath(path))||publicPaths.some(pattern=>pattern.test(normalizedPath(path)));
 export const handlesRoute=path=>path==='/api/login'||path==='/api/logout'||isPublicPath(path)||supportsPath(path)||isDocumentUpload(path);
