@@ -1,7 +1,8 @@
-import './supabase-bridge.js?v=20260910-self-service';
+import './supabase-bridge.js?v=20260910-checkout';
 import {isSelfServicePath,selfServiceEmailMarkup,selfServicePasswordMarkup,selfServicePlanMarkup,validSelfServicePassword} from './partner-self-service.mjs';
 import {renderPartnerLegalStep} from './partner-legal-step.js?v=20260909-onboarding-entry';
 import {onboardingLocation,onboardingAuthMarkup,onboardingDataMarkup,escapeOnboarding as esc} from './partner-onboarding-entry.mjs';
+import {renderPremiumStep} from './partner-premium.js?v=20260910-checkout';
 const bridge=window.ehvSupabaseBridge,host=document.querySelector('#onboarding-step'),logout=document.querySelector('#onboarding-logout');
 const locationData=onboardingLocation(location.pathname,location.hash),id=locationData.id;
 const selfService=!id&&isSelfServicePath(location.pathname);
@@ -44,6 +45,7 @@ function dataForm(flow){
 async function renderFlow(flow){
   if(['CREATED','INVITED'].includes(flow.onboarding_status))flow=await request(`${path}/start`,'POST',token?{token}:{});
   if(['STARTED','DATA_INCOMPLETE'].includes(flow.onboarding_status))return dataForm(flow);
+  if(flow.requested_plan==='PREMIUM'&&['DATA_COMPLETE','LEGAL_PENDING','LEGAL_ACCEPTED','CHECKOUT_PENDING','PAYMENT_PENDING','PAYMENT_FAILED'].includes(flow.onboarding_status))return renderPremiumStep(host,flow,{request,resume});
   if(['DATA_COMPLETE','LEGAL_PENDING'].includes(flow.onboarding_status)){
     await renderPartnerLegalStep(host,id,{onContinue:()=>resume()});
     const back=document.createElement('button');back.type='button';back.className='outline';back.textContent='Unternehmensdaten ändern';back.onclick=()=>dataForm(flow);host.prepend(back);return;
@@ -51,7 +53,7 @@ async function renderFlow(flow){
   const complete=flow.onboarding_status==='ACTIVE';
   host.innerHTML=`<section class="card"><h2>${complete?'Kooperation aktiv':'Ihr aktueller Registrierungsstand'}</h2><p>Status: <b>${esc(flow.onboarding_status)}</b></p>
     <p>${complete?'Die Aktivierung wurde vom System bestätigt.':['CANCELLED','EXPIRED'].includes(flow.onboarding_status)?'Dieser Vorgang kann nicht fortgesetzt werden. Bitte wenden Sie sich an Ihr eigenheimverwalter-Team.':'Ihre Angaben bleiben gespeichert. Zahlung, Lizenzierung und Aktivierung müssen anschließend serverseitig bestätigt werden. Dieser Vorbereitungsschritt löst keine Zahlung aus.'}</p>
-    <button class="outline" data-refresh type="button">Status aktualisieren</button></section>`;
+    ${complete?'<p><a class="primary" href="./">Zum Partnerportal</a></p>':''}<button class="outline" data-refresh type="button">Status aktualisieren</button></section>`;
   host.querySelector('[data-refresh]').onclick=()=>resume().catch(showError);
 }
 async function resume(){
