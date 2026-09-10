@@ -1,5 +1,6 @@
 import {portalRequest} from './partner-referrals.js?v=20260909-app-download';
 import {portalRootPath} from './portal-navigation.mjs';
+import {applyPartnerMembership} from './partner-membership.mjs';
 export async function openPremiumUpgrade(){
   if(window.ehvPortalContext?.supportView)return;
   const profile=await portalRequest('/api/partner-basic/profile');if(profile.referralOnly||profile.plan==='premium')return;
@@ -17,7 +18,7 @@ export async function openPremiumUpgrade(){
 }
 export async function mountPremiumPromotion(){
   const page=document.querySelector('#content .page');if(!page||window.ehvPortalContext?.supportView)return;
-  const profile=await portalRequest('/api/partner-basic/profile');if(!page.isConnected||profile.referralOnly||profile.plan==='premium'||page.querySelector('.basic-premium-promotion'))return;
+  const profile=await portalRequest('/api/partner-basic/profile');if(!page.isConnected)return;applyPartnerMembership(profile);if(profile.referralOnly||profile.plan==='premium'||page.querySelector('.basic-premium-promotion'))return;
   const nav=document.querySelector('#nav');
   if(nav&&!nav.querySelector('[data-premium-menu]'))for(const label of ['Premium-Mitgliedschaft','Regionale Kundenchancen']){const button=document.createElement('button');button.type='button';button.dataset.premiumMenu='true';button.textContent='🔒 '+label;button.setAttribute('aria-label',label+' – mit Premium freischalten');button.onclick=()=>openPremiumUpgrade().catch(error=>{button.title=error.message;});nav.append(button);}
   const banner=document.createElement('section');banner.className='card basic-premium-promotion';banner.style.marginBottom='18px';banner.innerHTML='<div class="toolbar"><div><b>Sie nutzen Basic</b><p>Unbegrenzt empfehlen · bis zu 3 Gewerkakten betreuen. Mehr Möglichkeiten mit Premium.</p></div><button class="primary">Premium entdecken →</button></div>';banner.querySelector('button').onclick=openPremiumUpgrade;page.prepend(banner);
