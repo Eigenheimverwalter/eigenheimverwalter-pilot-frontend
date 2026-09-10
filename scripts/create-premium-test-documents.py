@@ -1,4 +1,5 @@
 from pathlib import Path
+import sys
 from reportlab.lib.colors import HexColor, white
 from reportlab.lib.pagesizes import A4
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
@@ -26,6 +27,9 @@ documents = {
     ])
 }
 for filename, (title, paragraphs) in documents.items():
+    if '--broker' in sys.argv:
+        filename = 'broker-' + filename
+        paragraphs = [p.replace('basic.heizung@ehv.test', 'makler_basic@ehv.test').replace('Handwerkspartner: 499,00', 'Maklerpartner: 979,00') for p in paragraphs]
     doc = SimpleDocTemplate(str(target / filename), pagesize=A4, rightMargin=52, leftMargin=52, topMargin=62, bottomMargin=52)
     story = [Paragraph('eigenheimverwalter | TESTUMGEBUNG', styles['TestBody']), Spacer(1, 12), Paragraph(title, styles['TestTitle'])]
     story += [Paragraph(text, styles['TestBody']) for text in paragraphs]

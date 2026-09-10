@@ -14,7 +14,7 @@ const fail=(code:string,status=409)=>{throw Object.assign(onboardingError(code,s
 async function call(db:any,name:string,input:any){const {data,error}=await db.rpc(name,input);if(error){const code=['LEGAL_ACCEPTANCE_REQUIRED','ONBOARDING_CHANGED','runtime_revision_conflict','CHECKOUT_CHANGED','CHECKOUT_ALREADY_EXISTS'].find(c=>error.message.includes(c));fail(code||'CHECKOUT_CHANGED');}return data;}
 async function ownFlow(db:any,id:string,actor:string){
   const flow=await call(db,'partner_onboarding_step',{p_action:'READ',p_id:id,p_actor:actor});
-  if(flow.auth_user_id!==actor||flow.sandbox_only!==true||flow.prefilled_data?.email!=='basic.heizung@ehv.test'||flow.requested_plan!=='PREMIUM')fail('CHECKOUT_TEST_ACCOUNT_REQUIRED',403);
+  if(flow.auth_user_id!==actor||flow.sandbox_only!==true||!['basic.heizung@ehv.test','makler_basic@ehv.test'].includes(flow.prefilled_data?.email)||flow.requested_plan!=='PREMIUM')fail('CHECKOUT_TEST_ACCOUNT_REQUIRED',403);
   return flow;
 }
 async function legalState(db:any,flow:any){return call(db,'partner_legal_step',{p_action:'READ',p_onboarding:flow.id,p_actor:flow.auth_user_id});}
@@ -32,19 +32,19 @@ export async function partnerCheckoutRoute(req:Request,path:string,db:any,profil
   if(!match)fail('NOT_FOUND',404);
   const [,id,action]=match,flow=await ownFlow(db,id,user.id),snapshot=await loadRuntime(db);
   const partner=array(snapshot.state.partners).find(p=>p.id===flow.existing_partner_id);
-  if(!partner||partner.referralOnly===true||partner.primaryTradeId!==flow.equipment_type)fail('CHECKOUT_PARTNER_MISMATCH',403);
+  if(!partner||partner.referralOnly===true||partner.primaryTradeId!==(flow.partner_type==='BROKER_PARTNER'?'BROKER':flow.equipment_type))fail('CHECKOUT_PARTNER_MISMATCH',403);
   if(action==='premium'&&req.method==='GET'){
     const attempt=await currentAttempt(db,id);
-    const recommendations=new PartnerRegionRecommendationService().recommend({directory:array(snapshot.state.postalDirectory),partner:{...partner,...flow.prefilled_data,postalCode:flow.prefilled_data.postal_code},scope:flow.equipment_type,limit:6});
+    const recommendations=new PartnerRegionRecommendationService().recommend({directory:array(snapshot.state.postalDirectory),partner:{...partner,...flow.prefilled_data,postalCode:flow.prefilled_data.postal_code},scope:flow.partner_type==='BROKER_PARTNER'?'BROKER':flow.equipment_type,limit:6});
     return {status:200,body:{sandbox:true,configured:enabled(),maxPostalCodes:10,includedPostalCodes:2,attempt:attempt?{status:attempt.status,postalCodes:attempt.postal_codes,quote:attempt.quote,expiresAt:attempt.stripe_expires_at}:null,
-      recommendations:recommendations.filter(r=>{try{assertPartnerRegionsAvailable(snapshot.state,{scope:flow.equipment_type,postalCodes:[r.postalCode],partnerId:partner.id as string,onboardingId:id});return true;}catch{return false;}}),
+      recommendations:recommendations.filter(r=>{try{assertPartnerRegionsAvailable(snapshot.state,{scope:flow.partner_type==='BROKER_PARTNER'?'BROKER':flow.equipment_type,postalCodes:[r.postalCode],partnerId:partner.id as string,onboardingId:id});return true;}catch{return false;}}),
       prices:{baseNetCents:flow.partner_type==='BROKER_PARTNER'?97900:49900,additionalUnitNetCents:12999,taxPercent:19}}};
   }
   if(req.method!=='POST')fail('METHOD_NOT_ALLOWED',405);
   const body=await readBody(req);
   if(action==='quote'){
     const quote=premiumAnnualQuote(flow.partner_type,body.postalCodes);
-    assertPartnerRegionsAvailable(snapshot.state,{scope:flow.equipment_type,postalCodes:body.postalCodes,partnerId:partner.id as string,onboardingId:id});
+    assertPartnerRegionsAvailable(snapshot.state,{scope:flow.partner_type==='BROKER_PARTNER'?'BROKER':flow.equipment_type,postalCodes:body.postalCodes,partnerId:partner.id as string,onboardingId:id});
     return {status:200,body:{quote,postalCodes:body.postalCodes,availability:'AVAILABLE_AT_CHECK',reserved:false}};
   }
   if(!enabled())fail('STRIPE_TEST_CONFIGURATION_REQUIRED',503);

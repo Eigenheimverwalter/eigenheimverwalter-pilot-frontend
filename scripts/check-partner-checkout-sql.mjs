@@ -4,6 +4,7 @@ export async function checkPartnerCheckout(db){
   await db.exec(`alter table public.portal_runtime_state add column updated_at timestamptz default now()`);
   await db.exec(readFileSync(new URL('../supabase/migrations/202609040001_runtime_atomic.sql',import.meta.url),'utf8'));
   await db.exec(readFileSync(new URL('../supabase/migrations/202609100003_partner_checkout.sql',import.meta.url),'utf8'));
+  await db.exec(readFileSync(new URL('../supabase/migrations/202609100004_broker_test_checkout.sql',import.meta.url),'utf8'));
   const actor=crypto.randomUUID(),admin=(await db.query("select id from public.portal_users where role='super_admin' limit 1")).rows[0].id;
   await db.query("insert into auth.users(id,email,email_confirmed_at) values($1,'basic.heizung@ehv.test',now())",[actor]);
   await db.query("insert into public.portal_users(id,role,status) values($1,'partner_basic','active')",[actor]);
@@ -38,4 +39,9 @@ export async function checkPartnerCheckout(db){
   await commit('PAID',payment,revision,'evt_fixture');
   assert.equal((await db.query('select count(*)::int as n from public.partner_payment_events')).rows[0].n,1);
   console.log(JSON.stringify({checkoutSql:true,atomicRollback:true,paidActivation:true,duplicateWebhook:true}));
+  const broker=crypto.randomUUID();
+  await db.query(`insert into public.partner_onboardings(id,source,requested_plan,partner_type,prefilled_data,sandbox_only) values($1,'SELF_SERVICE_PREMIUM','PREMIUM','BROKER_PARTNER','{"email":"makler_basic@ehv.test"}',true)`,[broker]);
+  await assert.rejects(db.query("update public.partner_onboardings set prefilled_data='{\"email\":\"info@eigenheimverwalter.de\"}' where id=$1",[broker]),/SANDBOX_ACCOUNT_NOT_ALLOWED/);
+  await assert.rejects(db.query("update public.partner_onboardings set equipment_type='EQUIP_HEIZUNG' where id=$1",[broker]),/SANDBOX_ACCOUNT_NOT_ALLOWED/);
+  console.log(JSON.stringify({brokerSandbox:true,productionIdentityDenied:true,wrongEquipmentDenied:true}));
 }

@@ -94,7 +94,7 @@ export function basicPropertyAllowance(state,partner,propertyId){
   const accessible=new Set(assignments.filter(a=>a.partnerId===partner.id&&a.status==='active').map(a=>a.propertyId));
   // Recommendations and customer acceptance do not consume capacity. A created
   // trade file does, including drafts; repeated work on that file stays allowed.
-  const owned=new Set((state.equipmentRecords||[]).filter(e=>accessible.has(e.propertyId)&&e.tradeId===partner.primaryTradeId&&e.status!=='deleted').map(e=>e.propertyId));
+  const owned=new Set((partner.primaryTradeId==='BROKER'?(state.salesFiles||[]).filter(f=>f.partnerId===partner.id):(state.equipmentRecords||[]).filter(e=>e.tradeId===partner.primaryTradeId)).filter(e=>accessible.has(e.propertyId)&&e.status!=='deleted').map(e=>e.propertyId));
   return{allowed:partner.plan==='premium'||owned.has(propertyId)||owned.size<BASIC_PROPERTY_LIMIT,confirmedProperties:owned.size,limit:partner.plan==='premium'?null:BASIC_PROPERTY_LIMIT};
 }
 export class PartnerRegionRecommendationService {

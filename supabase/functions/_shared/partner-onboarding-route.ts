@@ -6,7 +6,7 @@ import {onboardingSummary} from './partner-onboarding-service.mjs';
 export async function partnerOnboardingRoute(req:Request,path:string,db:any,profile:any,user:any){
   // Enable only during the coordinated entry-source cutover, never by a browser
   // flag. Existing partner activation sites are still retained in this phase.
-  const sandbox=user.email==='basic.heizung@ehv.test'&&profile.status==='active'&&profile.role==='partner_basic'&&!req.headers.get('x-ehv-support-user');
+  const sandbox=['basic.heizung@ehv.test','makler_basic@ehv.test'].includes(user.email)&&profile.status==='active'&&profile.role==='partner_basic'&&!req.headers.get('x-ehv-support-user');
   if(Deno.env.get('PILOT_PARTNER_ONBOARDING_ENABLED')!=='true'&&!sandbox)
     return{status:503,body:{code:'ONBOARDING_NOT_RELEASED',error:'Der neue Partnerprozess wird vorbereitet und ist noch nicht freigegeben.'}};
   let body:any={};
