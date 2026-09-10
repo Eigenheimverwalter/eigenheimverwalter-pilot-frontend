@@ -1,4 +1,6 @@
 export const supported=new Set([
+  '/api/account/cancellation',
+  '/api/account/cancellation-review',
   '/api/account/legal',
   '/api/partner-onboarding',
   '/api/legal-documents',
