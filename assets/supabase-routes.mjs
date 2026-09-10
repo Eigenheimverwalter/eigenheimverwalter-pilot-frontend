@@ -1,4 +1,5 @@
 export const supported=new Set([
+  '/api/account/legal',
   '/api/partner-onboarding',
   '/api/legal-documents',
   '/api/marketing-kit',
@@ -17,6 +18,7 @@ export const supported=new Set([
 ]);
 export const normalizedPath=path=>String(path||'').split('?')[0];
 export const dynamicSupported=[
+  /^\/api\/account\/legal\/[0-9a-f-]{36}\/file$/i,
   /^\/api\/partner-onboarding\/[0-9a-f-]{36}(?:\/(?:start|data|cancel))?$/i,
   /^\/api\/partner-onboarding\/[0-9a-f-]{36}\/legal(?:\/[0-9a-f-]{36}\/file)?$/i,
   /^\/api\/legal-documents\/[0-9a-f-]{36}(?:\/file)?$/i,
