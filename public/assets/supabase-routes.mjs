@@ -13,6 +13,7 @@ export const supported=new Set([
   '/api/partner-geography','/api/customer-coverage','/api/analytics/overview','/api/system-overview',
   '/api/partner-performance','/api/broker-ranking','/api/property-ranking','/api/referral',
   '/api/support-view/users','/api/support-view/start','/api/support-view/stop','/api/customer-invitations',
+  '/api/management/dashboard','/api/management/kpi-definitions','/api/management/sales-intelligence','/api/management/sales-funnel','/api/management/sales-performance','/api/management/sales-forecast','/api/management/onboarding','/api/management/partner-intelligence','/api/management/contracts-licenses','/api/management/revenue','/api/management/referrals','/api/management/basic-conversion','/api/management/opportunities','/api/management/properties','/api/management/regions','/api/management/operations','/api/management/broker','/api/management/actions','/api/management/export',
   '/api/access-management','/api/access-management/invitations',
   '/api/partner-basic/profile','/api/partner-basic/dashboard','/api/partner-basic/broker-properties',
   '/api/referral/invitations','/api/system/mail-test','/api/trigger-definitions','/api/trigger-events','/api/weather/dwd/preview',

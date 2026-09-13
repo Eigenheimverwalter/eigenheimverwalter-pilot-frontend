@@ -102,6 +102,14 @@ jq -e '.source=="supabase" and (.kpis|type=="object")' >/dev/null <<< "$dashboar
 property_id=$(jq -r '.properties[0].id // empty' <<< "$dashboard")
 test -n "$property_id" || { echo 'Keine Immobilie für isolierten Dokumententest verfügbar'; exit 1; }
 
+management=$(curl --fail --silent --show-error "${api}/functions/v1/portal-api/management/dashboard?period=30d" \
+  -H "Authorization: Bearer ${access_token}" -H "Origin: https://eigenheimverwalter.github.io")
+jq -e '(.kpis|length)==8 and (.meta.asOf|type=="string") and (.actions|type=="array")' >/dev/null <<< "$management" || { echo 'Management-Dashboard-Vertrag ungültig'; exit 1; }
+if [[ "$smoke_role" == 'admin_light' ]]; then
+  jq -e '.kpis[]|select(.code=="PARTNER_ARR")|.available==false and .value==null' >/dev/null <<< "$management" || { echo 'Admin Light erhielt unzulässige Finanzkennzahl'; exit 1; }
+fi
+echo 'Management Command Center und Finanz-ACL bestätigt.'
+
 analytics=$(curl --fail --silent --show-error "${api}/functions/v1/portal-api/analytics/overview" \
   -H "Authorization: Bearer ${access_token}" -H "Origin: https://eigenheimverwalter.github.io")
 jq -e '.summary.registered>=0 and (.regions|type=="object") and (.profiles|type=="array")' >/dev/null <<< "$analytics" || { echo 'Analytics-Vertrag ungültig'; exit 1; }

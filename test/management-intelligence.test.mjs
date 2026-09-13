@@ -1,0 +1,29 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {KPI_DEFINITIONS,kpiDefinitionRecords,managementIntelligence,managementPermissionFor} from '../supabase/functions/_shared/management-intelligence.mjs';
+
+const now='2026-09-13T12:00:00.000Z';
+const state=()=>({
+  properties:[{id:'p1',postalCode:'22041',createdAt:'2026-09-10T10:00:00Z'},{id:'p2',postalCode:'10115',createdAt:'2026-08-01T10:00:00Z'}],
+  customers:[{id:'c1',plan:'premium',status:'active'},{id:'c2',status:'active'}],
+  partners:[{id:'a',company:'Premium Heizung',status:'active',plan:'premium',primaryTradeId:'heating',postalCodes:['22041'],createdAt:'2026-09-09T10:00:00Z',license:{paymentStatus:'paid',annualNetCents:49900,contractEnd:'2026-09-30'}},{id:'b',company:'Basic',status:'active',plan:'basic',primaryTradeId:'roof',postalCodes:[],basicUsage:3,createdAt:'2026-08-01T10:00:00Z'}],
+  serviceCases:[{id:'s1',status:'new',propertyId:'p1'},{id:'s2',status:'done',propertyId:'p2'}],salesFiles:[{id:'f1',status:'ready',propertyId:'p1'}],
+  partnerOpportunities:[{id:'o1',propertyId:'p1',status:'new',createdAt:'2026-09-12T10:00:00Z'}],triggerEvents:[{id:'t1'}],customerActions:[],postalDirectory:[{postalCode:'22041',city:'Hamburg',state:'Hamburg'},{postalCode:'10115',city:'Berlin',state:'Berlin'}],
+  partnerOnboardings:[{id:'on1',source:'SALES_OS',status:'ACTIVE',createdAt:'2026-09-01T10:00:00Z'}],partnerCheckoutAttempts:[],partnerPaymentEvents:[],partnerCancellations:[],partnerReferralInvitations:[],equipmentRecords:[],partnerServiceRecords:[]
+});
+
+test('KPI registry uses unique definitions with sources and drilldowns',()=>{const records=kpiDefinitionRecords();assert.equal(new Set(records.map(x=>x.code)).size,records.length);assert.ok(records.every(x=>x.dataSource&&x.formula&&x.drilldownRoute));assert.ok(KPI_DEFINITIONS.length>=8)});
+test('management dashboard contains exactly eight main KPIs',()=>assert.equal(managementIntelligence('/api/management/dashboard',state(),{now,period:'30d'}).kpis.length,8));
+test('ARR includes only active paid premium licences',()=>{const result=managementIntelligence('/api/management/dashboard',state(),{now});assert.equal(result.kpis.find(x=>x.code==='PARTNER_ARR').value,49900)});
+test('cancelled or inactive licence is excluded from ARR',()=>{const data=state();data.partners[0].status='cancelled';assert.equal(managementIntelligence('/api/management/dashboard',data,{now}).kpis.find(x=>x.code==='PARTNER_ARR').value,0)});
+test('Basic and Premium partners remain separate',()=>{const result=managementIntelligence('/api/management/partner-intelligence',state());assert.equal(result.kpis.find(x=>x.code==='PREMIUM_PARTNERS').value,1);assert.equal(result.kpis.find(x=>x.code==='BASIC_PARTNERS').value,1)});
+test('missing source is N/A rather than invented zero',()=>{const data=state();data.customers=data.customers.map(({plan,...row})=>row);const item=managementIntelligence('/api/management/dashboard',data,{now}).kpis.find(x=>x.code==='PREMIUM_CUSTOMERS');assert.equal(item.available,false);assert.equal(item.value,null)});
+test('time filter separates current and previous period',()=>{const result=managementIntelligence('/api/management/dashboard',state(),{now,period:'30d'}),item=result.kpis.find(x=>x.code==='ACTIVE_PROPERTIES');assert.equal(item.changePercent,0)});
+test('Won and active onboarding are not conflated',()=>{const data=state();data.partnerOnboardings.push({id:'on2',source:'SALES_OS',status:'INVITED'});const result=managementIntelligence('/api/management/sales-funnel',data);assert.equal(result.kpis.find(x=>x.code==='WON_OPEN').value,1)});
+test('lost or archived leads do not count as won',()=>{const data=state();data.leads=[{id:'l1',stage:'Gewonnen'},{id:'l2',stage:'Verloren'}];const result=managementIntelligence('/api/management/sales-intelligence',data);assert.equal(result.kpis.find(x=>x.code==='WON_LEADS').value,1)});
+test('combined detail filters are applied server-side',()=>{const result=managementIntelligence('/api/management/partner-intelligence',state(),{plan:'premium',equipment:'heating'});assert.deepEqual(result.rows.map(x=>x.id),['a']);assert.deepEqual(result.filtersApplied,{equipment:'heating',plan:'premium'})});
+test('referral KPI does not invent unavailable commissions',()=>{const result=managementIntelligence('/api/management/referrals',state());assert.equal(result.kpis.find(x=>x.code==='REFERRAL_20_COMMISSION').available,false)});
+test('opportunity volume is unavailable without order source',()=>{const result=managementIntelligence('/api/management/opportunities',state());assert.equal(result.kpis.find(x=>x.code==='ORDER_VOLUME').available,false)});
+test('export respects current filters',()=>{const result=managementIntelligence('/api/management/export',state(),{module:'partners',plan:'premium'});assert.deepEqual(result.rows.map(x=>x.id),['a']);assert.equal(result.filters.plan,'premium')});
+test('financial and export endpoints require dedicated permissions',()=>{assert.equal(managementPermissionFor('/api/management/revenue'),'finance.read');assert.equal(managementPermissionFor('/api/management/export'),'analytics.export')});
+test('forecast is N/A without probability and expected close inputs',()=>assert.ok(managementIntelligence('/api/management/sales-forecast',state()).kpis.every(x=>x.available===false)));

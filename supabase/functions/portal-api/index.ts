@@ -15,6 +15,7 @@ import { partnerCheckoutRoute } from "../_shared/partner-checkout-route.ts";
 import { writeRoute } from "../_shared/write-routes.ts";
 import { DwdWarningProvider } from "../_shared/weather-providers.mjs";
 import { sendPortalMail } from "../_shared/mail.ts";
+import { managementIntelligence, managementPermissionFor } from "../_shared/management-intelligence.mjs";
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const jsonResponse = (req:Request,body: unknown, status = 200) => new Response(JSON.stringify(body), {
@@ -34,6 +35,8 @@ const safePortalBase = (value: unknown) => {
     return url.origin + url.pathname.replace(/\/$/, "");
   } catch { return null; }
 };
+const salesManagementSection=(path:string)=>({"/management/sales-intelligence":"overview","/management/sales-funnel":"funnel","/management/sales-performance":"performance","/management/sales-forecast":"forecast"}[path]||null);
+const fetchSalesManagement=async(path:string,params:URLSearchParams)=>{const section=salesManagementSection(path);if(!section)return null;const token=Deno.env.get('SALES_OS_SYNC_TOKEN')||'',base=Deno.env.get('PILOT_SALES_ANALYTICS_URL')||'https://yfgieygxlpatmhdskmaa.supabase.co/functions/v1/sales-management-analytics';if(token.length<32)return null;const target=new URL(base);target.searchParams.set('section',section);for(const [key,value] of params)target.searchParams.set(key,value);const response=await fetch(target,{headers:{authorization:`Bearer ${token}`}});if(!response.ok)throw new Error(`SalesOS Analytics antwortet mit ${response.status}`);return await response.json()};
 
 const resolvePartnerPortalUser = async (
   serviceClient: SupabaseClient,
@@ -198,6 +201,14 @@ Deno.serve(async (req) => {
   if (req.method === "GET" && routePath === "/dashboard") {
     try { return json(dashboard((await loadRuntime(serviceClient)).state, effectiveProfile, effectiveSourceUserId)); }
     catch (error) { return json({ error: error instanceof Error ? error.message : "Datenzugriff fehlgeschlagen" }, 503); }
+  }
+  if(req.method==="GET"&&routePath.startsWith("/management/")){
+    if(!["super_admin","admin_light"].includes(profile.role)||supportView)return json({error:"Management Intelligence ist ausschließlich für berechtigte Administrationsrollen verfügbar"},403);
+    const snapshot=await loadRuntime(serviceClient),permission=managementPermissionFor(routePath),roleProfile=array(snapshot.state.roleProfiles).find(item=>String(item.role)===profile.role),permissions=Array.isArray(roleProfile?.permissions)?roleProfile.permissions.map(String):[];
+    if(profile.role!=="super_admin"&&!permissions.includes("*")&&!permissions.includes(permission))return json({error:"Keine Berechtigung",permission},403);
+    let result;try{result=await fetchSalesManagement(routePath,url.searchParams)}catch(error){result=null;console.error(error)}result||=managementIntelligence(routePath,snapshot.state,Object.fromEntries(url.searchParams));if(!result)return json({error:"Management-Auswertung nicht gefunden"},404);if(routePath==="/management/dashboard"&&profile.role!=="super_admin"&&!permissions.includes("finance.read"))result.kpis=result.kpis.map((item:Record<string,unknown>)=>item.code==="PARTNER_ARR"?{...item,value:null,available:false,note:"Keine Berechtigung für Finanzkennzahlen"}:item);
+    if(permission==="finance.read"||routePath.includes("/export"))await serviceClient.from("audit_events").insert({actor_user_id:profile.id,action:"management.sensitive_viewed",entity_type:"management_analytics",entity_id:routePath,metadata:{permission,filters:Object.fromEntries(url.searchParams)}});
+    return json(result);
   }
   if(req.method==="GET"&&routePath==="/weather/dwd/preview"){
     if(!isAdmin(profile))return json({error:"Keine Berechtigung"},403);
