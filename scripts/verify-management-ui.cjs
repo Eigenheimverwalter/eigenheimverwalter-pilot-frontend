@@ -1,7 +1,8 @@
 const {chromium}=require('C:/Users/anton/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
 
 (async()=>{
-  const browser=await chromium.launch({headless:true});
+  const executablePath=process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH||undefined;
+  const browser=await chromium.launch({headless:true,...(executablePath?{executablePath}: {})});
   try{
     const page=await browser.newPage({viewport:{width:1440,height:1000}}),pageErrors=[];
     page.on('pageerror',error=>pageErrors.push(error.message));
