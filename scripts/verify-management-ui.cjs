@@ -11,10 +11,10 @@ const {chromium}=require('C:/Users/anton/.cache/codex-runtimes/codex-primary-run
     await page.locator('#login-form input[name="password"]').fill('ChangeMe123!');
     await page.locator('#login-form button[type="submit"]').click();
     await page.locator('.management-page').waitFor({timeout:15000});
-    const result=await page.evaluate(()=>({title:document.querySelector('#page-title')?.textContent,kpis:[...document.querySelectorAll('.management-kpi strong')].map(node=>node.textContent),groups:[...document.querySelectorAll('.nav-group>small')].map(node=>node.textContent),pageErrors:[],overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth}));
+    const result=await page.evaluate(()=>({title:document.querySelector('#page-title')?.textContent,kpis:[...document.querySelectorAll('.management-kpi strong')].map(node=>node.textContent),nav:[...document.querySelectorAll('#nav [data-page]')].map(node=>node.textContent.trim()),tabs:[...document.querySelectorAll('[data-dashboard-tab]')].map(node=>node.textContent.trim()),infoButtons:document.querySelectorAll('[data-kpi-info]').length,pageErrors:[],overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth}));
     result.pageErrors=pageErrors;
     await page.screenshot({path:'management-dashboard.png',fullPage:true});
-    const sections=['managementSales','managementFunnel','managementOnboarding','managementSalesPerformance','managementForecast','managementPartners','managementContracts','managementRevenue','managementReferrals','managementBasic','managementOpportunities','managementProperties','managementRegions','managementOperations','managementBroker'];result.sections={};
+    const sections=['managementHomesHub','managementPartnersHub','managementSalesHub','managementOperationsHub','managementBrokerHub','managementSales','managementFunnel','managementOnboarding','managementSalesPerformance','managementForecast','managementPartners','managementContracts','managementRevenue','managementReferrals','managementBasic','managementOpportunities','managementProperties','managementRegions','managementOperations','managementBroker'];result.sections={};
     for(const section of sections){
       await page.evaluate(pageName=>window.ehvRender(pageName),section);
       await page.waitForFunction(pageName=>document.querySelector('.management-page')&&!document.querySelector('#content>.page>.error')&&document.querySelector('#page-title')?.textContent===pageName,await page.locator('#page-title').textContent(),{timeout:10000}).catch(()=>{});
@@ -22,6 +22,6 @@ const {chromium}=require('C:/Users/anton/.cache/codex-runtimes/codex-primary-run
       result.sections[section]=await page.locator('#page-title').textContent();
     }
     console.log(JSON.stringify(result,null,2));
-    if(result.kpis.length!==8||result.pageErrors.length||result.overflow||Object.keys(result.sections).length!==sections.length)throw new Error('Management-Dashboard Browserprüfung fehlgeschlagen');
+    if(result.kpis.length<20||result.nav.length!==6||result.tabs.length!==3||result.infoButtons<1||result.pageErrors.length||result.overflow||Object.keys(result.sections).length!==sections.length)throw new Error('Management-Dashboard Browserprüfung fehlgeschlagen');
   }finally{await browser.close()}
 })().catch(error=>{console.error(error);process.exitCode=1});
