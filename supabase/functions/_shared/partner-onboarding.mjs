@@ -4,20 +4,22 @@ import {onboardingLegalAudience} from './legal-audience.mjs';
 export const BASIC_PROPERTY_LIMIT = 3;
 export const INCLUDED_POSTAL_CODES = 2;
 export const MAX_POSTAL_CODES = 10;
+export const MAX_ADDITIONAL_POSTAL_CODES = MAX_POSTAL_CODES - INCLUDED_POSTAL_CODES;
+export const PREMIUM_ANNUAL_PRICES = Object.freeze({EQUIPMENT_PARTNER:49900,BROKER_PARTNER:97900,ADDITIONAL_POSTAL_CODE:12999,TAX_PERCENT:19});
 export function premiumAnnualQuote(partnerType, postalCodes) {
-  const base = {EQUIPMENT_PARTNER:49900, BROKER_PARTNER:97900}[partnerType];
+  const base = PREMIUM_ANNUAL_PRICES[partnerType];
   if (!base) throw onboardingError('PREMIUM_PARTNER_TYPE_REQUIRED');
   if (!Array.isArray(postalCodes) || postalCodes.length < INCLUDED_POSTAL_CODES || postalCodes.length > MAX_POSTAL_CODES
     || new Set(postalCodes).size !== postalCodes.length || postalCodes.some(code => typeof code !== 'string' || !/^\d{5}$/.test(code))) {
     throw onboardingError('POSTAL_CODE_SELECTION_INVALID');
   }
   const additionalQuantity = postalCodes.length - INCLUDED_POSTAL_CODES;
-  const net = base + additionalQuantity * 12999;
-  const tax = Math.round(net * 19 / 100);
+  const net = base + additionalQuantity * PREMIUM_ANNUAL_PRICES.ADDITIONAL_POSTAL_CODE;
+  const tax = Math.round(net * PREMIUM_ANNUAL_PRICES.TAX_PERCENT / 100);
   // Quote only: availability, legal acceptance and verified payment remain mandatory.
   return {currency:'EUR', interval:'year', includedPostalCodes:INCLUDED_POSTAL_CODES,
     totalPostalCodes:postalCodes.length, additionalQuantity, baseNetCents:base,
-    additionalUnitNetCents:12999, netCents:net, taxPercent:19, taxCents:tax, grossCents:net+tax};
+    additionalUnitNetCents:PREMIUM_ANNUAL_PRICES.ADDITIONAL_POSTAL_CODE, netCents:net, taxPercent:PREMIUM_ANNUAL_PRICES.TAX_PERCENT, taxCents:tax, grossCents:net+tax};
 }
 export const onboardingSources = Object.freeze(['SELF_SERVICE_BASIC','SELF_SERVICE_PREMIUM','SALES_OS','ADMIN_INVITE','CRM_IMPORT']);
 export const onboardingStatuses = Object.freeze(['CREATED','INVITED','STARTED','DATA_INCOMPLETE','DATA_COMPLETE','LEGAL_PENDING','LEGAL_ACCEPTED','CHECKOUT_PENDING','PAYMENT_PENDING','PAYMENT_FAILED','READY_FOR_ACTIVATION','ACTIVE','CANCELLED','EXPIRED']);

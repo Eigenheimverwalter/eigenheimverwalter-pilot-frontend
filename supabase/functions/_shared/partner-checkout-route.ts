@@ -1,6 +1,6 @@
 import {loadRuntime,array} from './runtime.ts';
 import {assertPartnerLegalIdentity} from './partner-legal.mjs';
-import {assertCheckoutAllowed,premiumAnnualQuote,onboardingError,PartnerRegionRecommendationService,assertActivationAllowed} from './partner-onboarding.mjs';
+import {assertCheckoutAllowed,premiumAnnualQuote,onboardingError,PartnerRegionRecommendationService,assertActivationAllowed,INCLUDED_POSTAL_CODES,MAX_POSTAL_CODES,PREMIUM_ANNUAL_PRICES} from './partner-onboarding.mjs';
 import {reservePartnerRegions,assertPartnerRegionsAvailable} from './partner-region-reservations.mjs';
 import {stripeClient,verifyStripeConfiguration,checkoutParameters,verifyPaidCheckout,TEST_STRIPE_PRICES} from './partner-stripe.mjs';
 import {applyPartnerLicenseChange} from './partner-license.mjs';
@@ -36,9 +36,9 @@ export async function partnerCheckoutRoute(req:Request,path:string,db:any,profil
   if(action==='premium'&&req.method==='GET'){
     const attempt=await currentAttempt(db,id);
     const recommendations=new PartnerRegionRecommendationService().recommend({directory:array(snapshot.state.postalDirectory),partner:{...partner,...flow.prefilled_data,postalCode:flow.prefilled_data.postal_code},scope:flow.partner_type==='BROKER_PARTNER'?'BROKER':flow.equipment_type,limit:6});
-    return {status:200,body:{sandbox:true,configured:enabled(),maxPostalCodes:10,includedPostalCodes:2,attempt:attempt?{status:attempt.status,postalCodes:attempt.postal_codes,quote:attempt.quote,expiresAt:attempt.stripe_expires_at}:null,
+    return {status:200,body:{sandbox:true,configured:enabled(),maxPostalCodes:MAX_POSTAL_CODES,includedPostalCodes:INCLUDED_POSTAL_CODES,attempt:attempt?{status:attempt.status,postalCodes:attempt.postal_codes,quote:attempt.quote,expiresAt:attempt.stripe_expires_at}:null,
       recommendations:recommendations.filter(r=>{try{assertPartnerRegionsAvailable(snapshot.state,{scope:flow.partner_type==='BROKER_PARTNER'?'BROKER':flow.equipment_type,postalCodes:[r.postalCode],partnerId:partner.id as string,onboardingId:id});return true;}catch{return false;}}),
-      prices:{baseNetCents:flow.partner_type==='BROKER_PARTNER'?97900:49900,additionalUnitNetCents:12999,taxPercent:19}}};
+      prices:{baseNetCents:PREMIUM_ANNUAL_PRICES[flow.partner_type],additionalUnitNetCents:PREMIUM_ANNUAL_PRICES.ADDITIONAL_POSTAL_CODE,taxPercent:PREMIUM_ANNUAL_PRICES.TAX_PERCENT}}};
   }
   if(req.method!=='POST')fail('METHOD_NOT_ALLOWED',405);
   const body=await readBody(req);
@@ -120,7 +120,7 @@ export async function applyPartnerStripeEvent(db:any,event:any){
   const result=applyPartnerLicenseChange(partner,{postalCodes:attempt.postal_codes,cooperationStart:today,contractEnd:end,reservationDate:today});
   if(result.error)fail('LICENSE_REQUIRED',503);
   Object.assign(partner,{plan:'premium',cooperationLevel:'PREMIUM',status:'active'});
-  Object.assign(partner.license as object,{contractEnd:end,stripeSubscriptionId:payment.subscriptionId,paymentMode:'test',onboardingId:flow.id,cancelNoticeMonths:3,autoRenewMonths:12});
+  Object.assign(partner.license as object,{contractEnd:end,stripeSubscriptionId:payment.subscriptionId,paymentMode:'test',paymentStatus:'paid',annualNetCents:payment.quote.netCents,baseAnnualNetCents:payment.quote.baseNetCents,additionalPostalCodeCount:payment.quote.additionalQuantity,additionalPostalCodeAnnualNetCents:payment.quote.additionalQuantity*payment.quote.additionalUnitNetCents,currency:payment.quote.currency,billingInterval:payment.quote.interval,onboardingId:flow.id,cancelNoticeMonths:3,autoRenewMonths:12});
   await commit(db,'PAID',flow,snapshot,{...attempt,subscription_id:payment.subscriptionId,paid_through:payment.paidThrough},event.id);
   return {activated:true};
 }
