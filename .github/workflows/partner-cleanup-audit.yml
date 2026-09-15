@@ -7,6 +7,11 @@ on:
         required: false
         type: boolean
         default: false
+      quarantine:
+        description: Reversibly quarantine all partners except the guarded set
+        required: false
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
@@ -16,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Verify exact preservation set and list cleanup scope
-        if: ${{ !inputs.execute }}
+        if: ${{ !inputs.execute && !inputs.quarantine }}
         env:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/audit-partner-cleanup.mjs
@@ -26,3 +31,9 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           PARTNER_CLEANUP_CONFIRM: DELETE_ALL_EXCEPT_3
         run: node scripts/cleanup-partner-test-accounts.mjs
+      - name: Reversibly quarantine verified test partner accounts
+        if: ${{ inputs.quarantine }}
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          PARTNER_QUARANTINE_CONFIRM: QUARANTINE_ALL_EXCEPT_3
+        run: node scripts/quarantine-partner-test-accounts.mjs
