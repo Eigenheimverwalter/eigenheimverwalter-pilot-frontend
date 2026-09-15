@@ -4,7 +4,7 @@ import { partnerOnboardingEntryRoute } from "../_shared/partner-onboarding-entry
 import { confirmPartnerReferral } from "../_shared/referral-confirmation.mjs";
 import { array, clean, identifier, loadRuntime, serviceClient } from "../_shared/runtime.ts";
 const jsonResponse=(req:Request,body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{...corsHeaders(req),"Content-Type":"application/json","Cache-Control":"no-store"}});
-const emailOk=(v:string)=>/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)&&v.length<=254,passwordOk=(v:string)=>v.length>=12&&/[A-Z]/.test(v)&&/[a-z]/.test(v)&&/\d/.test(v)&&/[!@#$%^&*]/.test(v);
+const emailOk=(v:string)=>/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)&&v.length<=254,passwordOk=(v:string)=>v.length>=12&&v.length<=128&&/[A-Z]/.test(v)&&/[a-z]/.test(v)&&/\d/.test(v)&&/[^A-Za-z0-9\s]/.test(v);
 const sha256=async(value:string)=>[...new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(value)))].map(x=>x.toString(16).padStart(2,"0")).join("");
 const allowedOrigin=(req:Request)=>{const value=req.headers.get("Origin")||"";try{const u=new URL(value),h=u.hostname.toLowerCase(),owned=h==="eigenheimverwalter.de"||h.endsWith(".eigenheimverwalter.de")||h==="eigenheimverwalter-pilot.de"||h.endsWith(".eigenheimverwalter-pilot.de")||h==="eigenheimverkauf.com"||h.endsWith(".eigenheimverkauf.com")||h==="eigenheimverwalter.github.io"||h==="eigenheimverwalter-pilot-admin-test.onrender.com";return u.protocol==="https:"&&owned?u.origin:""}catch{return""}};
 const redirectBase=(origin:string)=>origin==="https://eigenheimverwalter.github.io"?`${origin}/eigenheimverwalter-pilot-frontend`:origin;

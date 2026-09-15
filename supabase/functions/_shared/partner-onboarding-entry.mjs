@@ -16,8 +16,8 @@ export async function onboardingEntryRequest({action,id,body,service,auth,author
   if(invitation.registered||invitation.login_required)fail('Bitte mit dem vorhandenen Konto anmelden. Ein bestehendes Passwort wird hier nicht geändert.',409,'ONBOARDING_LOGIN_REQUIRED');
   const password=body.password;
   if(typeof password!=='string'||password.length<12||password.length>128||password!==body.passwordConfirmation
-    ||!/[A-Z]/.test(password)||!/[a-z]/.test(password)||!/[0-9]/.test(password)||!/[!@#$%^&*]/.test(password))
-    fail('Bitte identische Passwörter mit 12–128 Zeichen, Groß- und Kleinbuchstaben, Zahl und Sonderzeichen (!@#$%^&*) eingeben.',422,'PASSWORD_INVALID');
+    ||!/[A-Z]/.test(password)||!/[a-z]/.test(password)||!/[0-9]/.test(password)||!/[^A-Za-z0-9\s]/.test(password))
+    fail('Bitte identische Passwörter mit 12–128 Zeichen, Groß- und Kleinbuchstaben, Zahl und mindestens einem Sonderzeichen eingeben.',422,'PASSWORD_INVALID');
   const {data,error}=await auth.admin.createUser({email:invitation.email,password,email_confirm:true,
     user_metadata:{source:'pilot_central_partner_invitation'}});
   if(error||!data?.user?.id)fail('Der Zugang konnte nicht neu angelegt werden. Falls er bereits besteht, bitte anmelden oder „Passwort vergessen“ verwenden.',409,'ONBOARDING_LOGIN_REQUIRED');

@@ -26,6 +26,6 @@ test('One-time invitation confirms email and creates only a referral partner aft
  const url='https://example.invalid/functions/v1/portal-public/partner-invitations/'+token;
  assert.equal((await publicHandler(new Request(url))).status,200);assert.equal(f.state().users.length,0);
  const weak=await publicHandler(new Request(url,{method:'POST',body:JSON.stringify({password:'bad',passwordConfirmation:'bad'})}));assert.equal(weak.status,422);
- const password='Fixture-Password123!';const good=await publicHandler(new Request(url,{method:'POST',body:JSON.stringify({password,passwordConfirmation:password})}));assert.equal(good.status,201);assert.equal(f.identity().role,'referral_partner');assert.equal(f.state().users[0].role,'referral_partner');assert.equal(f.state().partnerInvitations[0].status,'accepted');assert.equal((await publicHandler(new Request(url))).status,410);
+ const password='Fixture-Password123?';const good=await publicHandler(new Request(url,{method:'POST',body:JSON.stringify({password,passwordConfirmation:password})}));assert.equal(good.status,201);assert.equal(f.identity().role,'referral_partner');assert.equal(f.state().users[0].role,'referral_partner');assert.equal(f.state().partnerInvitations[0].status,'accepted');assert.equal((await publicHandler(new Request(url))).status,410);
  assert.equal((await (await f.bridge(f.request('status'))).json()).status,'accepted');
 });
