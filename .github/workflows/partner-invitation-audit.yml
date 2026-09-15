@@ -25,8 +25,14 @@ jobs:
           response=$(curl --fail --silent --show-error "$endpoint" \
             -H "apikey: ${SERVICE_ROLE_KEY}" \
             -H "Authorization: Bearer ${SERVICE_ROLE_KEY}")
-          matches=$(jq '[.[] | select((.prefilled_data.company // "" | ascii_downcase | contains("kiel finanz")) or (.prefilled_data.company // "" | ascii_downcase | contains("iv immo verkauf hamburg")))]' <<< "$response")
+          central=$(jq '[.[] | select((.prefilled_data.company // "" | ascii_downcase | contains("kiel finanz")) or (.prefilled_data.company // "" | ascii_downcase | contains("iv immo verkauf hamburg"))) | {company:.prefilled_data.company,source:"central",partner_status:.status,delivery_status:.invitation_delivery_status,attempted_at:.invitation_attempted_at,sent_at:.invitation_sent_at,expires_at}]' <<< "$response")
+          runtime=$(curl --fail --silent --show-error \
+            "https://${SUPABASE_PROJECT_REF}.supabase.co/rest/v1/portal_runtime_state?id=eq.primary&select=payload" \
+            -H "apikey: ${SERVICE_ROLE_KEY}" \
+            -H "Authorization: Bearer ${SERVICE_ROLE_KEY}")
+          legacy=$(jq '[.[0].payload as $s | ($s.partners // [])[] | select((.company // "" | ascii_downcase | contains("kiel finanz")) or (.company // "" | ascii_downcase | contains("iv immo verkauf hamburg"))) | . as $p | (($s.partnerInvitations // []) | map(select(.partnerId == $p.id)) | first) as $i | {company:$p.company,source:"runtime",partner_status:$p.status,delivery_status:($i.mailStatus // null),attempted_at:($i.mailAttemptedAt // null),sent_at:($i.sentAt // null),expires_at:($i.expiresAt // null)}]' <<< "$runtime")
+          matches=$(jq -s 'add | unique_by(.company)' <(printf '%s' "$central") <(printf '%s' "$legacy"))
           count=$(jq 'length' <<< "$matches")
-          test "$count" -eq 2 || { echo "Erwartet wurden genau zwei Onboarding-Datensätze, gefunden: $count"; jq '[.[] | {company:.prefilled_data.company,status,created_at}]' <<< "$matches"; exit 1; }
-          jq -e 'all(.[]; .invitation_delivery_status == "sent" and (.invitation_sent_at | type == "string"))' <<< "$matches" >/dev/null
-          jq '[.[] | {company:.prefilled_data.company,onboarding_status:.status,delivery_status:.invitation_delivery_status,attempted_at:.invitation_attempted_at,sent_at:.invitation_sent_at,expires_at}]' <<< "$matches"
+          test "$count" -eq 2 || { echo "Erwartet wurden genau zwei Partnerdatensätze, gefunden: $count"; jq '[.[] | {company,source,partner_status}]' <<< "$matches"; exit 1; }
+          jq '.' <<< "$matches"
+          jq -e 'all(.[]; .delivery_status == "sent" and (.sent_at | type == "string"))' <<< "$matches" >/dev/null
