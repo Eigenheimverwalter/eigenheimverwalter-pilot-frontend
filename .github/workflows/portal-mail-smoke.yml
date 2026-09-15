@@ -4,9 +4,19 @@ on:
   workflow_dispatch:
     inputs:
       recipient:
-        description: Kontrollierter Empfänger für drei Testmails
+        description: Kontrollierter Empfänger
         required: true
         type: string
+      channel:
+        description: Zu prüfender Absenderkanal
+        required: true
+        default: partner
+        type: choice
+        options:
+          - partner
+          - registration
+          - info
+          - all
 
 permissions:
   contents: read
@@ -25,16 +35,19 @@ jobs:
           RECIPIENT: ${{ inputs.recipient }}
         run: |
           [[ "$RECIPIENT" =~ ^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$ ]] || exit 1
-      - name: Send one controlled mail through every channel
+      - name: Send controlled mail
         shell: bash
         env:
           RECIPIENT: ${{ inputs.recipient }}
+          REQUESTED_CHANNEL: ${{ inputs.channel }}
           MAIL_TOKEN: ${{ secrets.PILOT_MAIL_GATEWAY_TOKEN }}
         run: |
           set -euo pipefail
           test "${#MAIL_TOKEN}" -ge 32
           endpoint="https://${SUPABASE_PROJECT_REF}.supabase.co/functions/v1/portal-mail"
-          for channel in partner registration info; do
+          channels="$REQUESTED_CHANNEL"
+          if [ "$REQUESTED_CHANNEL" = "all" ]; then channels="partner registration info"; fi
+          for channel in $channels; do
             payload=$(jq -nc \
               --arg channel "$channel" \
               --arg recipient "$RECIPIENT" \

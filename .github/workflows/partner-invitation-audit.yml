@@ -1,0 +1,32 @@
+name: Partner invitation delivery audit
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  SUPABASE_PROJECT_REF: rpniwtshbwjuesoeztyt
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Read delivery receipts for the requested partners
+        shell: bash
+        env:
+          SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+          test "${#SERVICE_ROLE_KEY}" -ge 32
+          endpoint="https://${SUPABASE_PROJECT_REF}.supabase.co/rest/v1/partner_onboardings?source=eq.SALES_OS&select=id,status,requested_plan,partner_type,prefilled_data,invitation_delivery_status,invitation_attempted_at,invitation_sent_at,created_at,expires_at"
+          response=$(curl --fail --silent --show-error "$endpoint" \
+            -H "apikey: ${SERVICE_ROLE_KEY}" \
+            -H "Authorization: Bearer ${SERVICE_ROLE_KEY}")
+          matches=$(jq '[.[] | select((.prefilled_data.company // "" | ascii_downcase | contains("kiel finanz")) or (.prefilled_data.company // "" | ascii_downcase | contains("iv immo verkauf hamburg")))]' <<< "$response")
+          count=$(jq 'length' <<< "$matches")
+          test "$count" -eq 2 || { echo "Erwartet wurden genau zwei Onboarding-Datensätze, gefunden: $count"; jq '[.[] | {company:.prefilled_data.company,status,created_at}]' <<< "$matches"; exit 1; }
+          jq -e 'all(.[]; .invitation_delivery_status == "sent" and (.invitation_sent_at | type == "string"))' <<< "$matches" >/dev/null
+          jq '[.[] | {company:.prefilled_data.company,onboarding_status:.status,delivery_status:.invitation_delivery_status,attempted_at:.invitation_attempted_at,sent_at:.invitation_sent_at,expires_at}]' <<< "$matches"
