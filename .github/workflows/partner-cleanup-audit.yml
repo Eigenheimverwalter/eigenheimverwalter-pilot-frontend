@@ -1,6 +1,12 @@
 name: Partner cleanup audit
 on:
   workflow_dispatch:
+    inputs:
+      execute:
+        description: Permanently remove all partners except the guarded set
+        required: false
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
@@ -10,6 +16,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Verify exact preservation set and list cleanup scope
+        if: ${{ !inputs.execute }}
         env:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/audit-partner-cleanup.mjs
+      - name: Permanently remove verified test partner accounts
+        if: ${{ inputs.execute }}
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          PARTNER_CLEANUP_CONFIRM: DELETE_ALL_EXCEPT_3
+        run: node scripts/cleanup-partner-test-accounts.mjs
