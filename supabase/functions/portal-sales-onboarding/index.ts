@@ -39,7 +39,12 @@ Deno.serve(async req=>{
   if(body.action==='status')return json(partner?status():{status:'missing'});
   if(body.action!=='invite')return json({error:'Invalid action'},400);
   if(invitation?.status==='accepted'||invitation?.mailStatus==='sent')return json(status());
-  if(invitation?.mailStatus==='sending'||invitation?.mailStatus==='uncertain')return json({status:'uncertain',error:'Versandbestätigung fehlt; kein automatischer Doppelversand.'});
+  if(invitation?.mailStatus==='sending')return json({status:'uncertain',error:'Versandbestätigung fehlt; kein automatischer Doppelversand.'});
+  // A second delivery attempt is only accepted after SalesOS has explicitly
+  // re-queued the same onboarding job. This keeps ordinary status checks and
+  // worker retries idempotent while allowing a controlled manual resend.
+  const explicitResend=invitation?.mailStatus==='uncertain'&&Number(job.deliveryAttempt||0)>1;
+  if(invitation?.mailStatus==='uncertain'&&!explicitResend)return json({status:'uncertain',error:'Versandbestätigung fehlt; kein automatischer Doppelversand.'});
   const email=clean(job.email,254).toLowerCase(),company=clean(job.company,180),contact=clean(job.contact,120);
   if(job.partnerType!=='Basic Partner'||!company||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return json({status:'failed',error:'Basic-Partner oder Kontakt-E-Mail ungültig.'});
   if(partners.some(p=>p!==partner&&String(p.email).toLowerCase()===email)||collection(state,'users').some(u=>String(u.email).toLowerCase()===email)&&!partner?.userId)return json({status:'failed',error:'Diese E-Mail besitzt bereits einen Portalzugang. Bitte manuell zuordnen.'});
@@ -51,6 +56,7 @@ Deno.serve(async req=>{
    partners.push(partner);
   }
   if(!invitation){invitation={id:`sales-basic-invite-${key}`,partnerId:partner.id,status:'pending',createdAt:now,expiresAt:new Date(Date.now()+7*86400000).toISOString()};invitations.push(invitation)}
+  if(explicitResend){invitation.createdAt=now;invitation.expiresAt=new Date(Date.now()+7*86400000).toISOString();invitation.mailStatus='pending'}
   if(Date.parse(String(invitation.expiresAt))<=Date.now())return json({status:'failed',error:'Einladung abgelaufen. Bitte über den Support erneuern.'});
   const signingKey=await crypto.subtle.importKey('raw',new TextEncoder().encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign']);
   const token=hex(await crypto.subtle.sign('HMAC',signingKey,new TextEncoder().encode(`${invitation.id}:${invitation.createdAt}`)));
