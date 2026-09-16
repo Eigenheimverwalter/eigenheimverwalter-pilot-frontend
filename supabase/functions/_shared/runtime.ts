@@ -101,8 +101,23 @@ export const requireRole = (profile: PortalProfile, roles: string[]) => {
   if (!roles.includes(profile.role)) throw Object.assign(new Error("Keine Berechtigung"), { status: 403 });
 };
 
-export function sourcePartner(state: RuntimeState, sourceUserId: string | null) {
-  return array(state.partners).find((item) => String(item.userId ?? "") === String(sourceUserId ?? "")) ?? null;
+export function sourcePartner(state: RuntimeState, sourceUserId: string | null, email: string | null = null) {
+  const sourceId = String(sourceUserId ?? "").trim();
+  if (sourceId) {
+    const direct = array(state.partners).find((item) => String(item.userId ?? "").trim() === sourceId);
+    if (direct) return direct;
+  }
+  const normalizedEmail = String(email ?? "").trim().toLowerCase();
+  if (!normalizedEmail) return null;
+  const runtimeUser = array(state.users).find((item) =>
+    String(item.id ?? "").trim() === sourceId || String(item.email ?? "").trim().toLowerCase() === normalizedEmail
+  );
+  const linkedByUser = runtimeUser && array(state.partners).find((item) =>
+    String(item.userId ?? "").trim() === String(runtimeUser.id ?? "").trim()
+  );
+  return linkedByUser ?? array(state.partners).find((item) =>
+    String(item.email ?? "").trim().toLowerCase() === normalizedEmail
+  ) ?? null;
 }
 
 export function scopedProperties(state: RuntimeState, profile: PortalProfile, sourceUserId: string | null) {

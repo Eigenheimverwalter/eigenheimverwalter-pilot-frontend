@@ -64,7 +64,7 @@ const resolvePartnerPortalUser = async (
   }
   if (!identity?.auth_user_id) return null;
   const { data: target, error } = await serviceClient.from("portal_users")
-    .select("id,display_name,role,status").eq("id", identity.auth_user_id).eq("status", "active").limit(1).maybeSingle();
+    .select("id,display_name,role,status").eq("id", identity.auth_user_id).in("status", ["active", "invited"]).limit(1).maybeSingle();
   if (error) throw new Error("Partnerprofil konnte nicht geprüft werden");
   if (!target || !partnerRoles.includes(String(target.role))) return null;
   return { target, sourceUserId: identity.source_user_id || linkedUser?.id || selected.userId || null };
@@ -116,7 +116,7 @@ Deno.serve(async (req) => {
   if(routePath==='/account/legal'||/^\/account\/legal\/[^/]+\/file$/.test(routePath)){
     if(req.method!=='GET')return json({error:'Methode nicht erlaubt'},405);
     if(req.headers.get('x-ehv-support-user'))return json({error:'Persönliche Vertragsunterlagen sind nur im eigenen Konto verfügbar.'},403);
-    try{const partner=sourcePartner((await loadRuntime(serviceClient)).state,sourceUserId);return json(await accountLegalLibrary({service:serviceClient,actorId:user.id,partner,documentId:routePath.match(/^\/account\/legal\/([^/]+)\/file$/)?.[1]||null}));}
+    try{const partner=sourcePartner((await loadRuntime(serviceClient)).state,sourceUserId,user.email||null);return json(await accountLegalLibrary({service:serviceClient,actorId:user.id,partner,documentId:routePath.match(/^\/account\/legal\/([^/]+)\/file$/)?.[1]||null}));}
     catch(error){return json({error:error instanceof Error?error.message:'Vertragsunterlagen nicht verfügbar'},Number((error as {status?:number}).status||503));}
   }
   // Own-onboarding actions must not pass through legacy automatic activation or
@@ -170,7 +170,7 @@ Deno.serve(async (req) => {
       if(!resolved)return json({error:"Für diesen Partner wurde noch kein aktiver Portal-Login eingerichtet"},422);
       targetId=String(resolved.target.id);
     }
-    const {data:target}=await serviceClient.from("portal_users").select("id,display_name,role,status").eq("id",targetId).eq("status","active").maybeSingle();
+    const {data:target}=await serviceClient.from("portal_users").select("id,display_name,role,status").eq("id",targetId).in("status",["active","invited"]).maybeSingle();
     if(!target||!partnerRoles.includes(target.role))return json({error:"Bitte einen aktiven Partnerzugang auswählen"},422);
     await serviceClient.from("audit_events").insert({actor_user_id:profile.id,action:"support_view.started",entity_type:"portal_user",entity_id:target.id,metadata:{partnerId:body.partnerId||null,targetRole:target.role,readOnly:true}});
     return json({user:{id:target.id,name:target.display_name,role:target.role},csrf:null,supportView:{actor:{id:profile.id,name:profile.display_name,role:profile.role},target:{id:target.id,name:target.display_name,role:target.role},readOnly:true}});
@@ -179,7 +179,7 @@ Deno.serve(async (req) => {
   if(profile.role==="support_staff"&&req.method!=="GET")return json({error:"Support-Mitarbeiter besitzen ausschließlich Leserechte"},403);
   let effectiveProfile=profile,effectiveSourceUserId=sourceUserId,effectiveEmail=user.email||null,supportView:null|Record<string,unknown>=null;
   const supportTarget=req.headers.get("x-ehv-support-user");
-  if(supportTarget){if(!canUseSupportView(profile))return json({error:"Keine Berechtigung"},403);if(req.method!=="GET")return json({error:"Support-Sicht ist ausschließlich lesend"},403);const {data:target}=await serviceClient.from("portal_users").select("id,display_name,role,status,created_at").eq("id",supportTarget).eq("status","active").maybeSingle();if(!target)return json({error:"Support-Ziel ist nicht mehr verfügbar"},410);const {data:identity}=await serviceClient.from("identity_imports").select("source_user_id,email").eq("auth_user_id",supportTarget).maybeSingle();effectiveProfile=target as PortalProfile;effectiveSourceUserId=identity?.source_user_id?String(identity.source_user_id):null;effectiveEmail=identity?.email||null;supportView={actor:{id:profile.id,name:profile.display_name,role:profile.role},target:{id:target.id,name:target.display_name,role:target.role},readOnly:true};}
+  if(supportTarget){if(!canUseSupportView(profile))return json({error:"Keine Berechtigung"},403);if(req.method!=="GET")return json({error:"Support-Sicht ist ausschließlich lesend"},403);const {data:target}=await serviceClient.from("portal_users").select("id,display_name,role,status,created_at").eq("id",supportTarget).in("status",["active","invited"]).maybeSingle();if(!target||!partnerRoles.includes(String(target.role)))return json({error:"Support-Ziel ist nicht mehr verfügbar"},410);const {data:identity}=await serviceClient.from("identity_imports").select("source_user_id,email").eq("auth_user_id",supportTarget).maybeSingle();effectiveProfile=target as PortalProfile;effectiveSourceUserId=identity?.source_user_id?String(identity.source_user_id):null;effectiveEmail=identity?.email||null;supportView={actor:{id:profile.id,name:profile.display_name,role:profile.role},target:{id:target.id,name:target.display_name,role:target.role},readOnly:true};}
 
   if (req.method === "GET" && routePath === "/me") {
     return json({ user: { ...effectiveProfile, email: effectiveEmail }, supportView });
@@ -193,7 +193,7 @@ Deno.serve(async (req) => {
   }
   if (routePath === '/marketing-kit' || routePath.startsWith('/marketing-kit/')) {
     try {
-      const partner=sourcePartner((await loadRuntime(serviceClient)).state,effectiveSourceUserId);
+      const partner=sourcePartner((await loadRuntime(serviceClient)).state,effectiveSourceUserId,effectiveEmail);
       const result=await marketingKitRoute(req,routePath,serviceClient,effectiveProfile,partner,Boolean(supportView));
       return json(result.body,result.status);
     } catch(error) {return json({error:error instanceof Error?error.message:'Marketing-Kit fehlgeschlagen'},Number((error as {status?:number}).status||500));}

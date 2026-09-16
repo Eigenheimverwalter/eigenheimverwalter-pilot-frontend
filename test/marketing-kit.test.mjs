@@ -20,6 +20,7 @@ test('all four requested categories exist and only active admins can manage',()=
   for(const role of ['support_staff','partner_manager','customer','unknown'])assert.equal(marketingAccess({role,status:'active'},partner).read,false);
   assert.equal(marketingAccess({role:'admin_light',status:'active'},partner,true).manage,false);
   assert.equal(marketingAccess({role:'admin_light',status:'disabled'},partner).read,false);
+  assert.equal(marketingAccess({role:'partner_basic',status:'invited'},partner,true).read,true);
 });
 test('uploads start as private drafts with server-generated path and verified metadata',async()=>{
   const f=fixture(),r=await f.upload();assert.equal(r.status,201);assert.equal(r.body.asset.status,'draft');assert.equal(r.body.asset.name,'Flyer.png');assert.equal(r.body.asset.mimeType,'image/png');assert.equal(r.body.asset.createdAt,time);assert.equal(f.rows.get(id).object_path,`${id}/${id}.png`);assert.equal(f.rows.get(id).sha256.length,64);assert.equal(f.objects.size,1);
@@ -40,6 +41,13 @@ test('publication exposes only approved files and signed links expire in 60 seco
   for(const role of ['partner_basic','referral_partner','crafts_partner','broker_partner']){const list=await f.request('GET','/marketing-kit',{},role);assert.equal(list.body.canManage,false);assert.equal(list.body.assets.length,1);assert.equal(list.body.assets[0].status,'published');await f.request('GET',`/marketing-kit/${id}/file`,{},role);}
   assert.ok(f.signs.every(x=>x.seconds===60));
 });
+test('each marketing download signs the selected asset path',async()=>{
+  const f=fixture(),second='00000000-0000-4000-8000-000000000002';
+  for(const [assetId,path,name] of [[id,'first/first.pdf','Erstes.pdf'],[second,'second/second.pdf','Zweites.pdf']])f.rows.set(assetId,{id:assetId,category:'flyer',name,mime_type:'application/pdf',size_bytes:10,status:'published',object_path:path,version:1,created_at:time});
+  await f.request('GET',`/marketing-kit/${id}/file`,{},'partner_basic');
+  await f.request('GET',`/marketing-kit/${second}/file`,{},'partner_basic');
+  assert.deepEqual(f.signs.map(x=>x.path),['first/first.pdf','second/second.pdf']);
+});
 test('partner roles cannot upload, publish, withdraw or delete even with forged IDs',async()=>{
   const f=fixture();await f.upload();for(const role of ['partner_basic','referral_partner','crafts_partner','broker_partner'])for(const method of ['POST','PATCH','DELETE'])await assert.rejects(f.request(method,`/marketing-kit/${id}`,{version:1,status:'published'},role),e=>e.status===403);
   assert.equal(f.rows.get(id).status,'draft');assert.equal(f.objects.size,1);
@@ -58,6 +66,7 @@ test('delete revokes access first and removes bytes; cleanup failures can be ret
 });
 test('support context is read-only and inherits target partner visibility',async()=>{
   const f=fixture();await f.upload();assert.equal((await f.request('GET','/marketing-kit',{},'partner_basic',true)).body.canManage,false);await assert.rejects(f.request('DELETE',`/marketing-kit/${id}`,{version:1},'partner_basic',true),e=>e.status===403);
+  assert.equal((await f.request('GET','/marketing-kit',{},'partner_basic',true)).status,200);
 });
 test('marketing routes use authenticated portal API, not public or property uploads',()=>{
   for(const path of ['/api/marketing-kit',`/api/marketing-kit/${id}`,`/api/marketing-kit/${id}/file`]){assert.ok(supportsPath(path));assert.equal(isPublicPath(path),false);assert.equal(isDocumentUpload(path),false);}

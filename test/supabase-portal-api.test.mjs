@@ -24,6 +24,12 @@ test('Partnerdaten werden über Quellidentität und aktive Zuweisungen begrenzt'
   assert.match(runtime,/item\.partnerId === partner\.id && item\.status === "active"/);
 });
 
+test('Partnerzuordnung fällt sicher auf die bestätigte Login-E-Mail zurück',()=>{
+  assert.match(runtime,/if \(sourceId\)/);
+  assert.match(runtime,/if \(!normalizedEmail\) return null/);
+  assert.match(runtime,/item\.email \?\? ""\)\.trim\(\)\.toLowerCase\(\) === normalizedEmail/);
+});
+
 test('Frontend kann kontrolliert zwischen Legacy und Supabase wechseln',()=>{
   const bridge=fs.readFileSync(new URL('../public/assets/supabase-bridge.js',import.meta.url),'utf8');
   const app=fs.readFileSync(new URL('../public/assets/app.js',import.meta.url),'utf8');
@@ -52,6 +58,7 @@ test('Supabase support view is admin-only, read-only and audited',()=>{
   assert.match(source,/support_view\.started/);assert.match(source,/support_view\.stopped/);
   assert.match(source,/body\.partnerId/);assert.match(source,/identity_imports/);assert.match(source,/auth_user_id/);
   assert.match(source,/resolvePartnerPortalUser/);assert.match(source,/\.ilike\("email", email\)/);
+  assert.match(source,/\.in\("status", \["active", "invited"\]\)/);
   assert.match(source,/array\(state\.users\)/);assert.match(source,/noch kein aktiver Portal-Login eingerichtet/);
   assert.match(bridge,/ehv-support-target/);
 });

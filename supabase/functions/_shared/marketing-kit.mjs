@@ -4,7 +4,8 @@ const fail=(message,status=422)=>{throw Object.assign(new Error(message),{status
 const partnerRoles=['partner_basic','referral_partner','crafts_partner','broker_partner'];
 export function marketingAccess(profile,partner,supportView=false){
   const manage=!supportView&&['admin_light','super_admin'].includes(profile?.role)&&profile.status==='active';
-  const read=manage||(profile?.status==='active'&&partnerRoles.includes(profile.role)&&partner?.status==='active'&&!['paused','suspended','contract_ended','archived'].includes(partner.lifecycle));
+  const usableProfile=profile?.status==='active'||(supportView&&profile?.status==='invited');
+  const read=manage||(usableProfile&&partnerRoles.includes(profile.role)&&partner?.status==='active'&&!['paused','suspended','contract_ended','archived'].includes(partner.lifecycle));
   return{manage,read};
 }
 export function decodeMarketingFile(name,content){
