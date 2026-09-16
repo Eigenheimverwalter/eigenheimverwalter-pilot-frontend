@@ -51,9 +51,12 @@ export function missingOnboardingData(data){
 }
 export function requiredLegalState({documents,acceptances,onboarding,requirements=['TERMS','PRIVACY'],now=new Date().toISOString()}){
   const audience=onboardingLegalAudience(onboarding);
-  documents=documents.filter(d=>(d.document_type==='PRICE_SHEET'?d.audience===audience:d.audience==='COMMON')||(onboarding.sandbox_only===true&&(d.audience||'LEGACY')==='LEGACY'));
+  documents=documents.filter(d=>['COMMON',audience].includes(d.audience)||(onboarding.sandbox_only===true&&(d.audience||'LEGACY')==='LEGACY'));
   const commercial=documents.filter(d=>['PRICE_SHEET','CONDITIONS'].includes(d.document_type)&&d.status==='ACTIVE'&&!d.deletion_requested_at&&d.effective_from&&Date.parse(d.effective_from)<=Date.parse(now)&&(onboarding.sandbox_only===true?d.sandbox_onboarding_id===onboarding.id:!d.sandbox_onboarding_id)).map(d=>d.document_type);
   const selected=[],missingTypes=[];
+  // A registration is never contract-ready without at least one applicable
+  // price/conditions document. This is deliberately fail-closed.
+  if(!commercial.length)missingTypes.push('PRICE_OR_CONDITIONS');
   for(const type of [...new Set(['TERMS','PRIVACY',...requirements,...commercial])]){
     const active=documents.filter(d=>d.document_type===type&&d.status==='ACTIVE'&&!d.deletion_requested_at&&d.effective_from&&Date.parse(d.effective_from)<=Date.parse(now)
       &&(onboarding.sandbox_only===true?d.sandbox_onboarding_id===onboarding.id:!d.sandbox_onboarding_id));

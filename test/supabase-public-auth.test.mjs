@@ -28,9 +28,9 @@ test('public referral and customer invitation flows are Supabase-native',()=>{
   assert.match(source,/auth\.admin\.deleteUser/);
 });
 
-test('full partner invitations activate a scoped Supabase identity',()=>{
-  assert.match(source,/pilot_partner_invitation/);assert.match(source,/crafts_partner/);assert.match(source,/broker_partner/);
-  assert.match(source,/partner\.invitation\.accepted/);assert.match(source,/identity_imports/);
+test('legacy partner invitations cannot activate without central legal onboarding',()=>{
+  assert.match(source,/ältere Einladung kann aus Sicherheitsgründen nicht mehr direkt aktiviert/);
+  assert.doesNotMatch(source,/partner\.invitation\.accepted/);
   assert.match(bridge,/partner-invitations/);
 });
 

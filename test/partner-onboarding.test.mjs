@@ -4,6 +4,7 @@ import {normalizeOnboardingInput,missingOnboardingData,requiredLegalState,assert
 const data={company:'Dach Test',contact_name:'Test',email:'test@example.invalid',phone:'012345',address:'Teststraße 1',postal_code:'22043',city:'Hamburg'};
 const flow={id:'onboard',partner_id:'partner-existing',existing_partner_id:'partner-existing',requested_plan:'PREMIUM',partner_type:'EQUIPMENT_PARTNER',equipment_type:'roof',prefilled_data:data,status:'LEGAL_ACCEPTED',identity_verified:true,checkout_id:'cs_test',price_id:'price_configured'};
 const docs=['TERMS','PRIVACY'].map((t,i)=>({id:t,document_type:t,audience:'COMMON',version:1,status:'ACTIVE',effective_from:'2026-01-01T00:00:00Z'}));
+docs.push({id:'PRICE_SHEET',document_type:'PRICE_SHEET',audience:'PREMIUM_EQUIPMENT',version:1,status:'ACTIVE',effective_from:'2026-01-01T00:00:00Z'});
 const acceptances=docs.map(d=>({legal_document_id:d.id,document_version:1,onboarding_id:'onboard',accepted_by_email:data.email,accepted_at:'2026-02-01T00:00:00Z'}));
 const legal=()=>requiredLegalState({documents:docs,acceptances,onboarding:flow});
 test('all entry sources normalize to one non-activating data contract',()=>{
@@ -14,7 +15,12 @@ test('all entry sources normalize to one non-activating data contract',()=>{
 test('required company/contact/address data are independently validated',()=>{assert.deepEqual(missingOnboardingData(data),[]);assert.ok(missingOnboardingData({...data,phone:''}).includes('phone'));assert.ok(missingOnboardingData({...data,postal_code:'2204'}).includes('postal_code'));});
 test('missing, future or ambiguous active legal versions fail closed',()=>{
   assert.equal(legal().accepted,true);
-  for(const documents of [[],[docs[0]],docs.map(d=>({...d,effective_from:'2999-01-01'})),[...docs,{...docs[0],id:'duplicate'}]])assert.equal(requiredLegalState({documents,acceptances,onboarding:flow}).accepted,false);
+  for(const documents of [[],[docs[0]],docs.filter(d=>d.document_type!=='PRICE_SHEET'),docs.map(d=>({...d,effective_from:'2999-01-01'})),[...docs,{...docs[0],id:'duplicate'}]])assert.equal(requiredLegalState({documents,acceptances,onboarding:flow}).accepted,false);
+});
+test('role-specific legal documents apply beyond price sheets',()=>{
+  const roleTerms={...docs[0],id:'ROLE_TERMS',audience:'PREMIUM_EQUIPMENT'};
+  const state=requiredLegalState({documents:[roleTerms,...docs.slice(1)],acceptances:[...acceptances.filter(a=>a.legal_document_id!=='TERMS'),{legal_document_id:roleTerms.id,document_version:1,onboarding_id:'onboard',accepted_by_email:data.email,accepted_at:'2026-02-01T00:00:00Z'}],onboarding:flow});
+  assert.equal(state.accepted,true);assert.ok(state.documents.some(d=>d.id==='ROLE_TERMS'));
 });
 test('acceptance is tied to actual immutable version and exact identity',()=>{
   assert.equal(requiredLegalState({documents:docs,acceptances:acceptances.map(a=>({...a,document_version:2})),onboarding:flow}).accepted,false);

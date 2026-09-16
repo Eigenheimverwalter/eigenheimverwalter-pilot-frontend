@@ -24,6 +24,8 @@ test('partner creation separates Premium, Basic and Basic referral roles',()=>{
   for(const marker of ['premium','partner_basic','referral_partner','accountRole','referralOnly'])assert.ok(writes.includes(marker));assert.match(writes,/Für diese Partnerrolle muss genau ein Gewerk/);assert.match(writes,/partnerInvitations/);
   for(const label of ['Premium-Partner','Basic-Partner','Basic-Tippgeber'])assert.ok(frontend.includes(label));
   assert.match(writes,/channel:"partner"/);assert.match(bridge,/\['\/api\/customer-invitations','\/api\/referral\/invitations','\/api\/partners'\]/);
+  assert.match(writes,/create_partner_onboarding/);assert.match(writes,/\/partner-onboarding\/\$\{onboardingId\}#token=/);
+  assert.match(writes,/AGB, Datenschutz und der für Sie geltenden Preis-\/Konditionsunterlagen/);
 });
 
 test('partner license changes enforce catalog, exclusivity and reservation extension',()=>{

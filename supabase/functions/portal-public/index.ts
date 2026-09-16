@@ -26,13 +26,7 @@ Deno.serve(async req=>{const json=(body:unknown,status=200)=>jsonResponse(req,bo
     if(!item||!partner||(!partner.referralOnly&&!trade)||Date.parse(String(item.expiresAt||0))<Date.now())return json({error:"Die Partnereinladung ist ungültig oder abgelaufen"},410);
     if(req.method==="GET")return json({company:partner.company,contact:partner.contact,email:partner.email,trade:partner.referralOnly?"Basic Partner · Tippgeber":trade?.name,postalCodes:partner.postalCodes||[],expiresAt:item.expiresAt});
     if(req.method==="POST"){
-      const b=await req.json(),password=String(b.password||"");if(!passwordOk(password)||password!==String(b.passwordConfirmation||""))return json({error:"Passwortanforderungen oder Wiederholung stimmen nicht"},422);
-      const sourceUserId=identifier("u-partner"),role=partner.referralOnly&&partner.plan==="basic"?"referral_partner":partner.plan==="basic"?"partner_basic":partner.primaryTradeId==="BROKER"?"broker_partner":"crafts_partner",displayName=clean(partner.contact||partner.company,120),email=String(partner.email).toLowerCase();
-      const {error:identityError}=await service.from("identity_imports").insert({source_user_id:sourceUserId,email,display_name:displayName,role,active:true,activation_status:"pending"});if(identityError)return json({error:"Partneridentität konnte nicht vorbereitet werden"},409);
-      const {data,error}=await service.auth.admin.createUser({email,password,email_confirm:true,user_metadata:{source:"pilot_partner_invitation",partner_id:partner.id}});if(error){await service.from("identity_imports").delete().eq("source_user_id",sourceUserId);return json({error:"Partnerzugang konnte nicht angelegt werden"},409)}
-      const now=new Date().toISOString();array(snapshot.state.users).push({id:sourceUserId,name:displayName,email,role,active:true,emailVerifiedAt:now,createdAt:now});partner.userId=sourceUserId;partner.status="active";partner.lifecycle="active";partner.onboarding=100;item.status="accepted";item.acceptedAt=now;item.authUserId=data.user.id;delete item.tokenHash;
-      try{await replace(service,snapshot,"partner.invitation.accepted","partner",String(partner.id))}catch(runtimeError){await service.auth.admin.deleteUser(data.user.id);await service.from("identity_imports").delete().eq("source_user_id",sourceUserId);throw runtimeError}
-      return json({message:"Ihr Partnerzugang wurde aktiviert. Sie können sich jetzt anmelden."},201);
+      return json({error:"Diese ältere Einladung kann aus Sicherheitsgründen nicht mehr direkt aktiviert werden. Bitte lassen Sie sich von der Administration einen neuen Registrierungslink ausstellen; dort bestätigen Sie AGB, Datenschutz und Ihre Preis-/Konditionsunterlagen."},409);
     }
   }
   if(customerRegistration){

@@ -21,11 +21,10 @@ test('Basic invitation is idempotent, uses partner sender and has no license or 
  const token=f.mail().message.match(/partner-einladung\/([a-f0-9]+)/)[1];assert.ok(token.length>=64);assert.ok(!JSON.stringify(f.state()).includes(token));
 });
 test('Ambiguous mail result is not a sent KPI and cannot cause an automatic duplicate send',async()=>{const f=fixture({mailOk:false});assert.equal((await (await f.bridge(f.request())).json()).status,'uncertain');await f.bridge(f.request());assert.equal(f.sends(),1);assert.equal(f.state().partnerInvitations[0].sentAt,undefined)});
-test('One-time invitation confirms email and creates only a referral partner after password validation',async()=>{
+test('Legacy invitation cannot bypass the central legal onboarding',async()=>{
  const f=fixture();await f.bridge(f.request());const token=f.mail().message.match(/partner-einladung\/([a-f0-9]+)/)[1];const publicHandler=f.load('../supabase/functions/portal-public/index.ts');
  const url='https://example.invalid/functions/v1/portal-public/partner-invitations/'+token;
  assert.equal((await publicHandler(new Request(url))).status,200);assert.equal(f.state().users.length,0);
- const weak=await publicHandler(new Request(url,{method:'POST',body:JSON.stringify({password:'bad',passwordConfirmation:'bad'})}));assert.equal(weak.status,422);
- const password='Fixture-Password123?';const good=await publicHandler(new Request(url,{method:'POST',body:JSON.stringify({password,passwordConfirmation:password})}));assert.equal(good.status,201);assert.equal(f.identity().role,'referral_partner');assert.equal(f.state().users[0].role,'referral_partner');assert.equal(f.state().partnerInvitations[0].status,'accepted');assert.equal((await publicHandler(new Request(url))).status,410);
- assert.equal((await (await f.bridge(f.request('status'))).json()).status,'accepted');
+ const blocked=await publicHandler(new Request(url,{method:'POST',body:JSON.stringify({password:'Fixture-Password123?',passwordConfirmation:'Fixture-Password123?'})}));assert.equal(blocked.status,409);assert.match((await blocked.json()).error,/AGB, Datenschutz/);
+ assert.equal(f.identity(),null);assert.equal(f.state().users.length,0);assert.equal(f.state().partnerInvitations[0].status,'pending');
 });
