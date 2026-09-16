@@ -20,8 +20,9 @@ test('customer invitations use expiring hashed tokens and registration mail',()=
   assert.ok(writes.indexOf('await replaceRuntime')<writes.lastIndexOf('await sendPortalMail'),'Mailversand muss nach atomarer Speicherung erfolgen');
 });
 
-test('partner creation validates a single trade and persists invitation before partner mail',()=>{
-  assert.match(writes,/Pro Partnerkonto muss genau ein Gewerk/);assert.match(writes,/partnerInvitations/);
+test('partner creation separates Premium, Basic and Basic referral roles',()=>{
+  for(const marker of ['premium','partner_basic','referral_partner','accountRole','referralOnly'])assert.ok(writes.includes(marker));assert.match(writes,/Für diese Partnerrolle muss genau ein Gewerk/);assert.match(writes,/partnerInvitations/);
+  for(const label of ['Premium-Partner','Basic-Partner','Basic-Tippgeber'])assert.ok(frontend.includes(label));
   assert.match(writes,/channel:"partner"/);assert.match(bridge,/\['\/api\/customer-invitations','\/api\/referral\/invitations','\/api\/partners'\]/);
 });
 

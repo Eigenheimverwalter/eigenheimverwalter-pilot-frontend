@@ -1,6 +1,6 @@
 const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const typeNames={TERMS:'AGB / Kooperationsbedingungen',PRIVACY:'Datenschutzerklärung',PRICE_SHEET:'Preisblatt',CONDITIONS:'Konditionsblatt'};
-const audienceNames={BASIC:'Basic',PREMIUM_EQUIPMENT:'Premium Handwerk',PREMIUM_BROKER:'Premium Makler'};
+const audienceNames={BASIC:'Basic Partner',BASIC_REFERRAL:'Basic-Tippgeber',PREMIUM_EQUIPMENT:'Premium Handwerk',PREMIUM_BROKER:'Premium Makler'};
 const documentCards=docs=>docs.map(d=>`<article style="margin-top:16px"><h4>${escape(d.title)}</h4><p>${escape(typeNames[d.type]||d.type)} · Version ${escape(d.version)}<br>${d.acceptedAt?'Bestätigt am '+escape(new Date(d.acceptedAt).toLocaleString('de-DE')):'Aktuelle Unterlage – keine Zustimmung aus dem Ansehen abgeleitet'}</p><button class="outline" data-legal-document="${escape(d.id)}" ${d.available?'':'disabled'}>Dokument ansehen</button></article>`).join('');
 export async function mountAccountLegal(api){
   const page=document.querySelector('#account-form')?.closest('.page');if(!page)return;
