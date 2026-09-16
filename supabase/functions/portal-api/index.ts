@@ -24,7 +24,7 @@ const jsonResponse = (req:Request,body: unknown, status = 200) => new Response(J
 });
 
 const projectRef = "rpniwtshbwjuesoeztyt";
-const partnerRoles = ["crafts_partner", "broker_partner", "partner_basic"];
+const partnerRoles = ["crafts_partner", "broker_partner", "partner_basic", "referral_partner"];
 const staffRoles = ["admin_light", "support_staff"];
 const canUseSupportView = (profile: PortalProfile) => isAdmin(profile) || profile.role === "support_staff";
 const safePortalBase = (value: unknown) => {
