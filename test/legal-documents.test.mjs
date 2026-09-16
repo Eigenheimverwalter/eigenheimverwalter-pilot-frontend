@@ -29,6 +29,7 @@ test('Upload reuses validated private PDF handling and cannot pick status or ver
   const f=fixture(),r=await f.upload();assert.equal(r.status,201);assert.equal(r.body.document.status,'DRAFT');assert.equal(r.body.document.version,1);assert.equal(f.blobs.size,1);assert.equal(f.rows.get(id).sha256.length,64);
   assert.equal(r.body.document.storage_path,undefined);assert.equal(r.body.document.sha256,undefined);assert.equal(f.rows.get(id).audience,'BASIC');
 });
+test('legacy common document upload without audience stays compatible',async()=>{const f=fixture();await f.request({method:'POST',body:{name:'AGB.pdf',title:'AGB',documentType:'TERMS',acceptanceText:'Ich stimme zu.',content:pdf}});assert.equal(f.rows.get(id).audience,'COMMON')});
 test('Wrong file type, oversize, missing title/text, missing permission and support writes are blocked',async()=>{
   const f=fixture(),body={documentType:'TERMS',name:'AGB.pdf',content:pdf,title:'AGB',acceptanceText:'Zustimmung'};
   for(const args of [{body:{...body,title:''}},{body:{...body,acceptanceText:''}},{body:{...body,content:'data:application/pdf;base64,YmFk'}},{body,maxBytes:3},{body,profile:light},{body,supportView:true}])await assert.rejects(f.request({method:'POST',...args}));
