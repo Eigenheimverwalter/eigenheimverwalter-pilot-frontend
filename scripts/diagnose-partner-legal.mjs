@@ -17,9 +17,12 @@ const [documents,acceptances,profiles,runtimeRows]=await Promise.all([
   get('portal_runtime_state?select=id,revision,payload&id=eq.primary'),
 ]);
 const state=requiredLegalState({documents,acceptances,onboarding:flow,requirements:flow.required_document_types});
-const rpcResponse=await fetch(`${base}/rest/v1/rpc/partner_legal_step`,{method:'POST',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({p_action:'READ',p_onboarding:flow.id,p_actor:flow.auth_user_id})});
-const rpc=await rpcResponse.json().catch(()=>({}));
-if(!rpcResponse.ok)throw Error(rpc.message||`RPC HTTP ${rpcResponse.status}`);
+let rpc={documents:[],missingDocumentTypes:[],accepted:flow.status==='ACTIVE'};
+if(flow.status!=='ACTIVE'){
+  const rpcResponse=await fetch(`${base}/rest/v1/rpc/partner_legal_step`,{method:'POST',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({p_action:'READ',p_onboarding:flow.id,p_actor:flow.auth_user_id})});
+  rpc=await rpcResponse.json().catch(()=>({}));
+  if(!rpcResponse.ok)throw Error(rpc.message||`RPC HTTP ${rpcResponse.status}`);
+}
 const runtime=runtimeRows[0]?.payload||{};
 const runtimePartners=(Array.isArray(runtime.partners)?runtime.partners:[]).filter(p=>String(p.email||'').trim().toLowerCase()===email);
 console.log(JSON.stringify({onboardingId:flow.id,status:flow.status,plan:flow.requested_plan,partnerType:flow.partner_type,sandboxOnly:flow.sandbox_only,profile:profiles[0]||null,runtimeRevision:runtimeRows[0]?.revision??null,runtimePartners:runtimePartners.map(p=>({id:p.id,status:p.status,plan:p.plan,role:p.role,referralOnly:p.referralOnly,partnerType:p.partnerType||p.partner_type,company:p.company})),commercialCandidates:documents.filter(d=>['PRICE_SHEET','CONDITIONS'].includes(d.document_type)).map(d=>({type:d.document_type,audience:d.audience,status:d.status,effectiveFrom:d.effective_from,sandboxOnboardingId:d.sandbox_onboarding_id,deletionPending:Boolean(d.deletion_requested_at)})),domainDocuments:state.documents.map(d=>({type:d.document_type,audience:d.audience})),domainMissingDocumentTypes:state.missingTypes,rpcVisibleDocumentTypes:(rpc.documents||[]).map(d=>d.documentType),rpcMissingDocumentTypes:rpc.missingDocumentTypes||[],accepted:rpc.accepted===true}));

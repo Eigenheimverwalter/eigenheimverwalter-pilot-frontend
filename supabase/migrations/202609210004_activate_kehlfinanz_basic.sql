@@ -22,7 +22,9 @@ begin
 
   if exists (
     select 1 from public.legal_documents d
-    where public.legal_document_matches(flow,d)
+    where public.legal_document_matches(d.document_type,d.audience,flow.requested_plan,flow.partner_type)
+      and d.status='ACTIVE' and d.effective_from<=now()
+      and d.deletion_requested_at is null and d.sandbox_onboarding_id is null
       and d.document_type in ('TERMS','PRIVACY','PRICE_SHEET','CONDITIONS')
       and not exists (
         select 1 from public.legal_acceptances a
