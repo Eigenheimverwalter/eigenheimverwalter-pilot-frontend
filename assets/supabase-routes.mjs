@@ -29,7 +29,7 @@ export const dynamicSupported=[
   /^\/api\/marketing-kit\/[0-9a-f-]{36}(?:\/file)?$/i,
   /^\/api\/equipment-schema\/[^/]+$/, /^\/api\/equipment\/[^/]+\/schema$/,
   /^\/api\/(?:cases|partners|equipment|service-records)\/[^/]+$/, /^\/api\/equipment\/[^/]+\/service-records$/,
-  /^\/api\/partners\/[^/]+\/license$/, /^\/api\/partners\/[^/]+\/email$/, /^\/api\/trigger-definitions\/[^/]+$/,
+  /^\/api\/partners\/[^/]+\/license$/, /^\/api\/partners\/[^/]+\/email$/, /^\/api\/partners\/[^/]+\/registration-invitation\/resend$/, /^\/api\/trigger-definitions\/[^/]+$/,
   /^\/api\/role-profiles\/[^/]+$/, /^\/api\/partner-role-templates\/[^/]+$/,
   /^\/api\/campaigns\/[^/]+(?:\/(?:preview|source-verify|approve|activate))?$/,
   /^\/api\/broker\/sales-files\/[^/]+(?:\/(?:document-status|address-verification|mandate|closing|release))?$/,
