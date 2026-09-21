@@ -1,0 +1,28 @@
+name: Diagnose partner legal registration
+
+on:
+  workflow_dispatch:
+    inputs:
+      email:
+        description: Exact partner login email
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - name: Mask partner email
+        env:
+          PARTNER_EMAIL: ${{ inputs.email }}
+        run: echo "::add-mask::$PARTNER_EMAIL"
+      - name: Inspect applicable legal documents
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          PARTNER_EMAIL: ${{ inputs.email }}
+        run: node scripts/diagnose-partner-legal.mjs
