@@ -1,0 +1,26 @@
+name: Resend partner registration
+
+on:
+  workflow_dispatch:
+    inputs:
+      company:
+        description: Exact partner company name
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  resend:
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - name: Replace invitation and send one new registration email
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+          PARTNER_COMPANY: ${{ inputs.company }}
+          PILOT_PUBLIC_URL: https://eigenheimverwalter.github.io/eigenheimverwalter-pilot-frontend
+        run: node scripts/resend-partner-registration.mjs

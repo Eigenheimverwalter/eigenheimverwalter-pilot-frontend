@@ -61,7 +61,7 @@ window.ehvSupabaseBridge={
       if(!response.ok)return responseError(response);return response.json();
     }
     const route=path.replace(/^\/api/,''),supportTarget=sessionStorage.getItem('ehv-support-target');
-    if(['/api/customer-invitations','/api/referral/invitations','/api/partners'].includes(path)&&options.body){const payload=JSON.parse(options.body);payload.siteUrl=config.siteBaseUrl||location.origin;options={...options,body:JSON.stringify(payload)}}
+    if((['/api/customer-invitations','/api/referral/invitations','/api/partners'].includes(path)||/^\/api\/partners\/[^/]+\/registration-invitation\/resend$/.test(path))&&options.body){const payload=JSON.parse(options.body);payload.siteUrl=config.siteBaseUrl||location.origin;options={...options,body:JSON.stringify(payload)}}
     const response=await fetch(`${config.supabaseUrl}/functions/v1/portal-api${route}`,{
       ...options,
       headers:{Authorization:`Bearer ${session.access_token}`,apikey:config.supabasePublishableKey,'Content-Type':'application/json',...(supportTarget?{'x-ehv-support-user':supportTarget}:{}),...(options.headers||{})},

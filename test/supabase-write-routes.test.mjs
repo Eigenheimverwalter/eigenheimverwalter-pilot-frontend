@@ -28,6 +28,14 @@ test('partner creation separates Premium, Basic and Basic referral roles',()=>{
   assert.match(writes,/AGB, Datenschutz und der für Sie geltenden Preis-\/Konditionsunterlagen/);
 });
 
+test('Admin Plus can replace an expired partner registration invitation',()=>{
+  assert.match(writes,/registration-invitation\\\/resend/);
+  assert.match(writes,/partner\.registration_invitation\.resent/);
+  assert.match(writes,/previous\.status="superseded"/);
+  assert.match(writes,/expireExistingPartnerId/);
+  assert.match(bridge,/registration-invitation\\\/resend/);
+});
+
 test('partner license changes enforce catalog, exclusivity and reservation extension',()=>{
   assert.match(writes,/applyPartnerLicenseChange/);assert.match(writes,/reservation_date_required/);
   assert.match(writes,/partner\.license\.updated/);assert.match(writes,/partnerLicenseSummary/);
