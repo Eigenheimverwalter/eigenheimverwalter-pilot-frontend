@@ -17,6 +17,10 @@ jobs:
     environment: staging
     steps:
       - uses: actions/checkout@v4
+      - name: Mask partner lookup value
+        env:
+          PARTNER_LOOKUP: ${{ inputs.company }}
+        run: echo "::add-mask::$PARTNER_LOOKUP"
       - name: Replace invitation and send one new registration email
         env:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

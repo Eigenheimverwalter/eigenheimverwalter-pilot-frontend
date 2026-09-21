@@ -6,9 +6,9 @@ async function call(path,{method='GET',headers={},body}={}){const response=await
 const generated=await call('/auth/v1/admin/generate_link',{method:'POST',headers:adminHeaders,body:{type:'magiclink',email:adminEmail,options:{redirectTo:siteUrl}}}),tokenHash=generated.properties?.hashed_token||generated.hashed_token;
 if(!tokenHash)throw Error('Für den bestehenden Admin-Plus-Account konnte keine kurzlebige Sitzung erzeugt werden.');
 const session=await call('/auth/v1/verify',{method:'POST',headers:{apikey:publishableKey},body:{type:'magiclink',token_hash:tokenHash}}),userHeaders={apikey:publishableKey,Authorization:`Bearer ${session.access_token}`};
-const normalize=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('de-DE').replace(/[^a-z0-9]+/g,' ').trim(),wanted=normalize(company),terms=wanted.split(' ').filter(term=>term.length>=4);
-const listing=await call('/functions/v1/portal-api/partners',{headers:userHeaders}),exact=listing.partners.filter(item=>normalize(item.company)===wanted),matches=exact.length?exact:listing.partners.filter(item=>terms.every(term=>normalize(item.company).includes(term)));
-if(matches.length!==1)throw Error(`Erwartet wurde genau ein eindeutig passender Partner für „${company}“, gefunden: ${matches.length}.`);
+const normalize=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('de-DE').replace(/[^a-z0-9]+/g,' ').trim(),emailLookup=company.includes('@'),wanted=emailLookup?company.toLocaleLowerCase('de-DE'):normalize(company),terms=emailLookup?[]:wanted.split(' ').filter(term=>term.length>=4);
+const listing=await call('/functions/v1/portal-api/partners',{headers:userHeaders}),exact=listing.partners.filter(item=>emailLookup?String(item.email||'').trim().toLocaleLowerCase('de-DE')===wanted:normalize(item.company)===wanted),matches=exact.length?exact:emailLookup?[]:listing.partners.filter(item=>terms.every(term=>normalize(item.company).includes(term)));
+if(matches.length!==1)throw Error(`Erwartet wurde genau ein eindeutig passender Partnerdatensatz, gefunden: ${matches.length}.`);
 const result=await call(`/functions/v1/portal-api/partners/${encodeURIComponent(matches[0].id)}/registration-invitation/resend`,{method:'POST',headers:userHeaders,body:{siteUrl}});
 if(result.delivery?.status!=='sent')throw Error('Das Mail-Gateway hat den Versand nicht als gesendet bestätigt.');
-console.log(JSON.stringify({company,partnerId:matches[0].id,status:result.delivery.status,expiresAt:result.invitation.expiresAt}));
+console.log(JSON.stringify({partnerId:matches[0].id,status:result.delivery.status,expiresAt:result.invitation.expiresAt}));
