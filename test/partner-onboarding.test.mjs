@@ -13,6 +13,11 @@ test('all entry sources normalize to one non-activating data contract',()=>{
   assert.throws(()=>normalizeOnboardingInput({source:'SELF_SERVICE_BASIC',requested_plan:'PREMIUM',partner_type:'REFERRAL'},[]),/ENTRY_PLAN_MISMATCH/);
 });
 test('required company/contact/address data are independently validated',()=>{assert.deepEqual(missingOnboardingData(data),[]);assert.ok(missingOnboardingData({...data,phone:''}).includes('phone'));assert.ok(missingOnboardingData({...data,postal_code:'2204'}).includes('postal_code'));});
+test('Basic Tippgeber may accept the confirmed shared Basic commercial sheet',()=>{
+  const referral={...flow,requested_plan:'BASIC',partner_type:'REFERRAL'};
+  const shared=[...docs.slice(0,2),{...docs[2],audience:'BASIC'}];
+  assert.deepEqual(requiredLegalState({documents:shared,acceptances:[],onboarding:referral}).documents.map(d=>d.document_type),['TERMS','PRIVACY','PRICE_SHEET']);
+});
 test('missing, future or ambiguous active legal versions fail closed',()=>{
   assert.equal(legal().accepted,true);
   for(const documents of [[],[docs[0]],docs.filter(d=>d.document_type!=='PRICE_SHEET'),docs.map(d=>({...d,effective_from:'2999-01-01'})),[...docs,{...docs[0],id:'duplicate'}]])assert.equal(requiredLegalState({documents,acceptances,onboarding:flow}).accepted,false);

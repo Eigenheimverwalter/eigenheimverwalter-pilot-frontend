@@ -1,5 +1,7 @@
 export const legalAudiences=Object.freeze({BASIC:'Basic Partner',BASIC_REFERRAL:'Basic-Tippgeber',PREMIUM_EQUIPMENT:'Premium Handwerk',PREMIUM_BROKER:'Premium Makler'});
 export const onboardingLegalAudience=flow=>flow.requested_plan==='BASIC'?(flow.partner_type==='REFERRAL'?'BASIC_REFERRAL':'BASIC'):flow.requested_plan==='PREMIUM'?({EQUIPMENT_PARTNER:'PREMIUM_EQUIPMENT',BROKER_PARTNER:'PREMIUM_BROKER'}[flow.partner_type]||null):null;
+export const legalAudienceMatches=(document,flow)=>document.audience==='COMMON'||document.audience===onboardingLegalAudience(flow)||
+  (flow.requested_plan==='BASIC'&&flow.partner_type==='REFERRAL'&&document.audience==='BASIC'&&['PRICE_SHEET','CONDITIONS'].includes(document.document_type));
 export function accountLegalAudience(partner){
   if(!partner)return null;
   if(partner.referralOnly===true)return 'BASIC_REFERRAL';

@@ -1,5 +1,5 @@
 // Shared domain rules. Transport/identity/storage adapters must call these rules;
-import {onboardingLegalAudience} from './legal-audience.mjs';
+import {legalAudienceMatches} from './legal-audience.mjs';
 // never infer activation from a Sales WON, email verification or success URL.
 export const BASIC_PROPERTY_LIMIT = 3;
 export const INCLUDED_POSTAL_CODES = 2;
@@ -50,8 +50,7 @@ export function missingOnboardingData(data){
   return [...new Set(missing)];
 }
 export function requiredLegalState({documents,acceptances,onboarding,requirements=['TERMS','PRIVACY'],now=new Date().toISOString()}){
-  const audience=onboardingLegalAudience(onboarding);
-  documents=documents.filter(d=>['COMMON',audience].includes(d.audience)||(onboarding.sandbox_only===true&&(d.audience||'LEGACY')==='LEGACY'));
+  documents=documents.filter(d=>legalAudienceMatches(d,onboarding)||(onboarding.sandbox_only===true&&(d.audience||'LEGACY')==='LEGACY'));
   const commercial=documents.filter(d=>['PRICE_SHEET','CONDITIONS'].includes(d.document_type)&&d.status==='ACTIVE'&&!d.deletion_requested_at&&d.effective_from&&Date.parse(d.effective_from)<=Date.parse(now)&&(onboarding.sandbox_only===true?d.sandbox_onboarding_id===onboarding.id:!d.sandbox_onboarding_id)).map(d=>d.document_type);
   const selected=[],missingTypes=[];
   // A registration is never contract-ready without at least one applicable
