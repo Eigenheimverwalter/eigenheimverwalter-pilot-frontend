@@ -5,9 +5,10 @@ export function partnerMembershipLabel(profile={}) {
   return `${profile.plan==='premium'?'Premium-Partner':'Basic-Partner'}${kind?' '+kind:''}`;
 }
 export function partnerDirectoryLabels(profile={}) {
-  const trade=profile.tradeId==='BROKER'?'Immobilienmakler':profile.tradeName||profile.tradeId||'';
+  const broker=String(profile.tradeId||'').toUpperCase()==='BROKER'||String(profile.partnerCategory||'').toLowerCase()==='broker';
+  const trade=broker?'Immobilienmakler':profile.tradeName||profile.tradeId||'';
   if(profile.referralOnly)return {role:'Basic-Tippgeber',trade:'Kein Gewerk · allgemeine Empfehlung'};
-  if(profile.plan==='basic')return {role:profile.tradeId==='BROKER'?'Basic Makler':'Basic Handwerker',trade:trade||'Gewerk noch nicht hinterlegt'};
+  if(profile.plan==='basic')return {role:broker?'Basic Makler':'Basic Handwerker',trade:trade||'Gewerk noch nicht hinterlegt'};
   return {role:profile.roleTitle||'Rolle noch nicht zugeordnet',trade:trade||'Gewerk noch nicht hinterlegt'};
 }
 export function applyPartnerMembership(profile,root=document) {
