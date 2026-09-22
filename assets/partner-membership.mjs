@@ -7,7 +7,7 @@ export function partnerMembershipLabel(profile={}) {
 export function partnerDirectoryLabels(profile={}) {
   const trade=profile.tradeId==='BROKER'?'Immobilienmakler':profile.tradeName||profile.tradeId||'';
   if(profile.referralOnly)return {role:'Basic-Tippgeber',trade:'Kein Gewerk · allgemeine Empfehlung'};
-  if(profile.plan==='basic')return {role:'Basic-Partner',trade:trade||'Gewerk noch nicht hinterlegt'};
+  if(profile.plan==='basic')return {role:profile.tradeId==='BROKER'?'Basic Makler':'Basic Handwerker',trade:trade||'Gewerk noch nicht hinterlegt'};
   return {role:profile.roleTitle||'Rolle noch nicht zugeordnet',trade:trade||'Gewerk noch nicht hinterlegt'};
 }
 export function applyPartnerMembership(profile,root=document) {
