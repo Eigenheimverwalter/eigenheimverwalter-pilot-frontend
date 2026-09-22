@@ -4,6 +4,12 @@ export function partnerMembershipLabel(profile={}) {
   const kind=profile.tradeId==='BROKER'?'Makler':profile.tradeName;
   return `${profile.plan==='premium'?'Premium-Partner':'Basic-Partner'}${kind?' '+kind:''}`;
 }
+export function partnerDirectoryLabels(profile={}) {
+  const trade=profile.tradeId==='BROKER'?'Immobilienmakler':profile.tradeName||profile.tradeId||'';
+  if(profile.referralOnly)return {role:'Basic-Tippgeber',trade:'Kein Gewerk · allgemeine Empfehlung'};
+  if(profile.plan==='basic')return {role:'Basic-Partner',trade:trade||'Gewerk noch nicht hinterlegt'};
+  return {role:profile.roleTitle||'Rolle noch nicht zugeordnet',trade:trade||'Gewerk noch nicht hinterlegt'};
+}
 export function applyPartnerMembership(profile,root=document) {
   const label=partnerMembershipLabel(profile);
   const role=root.querySelector('#user-role');
