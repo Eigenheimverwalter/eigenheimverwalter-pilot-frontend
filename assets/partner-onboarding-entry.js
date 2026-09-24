@@ -72,9 +72,9 @@ async function start(){
   }catch(error){showError(error);}
 }
 function selfServiceSubmit(run){
-  const form=host.querySelector('form'),status=host.querySelector('[data-error]'),submit=form.querySelector('[type=submit]');
+  const form=host.querySelector('form'),status=host.querySelector('[data-error],[data-status]'),submit=form.querySelector('[type=submit]');
   form.onsubmit=async event=>{event.preventDefault();if(busy)return;busy=true;submit.disabled=true;status.textContent='Bitte warten …';
-    try{await run(Object.fromEntries(new FormData(form)),status,form);}catch(error){status.textContent=error.message;}finally{busy=false;submit.disabled=false;}};
+    try{status.classList.remove('is-error');await run(Object.fromEntries(new FormData(form)),status,form);}catch(error){status.classList.add('is-error');status.textContent=error.message;}finally{busy=false;submit.disabled=false;}};
 }
 function selfServiceEmail(){
   host.innerHTML=selfServiceEmailMarkup();host.querySelector('[data-login]').onclick=()=>authForm(false);
