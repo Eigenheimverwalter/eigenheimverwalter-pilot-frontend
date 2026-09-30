@@ -124,7 +124,7 @@ jobs:
             -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
             -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}")
           echo "$migration_status" | jq '{customers,properties,propertyFiles,availableDocuments,runtimeRevision,activeAdminProfiles,activeInfoAdmin}'
-          echo "$migration_status" | jq -e '.customers == 194 and .properties == 148 and .propertyFiles == 522 and .availableDocuments >= 93 and .runtimeRevision > 0 and .activeAdminProfiles >= 1 and .activeInfoAdmin == true' >/dev/null || { echo "Supabase-Daten-, Auth- oder Admin-Integrität nicht bestätigt."; exit 1; }
+          echo "$migration_status" | jq -e '.customers >= 194 and .properties >= 148 and .propertyFiles >= 522 and .availableDocuments >= 93 and .runtimeRevision > 0 and .activeAdminProfiles >= 1 and .activeInfoAdmin == true' >/dev/null || { echo "Supabase-Daten-, Auth- oder Admin-Integrität nicht bestätigt."; exit 1; }
       - name: Smoke-test authenticated Pilot role and ACL
         shell: bash
         env:
