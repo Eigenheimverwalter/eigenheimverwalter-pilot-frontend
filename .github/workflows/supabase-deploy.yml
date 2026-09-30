@@ -22,6 +22,8 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: staging
+    env:
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
       - uses: supabase/setup-cli@v1
@@ -39,13 +41,13 @@ jobs:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
       - name: Apply database migrations
-        if: ${{ secrets.SUPABASE_DB_PASSWORD != '' }}
+        if: ${{ env.SUPABASE_DB_PASSWORD != '' }}
         run: supabase db push --yes
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
       - name: Report pending database password
-        if: ${{ secrets.SUPABASE_DB_PASSWORD == '' }}
+        if: ${{ env.SUPABASE_DB_PASSWORD == '' }}
         run: |
           echo "::warning::SUPABASE_DB_PASSWORD is not configured. Database migrations were not applied; backend smoke tests will still verify the already deployed schema."
       - name: Verify required Pilot function secrets
