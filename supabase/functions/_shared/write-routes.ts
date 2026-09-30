@@ -11,6 +11,7 @@ import { processTriggerEvent } from "./opportunity-engine.mjs";
 import { DwdWarningProvider } from "./weather-providers.mjs";
 import { compareOwners, compareValue, extractLandRegister } from "./land-register.mjs";
 import { actOnServiceRequest, createServiceRequest } from "./service-request-flow.mjs";
+import { sendServiceRecordToCore } from "./ehv-core-client.ts";
 
 type Context={service:SupabaseClient;snapshot:RuntimeSnapshot;profile:PortalProfile;sourceUserId:string|null;body:Record<string,unknown>;onboardingEnabled?:boolean};
 type MailIntent={channel:"partner"|"registration"|"info";recipientEmail:string;subject:string;message:string};
@@ -62,7 +63,11 @@ export async function writeRoute(method:string,path:string,ctx:Context){
     if(!partner)fail("Diese Prozessaktion ist ausschließlich dem zugewiesenen Partner erlaubt",403);
     const request=actOnServiceRequest(state,requestId,step,body,{partnerId:String(partner.id)});
     collection(snapshot,"serviceRequestEvents").push({id:identifier("service-request-event"),requestId,type:step,at:new Date().toISOString(),by:sourceUserId,details:{partnerId:partner.id,status:request.status}});
-    if(step==="complete")collection(snapshot,"notifications").unshift({id:identifier("notification"),userId:request.customerId,type:"service.completed",title:"Serviceleistung abgeschlossen",propertyId:request.propertyId,equipmentId:request.equipmentId,createdAt:new Date().toISOString(),status:"queued",channel:"app_push"});
+    if(step==="complete"){
+      const mutation=collection(snapshot,"coreMutationOutbox").find(x=>String(x.id)===String(request.coreMutationId));
+      if(mutation){mutation.attempts=Number(mutation.attempts||0)+1;try{const sync=await sendServiceRecordToCore(mutation);mutation.status=sync.status;mutation.coreResponse=sync.response||null;mutation.lastError=null;if(sync.status==="completed")mutation.processedAt=new Date().toISOString()}catch(error){mutation.status="pending";mutation.lastError=clean(error instanceof Error?error.message:"Core-Synchronisierung fehlgeschlagen",300)}}
+      collection(snapshot,"notifications").unshift({id:identifier("notification"),userId:request.customerId,type:"service.completed",title:"Serviceleistung abgeschlossen",propertyId:request.propertyId,equipmentId:request.equipmentId,createdAt:new Date().toISOString(),status:"queued",channel:"app_push"});
+    }
     result=request;action=`service_request.${step}`;entityType="service_request";entityId=requestId;
   } else if(method==="POST"&&path==="/cases"){
     const propertyId=clean(body.propertyId,100);if(!allowedProperties.has(propertyId))fail("Kein Zugriff auf dieses Objekt",403);
