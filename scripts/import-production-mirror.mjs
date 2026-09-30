@@ -1,0 +1,15 @@
+const fs=await import('node:fs');
+const source=process.argv[2]||'tmp/source/production-mirror.json',url=process.env.SUPABASE_URL,key=process.env.SUPABASE_SERVICE_ROLE_KEY;
+if(!url||!key)throw new Error('SUPABASE_URL und SUPABASE_SERVICE_ROLE_KEY sind erforderlich');
+const mirror=JSON.parse(fs.readFileSync(source,'utf8'));
+if(mirror?.meta?.classification!=='CONFIDENTIAL_CUSTOMER_DATA'||!Array.isArray(mirror?.tables?.users)||!Array.isArray(mirror?.tables?.properties))throw new Error('Ungültiger Produktivdaten-Mirror');
+const headers={apikey:key,Authorization:`Bearer ${key}`,'Content-Type':'application/json'};
+const currentResponse=await fetch(`${url}/rest/v1/portal_runtime_state?id=eq.primary&select=payload,revision`,{headers});
+if(!currentResponse.ok)throw new Error(`Laufzeitstand konnte nicht gelesen werden (${currentResponse.status})`);
+const [current]=await currentResponse.json();if(!current?.payload)throw new Error('Aktueller Laufzeitstand fehlt');
+const previousFiles=current.payload?.productionMirror?.tables?.property_files||[],previousById=new Map(previousFiles.map(item=>[String(item.id),item]));
+const mergedFiles=mirror.tables.property_files?.map(item=>{const previous=previousById.get(String(item.id));return previous?.supabaseDocumentId?{...item,fileAvailable:true,supabaseDocumentId:previous.supabaseDocumentId,storageBucket:previous.storageBucket,storageObjectPath:previous.storageObjectPath}:item;})||[];
+const next={...current.payload,productionMirror:{...mirror,tables:{...mirror.tables,property_files:mergedFiles}}};
+const response=await fetch(`${url}/rest/v1/rpc/replace_portal_runtime_state`,{method:'POST',headers,body:JSON.stringify({expected_revision:current.revision,next_payload:next,audit_actor:null,audit_action:'migration.production_mirror.merged',audit_entity_type:'production_mirror',audit_entity_id:String(mirror.meta.source||'source'),audit_metadata:{customers:mirror.tables.users.length,properties:mirror.tables.properties.length,propertyFiles:Array.isArray(mirror.tables.property_files)?mirror.tables.property_files.length:0}})});
+if(!response.ok)throw new Error(`Produktivspiegel konnte nicht atomar übernommen werden (${response.status}): ${await response.text()}`);
+console.log(JSON.stringify({status:'validated',customers:mirror.tables.users.length,properties:mirror.tables.properties.length,propertyFiles:Array.isArray(mirror.tables.property_files)?mirror.tables.property_files.length:0},null,2));
