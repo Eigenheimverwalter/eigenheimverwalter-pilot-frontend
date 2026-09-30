@@ -42,7 +42,12 @@ jobs:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
       - name: Apply database migrations
         if: ${{ env.SUPABASE_DB_PASSWORD != '' }}
-        run: supabase db push --yes
+        shell: bash
+        run: |
+          set -euo pipefail
+          encoded_password="$(python3 -c 'import os, urllib.parse; print(urllib.parse.quote(os.environ["SUPABASE_DB_PASSWORD"], safe=""))')"
+          db_url="postgresql://postgres.${SUPABASE_PROJECT_REF}:${encoded_password}@aws-1-eu-west-1.pooler.supabase.com:5432/postgres"
+          supabase db push --db-url "$db_url" --yes
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
