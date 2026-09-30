@@ -1,0 +1,16 @@
+{
+  "name": "eigenheimverwalter-pilot-admin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node server.mjs",
+    "start": "node server.mjs",
+    "test": "node --test test/*.test.mjs",
+    "integration:ehv:verify": "node scripts/verify-ehv-core-integration.mjs",
+    "migration:export": "node scripts/export-supabase-migration.mjs",
+    "migration:build": "node scripts/build-supabase-import.mjs",
+    "migration:import": "node scripts/import-supabase-migration.mjs"
+  },
+  "engines": { "node": ">=20" }
+}

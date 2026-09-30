@@ -1,0 +1,47 @@
+import {readFileSync} from 'node:fs';
+import assert from 'node:assert/strict';
+import {createSupabaseOnboardingService} from '../supabase/functions/_shared/partner-onboarding-store.mjs';
+export async function checkPartnerOnboardingEntry(db){
+  await db.exec('alter table public.portal_users add column if not exists display_name text');
+  await db.exec('alter table public.identity_imports add column if not exists email text');
+  await db.exec(readFileSync(new URL('../supabase/migrations/202609090007_partner_onboarding_entry.sql',import.meta.url),'utf8'));
+  const runtime=(await db.query('select payload from public.portal_runtime_state')).rows[0].payload;
+  const client={rpc:async(name,args)=>{assert.ok(['create_partner_onboarding','partner_onboarding_entry','partner_onboarding_step'].includes(name));
+    try{return{data:(await db.query(`select public.${name}(${Object.values(args).map((_,i)=>'$'+(i+1))}) result`,Object.values(args).map(v=>typeof v==='object'&&v!==null?JSON.stringify(v):v))).rows[0].result};}catch(error){if(!/ONBOARDING_/.test(error.message))throw Error(name+': '+error.message);return{error};}}};
+  const service=createSupabaseOnboardingService(client);
+  const make=async()=>service.create({source:'SALES_OS',request_key:crypto.randomUUID(),sales_lead_id:crypto.randomUUID(),invite_id:crypto.randomUUID(),requested_plan:'BASIC',partner_type:'REFERRAL',prefilled_data:{company:'Fixture GmbH',contact_name:'Fixture',email:crypto.randomUUID()+'@example.invalid',phone:'040123456',address:'Fixture 1',postal_code:'22043',city:'Hamburg'}},{source:'SALES_OS'});
+  const flow=await make(),id=flow.onboarding_id,token=flow.secure_onboarding_token,email=flow.prefilled_data.email,actor=crypto.randomUUID();
+  const peek=()=>service.invitation(id,token),claim=who=>service.invitation(id,token,{actorId:who});
+  assert.equal((await peek()).email,email);assert.equal((await peek()).login_required,false);
+  await assert.rejects(service.invitation(id,'b'.repeat(64)),e=>e.code==='ONBOARDING_NOT_FOUND');
+  await db.query('insert into auth.users(id,email,email_confirmed_at) values($1,$2,null)',[actor,email]);
+  assert.equal((await peek()).login_required,true);await assert.rejects(claim(actor),e=>e.code==='ONBOARDING_IDENTITY_MISMATCH');
+  await db.query('update auth.users set email_confirmed_at=now() where id=$1',[actor]);
+  const other=crypto.randomUUID();await db.query('insert into auth.users values($1,$2,now())',[other,'wrong@example.invalid']);
+  await assert.rejects(claim(other),e=>e.code==='ONBOARDING_IDENTITY_MISMATCH');
+  const result=await claim(actor);assert.equal(result.onboarding_status,'STARTED');
+  const profile=(await db.query('select * from portal_users where id=$1',[actor])).rows[0];assert.equal(profile.status,'invited');assert.equal(profile.role,'partner_basic');
+  const again=await claim(actor);assert.equal(again.version,result.version);assert.equal((await peek()).email,undefined);assert.equal((await peek()).registered,true);
+  assert.equal((await db.query("select count(*)::int n from audit_events where action='partner_onboarding_started' and entity_id=$1",[id])).rows[0].n,1);
+  const {email:_,...data}=flow.prefilled_data;
+  const saved=await service.step('SAVE_DATA',id,{actorId:actor,version:result.version,data});assert.equal(saved.onboarding_status,'DATA_COMPLETE');
+  await assert.rejects(service.step('SAVE_DATA',id,{actorId:actor,version:result.version,data}),e=>e.code==='ONBOARDING_CHANGED');
+  const legal=(await db.query("select public.partner_legal_step('READ',$1,$2) result",[id,actor])).rows[0].result;
+  assert.equal(legal.dataComplete,true);assert.equal(legal.accepted,false);
+  assert.equal(legal.documents.length,2,'Use the existing isolated ACTIVE document fixtures');
+  const docs=legal.documents.map(d=>({id:d.id,version:d.version,accepted:true}));
+  const accepted=(await db.query("select public.partner_legal_step('ACCEPT',$1,$2,$3) result",[id,actor,JSON.stringify(docs)])).rows[0].result;
+  assert.equal(accepted.onboardingStatus,'LEGAL_ACCEPTED');assert.equal(accepted.accepted,true);
+  assert.equal((await db.query('select status from portal_users where id=$1',[actor])).rows[0].status,'invited');
+  await db.query("update portal_users set status='disabled' where id=$1",[actor]);await assert.rejects(claim(actor),e=>e.code==='ONBOARDING_PERMISSION_DENIED');
+  await assert.rejects(db.query("select public.partner_legal_step('READ',$1,$2)",[id,actor]),/ACCEPTANCE_IDENTITY_MISMATCH/);
+  const old=await make(),oldActor=crypto.randomUUID();await db.query('insert into auth.users values($1,$2,now())',[oldActor,old.prefilled_data.email]);
+  await db.query("insert into portal_users(id,role,status) values($1,'crafts_partner','active')",[oldActor]);
+  await service.invitation(old.onboarding_id,old.secure_onboarding_token,{actorId:oldActor});
+  assert.equal((await db.query('select role from portal_users where id=$1',[oldActor])).rows[0].role,'crafts_partner');
+  const expired=await make();await db.query("update partner_onboardings set expires_at=now()-interval '1 second' where id=$1",[expired.onboarding_id]);
+  await assert.rejects(service.invitation(expired.onboarding_id,expired.secure_onboarding_token),e=>e.code==='ONBOARDING_EXPIRED');
+  assert.deepEqual((await db.query('select payload from public.portal_runtime_state')).rows[0].payload,runtime);
+  for(const role of ['anon','authenticated']){await db.exec('set role '+role);await assert.rejects(db.query("select public.partner_onboarding_entry('INSPECT',$1,$2)",[id,'a'.repeat(64)]),/permission denied/);await db.exec('reset role');}
+  console.log(JSON.stringify({invitationEntry:true,pendingProfileOnly:true,noRuntimeWrites:true,noActivation:true,ownLegalStep:true,verifiedEmail:true,privateRpc:true}));
+}

@@ -1,0 +1,23 @@
+# Dediziertes EHV-Pilotprojekt: getrennte Laufzeit, Daten und Secrets gegenüber der Sales OS.
+project_id = "rpniwtshbwjuesoeztyt"
+
+[functions.document-api]
+verify_jwt = true
+
+[functions.portal-api]
+verify_jwt = false
+
+[functions.portal-mail]
+verify_jwt = false
+
+[functions.portal-public]
+verify_jwt = false
+
+[functions.portal-sales-onboarding]
+verify_jwt = false
+
+[functions.portal-stripe]
+verify_jwt = false
+
+[functions.portal-cancellation-worker]
+verify_jwt = false

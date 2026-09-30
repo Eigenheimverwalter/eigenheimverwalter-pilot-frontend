@@ -1,0 +1,47 @@
+import {readFileSync} from 'node:fs';
+import assert from 'node:assert/strict';
+export async function checkPartnerCheckout(db){
+  await db.exec(`alter table public.portal_runtime_state add column updated_at timestamptz default now()`);
+  await db.exec(readFileSync(new URL('../supabase/migrations/202609040001_runtime_atomic.sql',import.meta.url),'utf8'));
+  await db.exec(readFileSync(new URL('../supabase/migrations/202609100003_partner_checkout.sql',import.meta.url),'utf8'));
+  await db.exec(readFileSync(new URL('../supabase/migrations/202609100004_broker_test_checkout.sql',import.meta.url),'utf8'));
+  const actor=crypto.randomUUID(),admin=(await db.query("select id from public.portal_users where role='super_admin' limit 1")).rows[0].id;
+  await db.query("insert into auth.users(id,email,email_confirmed_at) values($1,'basic.heizung@ehv.test',now())",[actor]);
+  await db.query("insert into public.portal_users(id,role,status) values($1,'partner_basic','active')",[actor]);
+  let flow=(await db.query("select * from public.partner_onboardings where sandbox_only limit 1")).rows[0];
+  const prefill={company:'Sandbox',contact_name:'Test',email:'basic.heizung@ehv.test',phone:'000',address:'Test 1',postal_code:'22000',city:'Test'};
+  await db.query("update public.partner_onboardings set auth_user_id=$1,identity_verified=true,orchestration_version=3,existing_partner_id='test-partner',partner_id='test-partner',status='DATA_COMPLETE',expires_at=now()+interval '7 days',prefilled_data=$2 where id=$3",[actor,JSON.stringify(prefill),flow.id]);
+  const privacy=crypto.randomUUID();
+  await db.query(`insert into public.legal_documents(id,document_type,title,file_name,storage_path,file_size,sha256,version,acceptance_text,sandbox_onboarding_id)
+    values($1,'PRIVACY','TEST Datenschutz','privacy.pdf',$2,100,$3,9001,'Testhinweis',$4)`,[privacy,privacy+'/privacy.pdf','b'.repeat(64),flow.id]);
+  await db.query("select public.change_legal_document('APPROVE',$1,$2,1,'{}')",[privacy,admin]);
+  await db.query("select public.change_legal_document('ACTIVATE',$1,$2,2,'{\"effective_from\":\"2020-01-01\"}')",[privacy,admin]);
+  const docs=(await db.query("select id,version,true as accepted from public.legal_documents where sandbox_onboarding_id=$1 and status='ACTIVE'",[flow.id])).rows;
+  await db.query("select public.partner_legal_step('ACCEPT',$1,$2,$3)",[flow.id,actor,JSON.stringify(docs)]);
+  flow=(await db.query('select * from public.partner_onboardings where id=$1',[flow.id])).rows[0];
+  let revision=1;
+  const attempt={id:crypto.randomUUID(),postal_codes:['22000','22001'],quote:{netCents:49900},stripe_expires_at:Math.floor(Date.now()/1000)+2100};
+  const state={partners:[{id:'test-partner',plan:'basic'}]};
+  const commit=(action,values=attempt,rev=revision,event=null)=>db.query('select public.commit_partner_checkout($1,$2,$3,$4,$5,$6,$7,$8) as result',[action,flow.id,actor,flow.version,rev,JSON.stringify(state),JSON.stringify(values),event]);
+  await assert.rejects(commit('PREPARE',attempt,999),/runtime_revision_conflict/);
+  assert.equal((await db.query('select count(*)::int as n from public.partner_checkout_attempts')).rows[0].n,0);
+  let stored=(await commit('PREPARE')).rows[0].result;revision++;
+  flow=(await db.query('select * from public.partner_onboardings where id=$1',[flow.id])).rows[0];
+  assert.equal(flow.status,'CHECKOUT_PENDING');
+  stored=(await commit('OPEN',{...stored,checkout_id:'cs_test_fixture',checkout_url:'https://checkout.stripe.com/test-fixture'})).rows[0].result;revision++;
+  flow=(await db.query('select * from public.partner_onboardings where id=$1',[flow.id])).rows[0];
+  assert.equal(flow.status,'PAYMENT_PENDING');
+  await assert.rejects(commit('PAID',{...stored,subscription_id:'sub_fixture',paid_through:Math.floor(Date.now()/1000)+86400}),/PAYMENT_CONFIRMATION_REQUIRED/);
+  state.partners[0]={id:'test-partner',plan:'premium',status:'active',postalCodes:attempt.postal_codes,license:{stripeSubscriptionId:'sub_fixture'}};
+  const payment={...stored,subscription_id:'sub_fixture',paid_through:Math.floor(Date.now()/1000)+86400};
+  await commit('PAID',payment,revision,'evt_fixture');
+  assert.equal((await db.query('select status from public.partner_onboardings where id=$1',[flow.id])).rows[0].status,'ACTIVE');
+  await commit('PAID',payment,revision,'evt_fixture');
+  assert.equal((await db.query('select count(*)::int as n from public.partner_payment_events')).rows[0].n,1);
+  console.log(JSON.stringify({checkoutSql:true,atomicRollback:true,paidActivation:true,duplicateWebhook:true}));
+  const broker=crypto.randomUUID();
+  await db.query(`insert into public.partner_onboardings(id,source,requested_plan,partner_type,prefilled_data,sandbox_only) values($1,'SELF_SERVICE_PREMIUM','PREMIUM','BROKER_PARTNER','{"email":"makler_basic@ehv.test"}',true)`,[broker]);
+  await assert.rejects(db.query("update public.partner_onboardings set prefilled_data='{\"email\":\"info@eigenheimverwalter.de\"}' where id=$1",[broker]),/SANDBOX_ACCOUNT_NOT_ALLOWED/);
+  await assert.rejects(db.query("update public.partner_onboardings set equipment_type='EQUIP_HEIZUNG' where id=$1",[broker]),/SANDBOX_ACCOUNT_NOT_ALLOWED/);
+  console.log(JSON.stringify({brokerSandbox:true,productionIdentityDenied:true,wrongEquipmentDenied:true}));
+}
