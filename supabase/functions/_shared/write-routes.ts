@@ -10,6 +10,8 @@ import { applyPartnerLicenseChange, partnerLicenseSummary } from "./partner-lice
 import { processTriggerEvent } from "./opportunity-engine.mjs";
 import { DwdWarningProvider } from "./weather-providers.mjs";
 import { compareOwners, compareValue, extractLandRegister } from "./land-register.mjs";
+import { actOnServiceRequest, createServiceRequest } from "./service-request-flow.mjs";
+import { sendServiceRecordToCore } from "./ehv-core-client.ts";
 
 type Context={service:SupabaseClient;snapshot:RuntimeSnapshot;profile:PortalProfile;sourceUserId:string|null;body:Record<string,unknown>;onboardingEnabled?:boolean};
 type MailIntent={channel:"partner"|"registration"|"info";recipientEmail:string;subject:string;message:string};
@@ -49,6 +51,24 @@ export async function writeRoute(method:string,path:string,ctx:Context){
     const partnerId=clean(body.partnerId,100),propertyId=clean(body.propertyId,100),tradeId=clean(body.tradeId,100);
     if(!array(state.partners).some(x=>x.id===partnerId)||!array(state.properties).some(x=>x.id===propertyId)||!tradeId)fail("Partner, Objekt und Gewerk sind erforderlich");
     result={id:identifier("assignment"),partnerId,propertyId,tradeId,status:"active",overrideRegion:Boolean(body.overrideRegion),accessStart:new Date().toISOString(),accessEnd:body.accessEnd||null};rows.unshift(result as Record<string,unknown>);action="assignment.created";entityType="assignment";entityId=String((result as Record<string,unknown>).id);
+  } else if(method==="POST"&&path==="/service-requests"){
+    const propertyId=clean(body.propertyId,100),property=collection(snapshot,"properties").find(x=>String(x.id)===propertyId);
+    if(!property||!allowedProperties.has(propertyId))fail("Kein Zugriff auf dieses Objekt",403);
+    const customerId=String(property.customerId||property.user_id||body.customerId||""),postalCode=String(property.postalCode||property.postal_code||property.zip_code||body.postalCode||"");
+    const created=createServiceRequest(state,{...body,customerId,propertyId,postalCode,source:body.source||"equipment",customerConfirmed:body.customerConfirmed===true},{id:identifier("service-request")});
+    result=created;action=created.idempotent?"service_request.idempotent":"service_request.created";entityType="service_request";entityId=String(created.request.id);
+    if(!created.idempotent){collection(snapshot,"serviceRequestEvents").push({id:identifier("service-request-event"),requestId:created.request.id,type:"created",at:new Date().toISOString(),by:sourceUserId,details:{source:created.request.source,assignedPartnerId:created.request.assignedPartnerId}});}
+  } else if(method==="POST"&&path.match(/^\/service-requests\/[^/]+\/(accept|reject|appointment|complete)$/)){
+    const [,requestId,step]=path.match(/^\/service-requests\/([^/]+)\/(accept|reject|appointment|complete)$/)!;
+    if(!partner)fail("Diese Prozessaktion ist ausschließlich dem zugewiesenen Partner erlaubt",403);
+    const request=actOnServiceRequest(state,requestId,step,body,{partnerId:String(partner.id)});
+    collection(snapshot,"serviceRequestEvents").push({id:identifier("service-request-event"),requestId,type:step,at:new Date().toISOString(),by:sourceUserId,details:{partnerId:partner.id,status:request.status}});
+    if(step==="complete"){
+      const mutation=collection(snapshot,"coreMutationOutbox").find(x=>String(x.id)===String(request.coreMutationId));
+      if(mutation){mutation.attempts=Number(mutation.attempts||0)+1;try{const sync=await sendServiceRecordToCore(mutation);mutation.status=sync.status;mutation.coreResponse=sync.response||null;mutation.lastError=null;if(sync.status==="completed")mutation.processedAt=new Date().toISOString()}catch(error){mutation.status="pending";mutation.lastError=clean(error instanceof Error?error.message:"Core-Synchronisierung fehlgeschlagen",300)}}
+      collection(snapshot,"notifications").unshift({id:identifier("notification"),userId:request.customerId,type:"service.completed",title:"Serviceleistung abgeschlossen",propertyId:request.propertyId,equipmentId:request.equipmentId,createdAt:new Date().toISOString(),status:"queued",channel:"app_push"});
+    }
+    result=request;action=`service_request.${step}`;entityType="service_request";entityId=requestId;
   } else if(method==="POST"&&path==="/cases"){
     const propertyId=clean(body.propertyId,100);if(!allowedProperties.has(propertyId))fail("Kein Zugriff auf dieses Objekt",403);
     result={id:identifier("case"),propertyId,title:clean(body.title,180),category:clean(body.category,100),status:"new",priority:["low","medium","high"].includes(String(body.priority))?body.priority:"medium",partnerId:body.partnerId||partner?.id||null,updatedAt:new Date().toISOString(),documents:[]};if(!(result as Record<string,unknown>).title)fail("Titel ist erforderlich");collection(snapshot,"serviceCases").unshift(result as Record<string,unknown>);action="case.created";entityType="case";entityId=String((result as Record<string,unknown>).id);

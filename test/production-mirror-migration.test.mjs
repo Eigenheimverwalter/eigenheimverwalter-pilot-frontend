@@ -31,6 +31,12 @@ test('production mirror merges into the current runtime revision instead of repl
   assert.match(importer,/previous\?\.supabaseDocumentId/);
   assert.match(workflow,/production-export/);
   assert.match(workflow,/SUPABASE_SERVICE_ROLE_KEY/);
+  assert.match(workflow,/cron: '\*\/5 \* \* \* \*'/);
+  assert.match(workflow,/cancel-in-progress: false/);
+  assert.match(importer,/schemaVersion/);
+  assert.match(importer,/property_equipment/);
+  assert.match(importer,/phase4_user_setcards/);
+  assert.match(importer,/admin_access_assignments/);
 });
 
 test('production customer views and overrides use only the imported confidential mirror',()=>{
