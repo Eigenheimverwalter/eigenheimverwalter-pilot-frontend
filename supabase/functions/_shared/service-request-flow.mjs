@@ -38,6 +38,24 @@ export function actOnServiceRequest(state,requestId,action,input,{partnerId,now=
   request.updatedAt=now;request.version=Number(request.version||0)+1;return request;
 }
 
+export function expireStaleOffers(state,{now=new Date().toISOString(),offerTimeoutMinutes=1440}={}){
+  const timeout=Math.max(1,Number(offerTimeoutMinutes)||1440)*60*1000,nowMs=Date.parse(now);
+  const rerouted=[];
+  for(const request of state.serviceRequests||[]){
+    if(request.status!=='offered'||!request.offeredAt||nowMs-Date.parse(request.offeredAt)<timeout)continue;
+    request.routingHistory.push({partnerId:String(request.assignedPartnerId),action:'expired',at:now});
+    const next=selectRoutingPartner(state,{tradeId:request.tradeId,postalCode:request.postalCode,excludedPartnerIds:request.routingHistory.map(item=>item.partnerId)});
+    request.assignedPartnerId=next?String(next.id):null;
+    request.status=next?'offered':'routing_open';
+    request.offeredAt=next?now:null;
+    request.updatedAt=now;
+    request.version=Number(request.version||0)+1;
+    if(next)request.routingHistory.push({partnerId:String(next.id),action:'offered',at:now});
+    rerouted.push(request.id);
+  }
+  return rerouted;
+}
+
 export function serviceRequestView(state,request,{viewerPartnerId=null,admin=false}={}){
   const property=(state.properties||[]).find(row=>same(row.id,request.propertyId))||{},customer=(state.customers||[]).find(row=>same(row.id,request.customerId))||{};
   const released=admin||(viewerPartnerId&&same(viewerPartnerId,request.assignedPartnerId)&&Boolean(request.contactReleasedAt));
