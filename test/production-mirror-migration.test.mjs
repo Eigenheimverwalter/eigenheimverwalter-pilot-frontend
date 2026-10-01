@@ -2,7 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
-const server=fs.readFileSync(new URL('../server.mjs',import.meta.url),'utf8');
+const backendRoutes=fs.readFileSync(new URL('../../backend-production-upload-2026-09-25/routes/api.php',import.meta.url),'utf8');
+const exportController=fs.readFileSync(new URL('../../backend-production-upload-2026-09-25/app/Http/Controllers/Admin/ProductionMirrorExportController.php',import.meta.url),'utf8');
+const exportService=fs.readFileSync(new URL('../../backend-production-upload-2026-09-25/app/Services/Admin/ProductionMirrorExportService.php',import.meta.url),'utf8');
 const reads=fs.readFileSync(new URL('../supabase/functions/_shared/read-routes.ts',import.meta.url),'utf8');
 const writes=fs.readFileSync(new URL('../supabase/functions/_shared/write-routes.ts',import.meta.url),'utf8');
 const importer=fs.readFileSync(new URL('../scripts/import-production-mirror.mjs',import.meta.url),'utf8');
@@ -11,17 +13,20 @@ const workflow=fs.readFileSync(new URL('../.github/workflows/supabase-production
 const deployWorkflow=fs.readFileSync(new URL('../.github/workflows/supabase-deploy.yml',import.meta.url),'utf8');
 
 test('confidential production mirror has a separate token-protected export',()=>{
-  assert.match(server,/\/api\/migration\/production-export/);
-  assert.match(server,/validMigrationExportToken/);
-  assert.match(server,/password_present/);
-  assert.doesNotMatch(server,/productionMigrationSnapshot[\s\S]{0,800}\[\['password',item\]\]/);
+  assert.match(backendRoutes,/migration\/production-export/);
+  assert.match(backendRoutes,/migration\.export/);
+  assert.match(exportController,/ProductionMirrorExportService/);
+  assert.match(exportService,/password\|token\|secret\|credential\|api_key\|private_key/);
+  assert.match(exportService,/password_present/);
+  assert.doesNotMatch(exportService,/['\"]password['\"]\s*=>\s*\$user->password/);
 });
 
 test('production document binaries have an authenticated migration-only export',()=>{
-  assert.match(server,/productionMigrationFile=url\.pathname\.match/);
-  assert.match(server,/migration\.production_file_exported/);
-  assert.match(server,/path\.basename\(String\(record\.file/);
-  assert.match(server,/validMigrationExportToken\(req\)/);
+  assert.match(backendRoutes,/migration\/production-files/);
+  assert.match(backendRoutes,/migration\.export/);
+  assert.match(exportController,/downloadFile/);
+  assert.match(exportController,/basename/);
+  assert.match(exportController,/migration\.production_file_exported/);
 });
 
 test('production mirror merges into the current runtime revision instead of replacing newer work',()=>{
@@ -45,6 +50,9 @@ test('production customer views and overrides use only the imported confidential
   assert.match(reads,/sourceUserCount:productionUsers\.length/);
   assert.match(writes,/state\.productionMirror/);
   assert.match(writes,/productionCustomerOverrides=overrides/);
+  assert.match(reads,/property\.streetName\|\|property\.street_name\|\|property\.street/);
+  assert.match(reads,/property_address:\[propertyStreet,propertyHouseNumber\]/);
+  assert.match(reads,/productionRegistrationStatus\(user,owned\.length\)/);
 });
 
 test('available production files have a private idempotent migration utility',()=>{
@@ -59,8 +67,9 @@ test('available production files have a private idempotent migration utility',()
 test('deployment verifies migrated documents and no longer deploys the temporary import function',()=>{
   assert.doesNotMatch(deployWorkflow,/functions deploy production-document-import/);
   assert.match(deployWorkflow,/pilot_migration_status/);
-  assert.match(deployWorkflow,/\.customers == 194/);
   assert.match(deployWorkflow,/\.availableDocuments >= 93/);
+  assert.match(deployWorkflow,/\.customers >= 194/);
+  assert.doesNotMatch(deployWorkflow,/\.customers == 194/);
 });
 
 test('deployment requires an active info admin without logging identity data',()=>{
