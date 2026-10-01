@@ -11,7 +11,9 @@ const productionRegistrationStatus=(user:Record<string,unknown>,propertyCount:nu
   const explicit=String(user.registration_status||"");
   if(["completed","email_confirmation_pending","incomplete"].includes(explicit))return explicit;
   const onboardingProgress=Number(user.onboarding_process||0);
-  return user.created_at||user.email_verified_at||onboardingProgress>0||propertyCount>0?"completed":"incomplete";
+  if(!user.created_at)return "incomplete";
+  if(!user.email_verified_at)return "email_confirmation_pending";
+  return onboardingProgress>=3&&propertyCount>0?"completed":"incomplete";
 };
 
 export function readRoute(path:string,state:RuntimeState,profile:PortalProfile,sourceUserId:string|null,email:string|null,options:{onboardingEnabled?:boolean}={}){
