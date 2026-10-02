@@ -3,7 +3,8 @@ name: Pilot-Produktivspiegel nach Supabase importieren
 on:
   workflow_dispatch:
   schedule:
-    - cron: '*/5 * * * *'
+    # Avoid the heavily loaded top-of-hour minute while retaining a 5-minute cadence.
+    - cron: '2-59/5 * * * *'
 
 concurrency:
   group: pilot-production-mirror-import
@@ -32,7 +33,11 @@ jobs:
           set -euo pipefail
           mkdir -p tmp/source
           base="${PILOT_MIGRATION_EXPORT_URL%/api/migration/export}"
-          curl --fail --silent --show-error "$base/api/migration/production-export" -H "Authorization: Bearer ${PILOT_MIGRATION_EXPORT_TOKEN}" -o tmp/source/production-mirror.json
+          test "$base" = "https://api.eigenheimverwalter.de" || { echo "Unerwartete Produktivquelle"; exit 1; }
+          curl --fail --silent --show-error --retry 3 --retry-all-errors --connect-timeout 15 --max-time 120 \
+            "$base/api/migration/production-export" \
+            -H "Authorization: Bearer ${PILOT_MIGRATION_EXPORT_TOKEN}" \
+            -o tmp/source/production-mirror.json
       - name: In aktuellen Supabase-Stand atomar einfügen
         env:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
