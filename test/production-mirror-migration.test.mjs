@@ -69,6 +69,10 @@ test('available production files have a private idempotent migration utility',()
   assert.match(documentImporter,/replace_portal_runtime_state/);
   assert.match(documentImporter,/existing\?\.sourceVersion===version/);
   assert.match(documentImporter,/downloaded/);
+  assert.match(documentImporter,/noReference/);
+  assert.match(documentImporter,/notFound/);
+  assert.match(importer,/financings/);
+  assert.match(importer,/insurances/);
   assert.match(documentImporter,/fetchWithRetry/);
   assert.match(documentImporter,/productionSync/);
   assert.match(workflow,/import-production-documents\.mjs/);

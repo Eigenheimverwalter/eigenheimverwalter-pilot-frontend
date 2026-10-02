@@ -36,7 +36,7 @@ test('document import reuses unchanged files and downloads new files exactly onc
       const child=spawn(process.execPath,['scripts/import-production-documents.mjs',sourceFile],{cwd:new URL('..',import.meta.url),env:{...process.env,SUPABASE_URL:`http://127.0.0.1:${port}`,SUPABASE_SERVICE_ROLE_KEY:'test-service-key',PILOT_MIGRATION_EXPORT_BASE:'https://api.eigenheimverwalter.de',PILOT_MIGRATION_EXPORT_TOKEN:'test-export-token',TEST_LOCAL_BASE:`http://127.0.0.1:${port}`,NODE_OPTIONS:`--require=${fileURLToPath(new URL('./production-document-import-fetch-hook.cjs',import.meta.url))}`}});
       let stdout='',stderr='';child.stdout.on('data',chunk=>stdout+=chunk);child.stderr.on('data',chunk=>stderr+=chunk);child.on('error',reject);child.on('close',code=>code===0?resolve(JSON.parse(stdout)):reject(new Error(stderr||`exit ${code}`)));
     });
-    assert.equal(result.reused,1);assert.equal(result.downloaded,1);assert.equal(result.available,2);
+    assert.equal(result.reused,1);assert.equal(result.downloaded,1);assert.equal(result.available,2);assert.equal(result.notFound,0);assert.equal(result.complete,true);
     assert.equal(requests.filter(item=>item.includes('/api/migration/production-files/2')).length,1);
     assert.equal(requests.filter(item=>item.includes('/api/migration/production-files/1')).length,0);
     const [first,second]=state.payload.productionMirror.tables.property_files;

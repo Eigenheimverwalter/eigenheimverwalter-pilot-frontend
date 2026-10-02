@@ -12,7 +12,7 @@ const files=source?.tables?.property_files;
 if(source?.meta?.classification!=='CONFIDENTIAL_CUSTOMER_DATA'||source?.meta?.source!=='api.eigenheimverwalter.de'||!Array.isArray(files))throw new Error('Ungültiger Produktivdaten-Mirror');
 
 const headers={apikey:serviceKey,Authorization:`Bearer ${serviceKey}`,'Content-Type':'application/json'};
-const result={available:0,reused:0,downloaded:0,missing:0,unsupported:0,failed:0,documents:[]};
+const result={available:0,reused:0,downloaded:0,missing:0,noReference:0,notFound:0,unsupported:0,failed:0,documents:[]};
 const extension=mime=>({'application/pdf':'pdf','image/png':'png','image/jpeg':'jpg'}[mime]);
 const sourceVersion=item=>crypto.createHash('sha256').update(JSON.stringify({id:String(item.id||''),propertyId:String(item.property_id||''),file:String(item.file||''),createdAt:String(item.created_at||''),updatedAt:String(item.updated_at||'')})).digest('hex');
 const delay=milliseconds=>new Promise(resolve=>setTimeout(resolve,milliseconds));
@@ -41,9 +41,9 @@ const upload=async record=>{
   if(existing?.supabaseDocumentId&&existing?.storageBucket&&existing?.storageObjectPath&&existing?.sourceVersion===version){
     result.reused++;result.available++;result.documents.push({sourceId:String(record.id),documentId:existing.supabaseDocumentId,bucket:existing.storageBucket,objectPath:existing.storageObjectPath,sourceVersion:version});return;
   }
-  if(!record.file){result.missing++;return;}
+  if(!record.file){result.missing++;result.noReference++;return;}
   const response=await fetchWithRetry(`${exportBase}/api/migration/production-files/${encodeURIComponent(record.id)}`,{headers:{Authorization:`Bearer ${exportToken}`}});
-  if(response.status===404){result.missing++;return;}
+  if(response.status===404){result.missing++;result.notFound++;return;}
   if(response.status===415){result.unsupported++;return;}
   if(!response.ok){result.failed++;return;}
   const mime=String(response.headers.get('content-type')||'').split(';')[0],ext=extension(mime),bytes=new Uint8Array(await response.arrayBuffer());
@@ -66,10 +66,10 @@ for(let attempt=1;attempt<=3&&!merged;attempt++){
   const current=await loadState(),mirror=current.payload?.productionMirror;
   const nextFiles=mirror?.tables?.property_files?.map(item=>{const imported=bySource.get(String(item.id));return imported?{...item,fileAvailable:true,supabaseDocumentId:imported.documentId,storageBucket:imported.bucket,storageObjectPath:imported.objectPath,sourceVersion:imported.sourceVersion}:{...item,fileAvailable:false};});
   if(!nextFiles)throw new Error('Produktivspiegel fehlt im aktuellen Laufzeitstand');
-  const importedAt=new Date().toISOString(),documentSync={status:'success',importedAt,total:files.length,available:result.available,reused:result.reused,downloaded:result.downloaded,missing:result.missing,unsupported:result.unsupported};
+  const importedAt=new Date().toISOString(),documentSync={status:'success',complete:result.notFound===0&&result.failed===0,importedAt,total:files.length,available:result.available,reused:result.reused,downloaded:result.downloaded,missing:result.missing,noReference:result.noReference,notFound:result.notFound,unsupported:result.unsupported};
   const next={...current.payload,productionMirror:{...mirror,tables:{...mirror.tables,property_files:nextFiles}},productionSync:{...(current.payload.productionSync||{}),documents:documentSync}};
   const replace=await fetchWithRetry(`${supabaseUrl}/rest/v1/rpc/replace_portal_runtime_state`,{method:'POST',headers,body:JSON.stringify({expected_revision:current.revision,next_payload:next,audit_actor:null,audit_action:'migration.production_documents.merged',audit_entity_type:'production_documents',audit_entity_id:'source',audit_metadata:documentSync})});
   if(replace.ok){merged=true;break;}
   if(replace.status!==409||attempt===3)throw new Error(`Dokumentstatus konnte nicht atomar gespeichert werden (${replace.status}): ${await replace.text()}`);
 }
-console.log(JSON.stringify({status:'validated',total:files.length,available:result.available,reused:result.reused,downloaded:result.downloaded,missing:result.missing,unsupported:result.unsupported,failed:result.failed},null,2));
+console.log(JSON.stringify({status:'validated',complete:result.notFound===0&&result.failed===0,total:files.length,available:result.available,reused:result.reused,downloaded:result.downloaded,missing:result.missing,noReference:result.noReference,notFound:result.notFound,unsupported:result.unsupported,failed:result.failed},null,2));
