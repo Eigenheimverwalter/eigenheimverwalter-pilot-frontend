@@ -17,7 +17,7 @@ jobs:
   import:
     environment: staging
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 30
     env:
       SUPABASE_URL: https://rpniwtshbwjuesoeztyt.supabase.co
     steps:
@@ -42,3 +42,9 @@ jobs:
         env:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/import-production-mirror.mjs tmp/source/production-mirror.json
+      - name: Neue und geänderte Kundendokumente geschützt synchronisieren
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          PILOT_MIGRATION_EXPORT_BASE: https://api.eigenheimverwalter.de
+          PILOT_MIGRATION_EXPORT_TOKEN: ${{ secrets.PILOT_MIGRATION_EXPORT_TOKEN }}
+        run: node scripts/import-production-documents.mjs tmp/source/production-mirror.json

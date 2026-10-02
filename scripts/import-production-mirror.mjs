@@ -1,4 +1,5 @@
 const fs=await import('node:fs');
+const crypto=await import('node:crypto');
 const source=process.argv[2]||'tmp/source/production-mirror.json',url=process.env.SUPABASE_URL,key=process.env.SUPABASE_SERVICE_ROLE_KEY;
 if(!url||!key)throw new Error('SUPABASE_URL und SUPABASE_SERVICE_ROLE_KEY sind erforderlich');
 const mirror=JSON.parse(fs.readFileSync(source,'utf8'));
@@ -13,7 +14,8 @@ const [current]=await currentResponse.json();if(!current?.payload)throw new Erro
 const previousUsers=current.payload?.productionMirror?.tables?.users||[];
 if(mirror.tables.users.length<previousUsers.length)throw new Error(`Import abgelehnt: Live-Quelle enthält ${mirror.tables.users.length}, vorhandener Spiegel ${previousUsers.length} Nutzer`);
 const previousFiles=current.payload?.productionMirror?.tables?.property_files||[],previousById=new Map(previousFiles.map(item=>[String(item.id),item]));
-const mergedFiles=mirror.tables.property_files?.map(item=>{const previous=previousById.get(String(item.id));return previous?.supabaseDocumentId?{...item,fileAvailable:true,supabaseDocumentId:previous.supabaseDocumentId,storageBucket:previous.storageBucket,storageObjectPath:previous.storageObjectPath}:item;})||[];
+const sourceVersion=item=>crypto.createHash('sha256').update(JSON.stringify({id:String(item.id||''),propertyId:String(item.property_id||''),file:String(item.file||''),createdAt:String(item.created_at||''),updatedAt:String(item.updated_at||'')})).digest('hex');
+const mergedFiles=mirror.tables.property_files?.map(item=>{const previous=previousById.get(String(item.id)),version=sourceVersion(item),previousVersion=previous?.sourceVersion||previous&&sourceVersion(previous);return previous?.supabaseDocumentId&&previousVersion===version?{...item,fileAvailable:true,supabaseDocumentId:previous.supabaseDocumentId,storageBucket:previous.storageBucket,storageObjectPath:previous.storageObjectPath,sourceVersion:version}:{...item,fileAvailable:false,sourceVersion:version};})||[];
 const importedAt=new Date().toISOString(),latestUserCreatedAt=mirror.tables.users.reduce((latest,user)=>String(user.created_at||'')>latest?String(user.created_at):latest,'');
 const syncEntry={status:'success',source:mirror.meta.source,sourceCreatedAt:mirror.meta.createdAt||null,importedAt,customers:mirror.tables.users.length,properties:mirror.tables.properties.length,latestUserCreatedAt:latestUserCreatedAt||null};
 const history=[syncEntry,...(current.payload?.productionSync?.history||[])].slice(0,50);

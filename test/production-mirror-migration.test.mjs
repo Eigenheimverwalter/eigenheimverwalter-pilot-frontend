@@ -34,6 +34,7 @@ test('production mirror merges into the current runtime revision instead of repl
   assert.match(importer,/\.\.\.current\.payload,productionMirror:/);
   assert.match(importer,/replace_portal_runtime_state/);
   assert.match(importer,/previous\?\.supabaseDocumentId/);
+  assert.match(importer,/previousVersion===version/);
   assert.match(workflow,/production-export/);
   assert.match(workflow,/SUPABASE_SERVICE_ROLE_KEY/);
   assert.match(workflow,/cron: '2-59\/5 \* \* \* \*'/);
@@ -66,6 +67,12 @@ test('available production files have a private idempotent migration utility',()
   assert.match(documentImporter,/on_conflict=source_entity_type,source_entity_id/);
   assert.match(documentImporter,/uploaded_by:null/);
   assert.match(documentImporter,/replace_portal_runtime_state/);
+  assert.match(documentImporter,/existing\?\.sourceVersion===version/);
+  assert.match(documentImporter,/downloaded/);
+  assert.match(documentImporter,/fetchWithRetry/);
+  assert.match(documentImporter,/productionSync/);
+  assert.match(workflow,/import-production-documents\.mjs/);
+  assert.match(workflow,/PILOT_MIGRATION_EXPORT_BASE: https:\/\/api\.eigenheimverwalter\.de/);
   assert.doesNotMatch(deployWorkflow,/PILOT_MIGRATION_EXPORT_URL/);
 });
 
