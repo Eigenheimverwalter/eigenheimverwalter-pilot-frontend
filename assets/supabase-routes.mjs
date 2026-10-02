@@ -5,7 +5,7 @@ export const supported=new Set([
   '/api/partner-onboarding',
   '/api/legal-documents',
   '/api/marketing-kit',
-  '/api/me','/api/dashboard','/api/account','/api/customers','/api/production/customers',
+  '/api/me','/api/dashboard','/api/account','/api/customers','/api/production/customers','/api/production/sync-status',
   '/api/partners','/api/assignments','/api/cases','/api/sales','/api/valuations','/api/campaigns',
   '/api/role-profiles','/api/partner-role-templates','/api/admin/users','/api/opportunity-engine',
   '/api/partner/workbench','/api/audit','/api/postal-codes','/api/portfolio/risks',
