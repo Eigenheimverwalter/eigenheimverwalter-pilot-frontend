@@ -192,7 +192,7 @@ const customerDatabaseLive=async()=>{
   if(page&&toolbar){
     const age=sync.ageSeconds===null?'unbekannt':sync.ageSeconds<60?'weniger als einer Minute':`${Math.floor(sync.ageSeconds/60)} Minuten`;
     const notice=document.createElement('div');notice.className=`source-note production-sync ${sync.status==='current'?'production-sync-current':'production-sync-stale'}`;
-    notice.innerHTML=`<b>${sync.status==='current'?'Live-Synchronisierung aktiv':'Achtung: Datenquelle nicht aktuell'}</b><br>Letzter erfolgreicher Quellimport: ${sync.importedAt?new Date(sync.importedAt).toLocaleString('de-DE'):'nicht dokumentiert'} · Alter ${age}. Die Anzeige prüft alle 60 Sekunden erneut.`;
+    notice.innerHTML=`<b>${sync.status==='current'?'Produktivexport wurde kürzlich eingelesen':'Achtung: Datenquelle nicht aktuell'}</b><br>Letzter erfolgreicher Quellimport: ${sync.importedAt?new Date(sync.importedAt).toLocaleString('de-DE'):'nicht dokumentiert'} · Alter ${age} · ${sync.customerCount} Kunden in dieser Quelle. Die Anzeige prüft alle 60 Sekunden erneut.`;
     toolbar.after(notice);
   }
   state.productionRefreshTimer=setTimeout(()=>{if(state.page==='production')render('production')},60000);
