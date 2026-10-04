@@ -34,7 +34,7 @@ export const dynamicSupported=[
   /^\/api\/campaigns\/[^/]+(?:\/(?:preview|source-verify|approve|activate))?$/,
   /^\/api\/broker\/sales-files\/[^/]+(?:\/(?:document-status|address-verification|mandate|closing|release))?$/,
   /^\/api\/customer-actions\/[^/]+\/respond$/, /^\/api\/partner-opportunities\/[^/]+\/complete$/,
-  /^\/api\/production\/customers\/[^/]+$/, /^\/api\/production\/properties\/[^/]+\/address-verification$/,
+  /^\/api\/production\/customers\/[^/]+$/, /^\/api\/production\/properties\/[^/]+\/address-verification$/, /^\/api\/production\/equipment-documents\/[^/]+$/,
   /^\/api\/properties\/[^/]+\/equipment$/
 ];
 export const documentUploads=[/^\/api\/cases\/[^/]+\/documents$/, /^\/api\/broker\/sales-files\/[^/]+\/documents$/, /^\/api\/equipment\/[^/]+\/offers$/, /^\/api\/production\/properties\/[^/]+\/land-register$/];

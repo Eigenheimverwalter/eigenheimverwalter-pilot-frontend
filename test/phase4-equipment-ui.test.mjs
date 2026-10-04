@@ -26,3 +26,11 @@ test('published 360 view does not present unconnected domains as real empty data
   assert.match(ui,/Noch nicht verbunden/);
   assert.match(ui,/keine vermeintlichen Nullwerte/);
 });
+
+test('published 360 view renders modern Phase-4 service records and documents',()=>{
+  assert.match(ui,/equipment_service_records/);
+  assert.match(ui,/equipment_documents/);
+  assert.match(ui,/SERVICEHEFT AUS PHASE 4/);
+  assert.match(ui,/EQUIPMENT-DOKUMENTE AUS PHASE 4/);
+  assert.match(ui,/phase4-document-open/);
+});
