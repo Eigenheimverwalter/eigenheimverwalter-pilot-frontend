@@ -1,5 +1,5 @@
 import {mountAccountLegal} from './account-legal.js?v=20260916-flexible-audiences';
-import {renderManagementDashboard,renderManagementSection,renderManagementHub,installManagementNavigation} from './management-ui.js?v=20260914-1';
+import {renderManagementDashboard,renderManagementSection,renderManagementHub,installManagementNavigation} from './management-ui.js?v=20261005-dashboard-direct-kpis';
 import {mountPartnershipCancellation} from './partner-cancellation.js?v=20260910-cancellation';
 import {partnerDirectoryLabels} from './partner-membership.mjs?v=20260922-basic-types';
 import './partner-upgrade.js?v=20260910-broker-ready';
