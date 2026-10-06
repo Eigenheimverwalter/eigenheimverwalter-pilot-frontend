@@ -12,6 +12,8 @@ test('published 360 view renders equipment returned by productive Phase 4',()=>{
   assert.match(ui,/Produktive App-Daten/);
   assert.match(ui,/instance_label/);
   assert.match(ui,/equipment-live-toggle/);
+  assert.match(ui,/renderEquipmentCockpit\(name,'equipment'\)/);
+  assert.match(ui,/ehvAdminServiceCare\?\.mount\(p\.id,name\)/);
   assert.match(ui,/x\?\.is_present\?\?x\?\.isPresent/);
   assert.match(ui,/&&present\(x\)/);
 });
