@@ -8,7 +8,7 @@ const hash=async(value:string)=>hex(await crypto.subtle.digest('SHA-256',new Tex
 const equal=(a:string,b:string)=>{let diff=a.length^b.length;for(let i=0;i<Math.max(a.length,b.length);i++)diff|=(a.charCodeAt(i)||0)^(b.charCodeAt(i)||0);return diff===0};
 const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{'Content-Type':'application/json','Cache-Control':'no-store'}});
 const collection=(state:Record<string,unknown>,key:string)=>{if(!Array.isArray(state[key]))state[key]=[];return array(state[key])};
-const portal='https://eigenheimverwalter.github.io/eigenheimverwalter-pilot-frontend';
+const portal='https://eigenheimverwalter-pilot.de';
 
 // Restricted server-to-server bridge: no general portal access and no account password crosses projects.
 Deno.serve(async req=>{

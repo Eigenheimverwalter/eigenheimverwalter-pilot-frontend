@@ -5,7 +5,7 @@ set -euo pipefail
 : "${SUPABASE_ACCESS_TOKEN:?SUPABASE_ACCESS_TOKEN fehlt}"
 
 management="https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_REF}/config/auth"
-site='https://eigenheimverwalter.github.io/eigenheimverwalter-pilot-frontend'
+site='https://eigenheimverwalter-pilot.de'
 auth=$(curl --fail --silent --show-error "$management" \
   -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}")
 current=$(jq -r '.uri_allow_list // ""' <<< "$auth")

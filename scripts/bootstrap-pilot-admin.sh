@@ -6,7 +6,7 @@ set -euo pipefail
 
 admin_email='info@eigenheimverwalter.de'
 admin_source_id='pilot-admin-info'
-reset_origin='https://eigenheimverwalter.github.io/eigenheimverwalter-pilot-frontend'
+reset_origin='https://eigenheimverwalter-pilot.de'
 api="https://${SUPABASE_PROJECT_REF}.supabase.co"
 headers=(-H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}")
 
