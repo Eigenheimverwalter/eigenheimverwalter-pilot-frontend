@@ -58,8 +58,8 @@ export async function writeRoute(method:string,path:string,ctx:Context){
     const created=createServiceRequest(state,{...body,customerId,propertyId,postalCode,source:body.source||"equipment",customerConfirmed:body.customerConfirmed===true},{id:identifier("service-request")});
     result=created;action=created.idempotent?"service_request.idempotent":"service_request.created";entityType="service_request";entityId=String(created.request.id);
     if(!created.idempotent){collection(snapshot,"serviceRequestEvents").push({id:identifier("service-request-event"),requestId:created.request.id,type:"created",at:new Date().toISOString(),by:sourceUserId,details:{source:created.request.source,assignedPartnerId:created.request.assignedPartnerId}});}
-  } else if(method==="POST"&&path.match(/^\/service-requests\/[^/]+\/(accept|reject|appointment|complete)$/)){
-    const [,requestId,step]=path.match(/^\/service-requests\/([^/]+)\/(accept|reject|appointment|complete)$/)!;
+  } else if(method==="POST"&&path.match(/^\/service-requests\/[^/]+\/(accept|reject|appointment|offer|start|complete)$/)){
+    const [,requestId,step]=path.match(/^\/service-requests\/([^/]+)\/(accept|reject|appointment|offer|start|complete)$/)!;
     if(!partner)fail("Diese Prozessaktion ist ausschließlich dem zugewiesenen Partner erlaubt",403);
     const request=actOnServiceRequest(state,requestId,step,body,{partnerId:String(partner.id)});
     collection(snapshot,"serviceRequestEvents").push({id:identifier("service-request-event"),requestId,type:step,at:new Date().toISOString(),by:sourceUserId,details:{partnerId:partner.id,status:request.status}});

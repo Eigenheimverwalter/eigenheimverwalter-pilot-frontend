@@ -1,6 +1,6 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import {
-  array, authenticate, identifier, isAdmin, loadRuntime, replaceRuntime, scopedProperties, sourcePartner,
+  array, authenticate, identifier, isAdmin, loadRuntime, replaceRuntime, scopedProperties, serviceClient as createServiceClient, sourcePartner,
   type PortalProfile,
 } from "../_shared/runtime.ts";
 import { readRoute } from "../_shared/read-routes.ts";
@@ -17,6 +17,8 @@ import { DwdWarningProvider } from "../_shared/weather-providers.mjs";
 import { sendPortalMail } from "../_shared/mail.ts";
 import { managementIntelligence, managementPermissionFor } from "../_shared/management-intelligence.mjs";
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { actOnServiceRequest, createServiceRequest } from "../_shared/service-request-flow.mjs";
+import { fetchValuationPreviewFromCore } from "../_shared/ehv-core-client.ts";
 
 const jsonResponse = (req:Request,body: unknown, status = 200) => new Response(JSON.stringify(body), {
   status,
@@ -37,6 +39,8 @@ const safePortalBase = (value: unknown) => {
 };
 const salesManagementSection=(path:string)=>({"/management/sales-intelligence":"overview","/management/sales-funnel":"funnel","/management/sales-performance":"performance","/management/sales-forecast":"forecast"}[path]||null);
 const fetchSalesManagement=async(path:string,params:URLSearchParams)=>{const section=salesManagementSection(path);if(!section)return null;const token=Deno.env.get('SALES_OS_SYNC_TOKEN')||'',base=Deno.env.get('PILOT_SALES_ANALYTICS_URL')||'https://yfgieygxlpatmhdskmaa.supabase.co/functions/v1/sales-management-analytics';if(token.length<32)return null;const target=new URL(base);target.searchParams.set('section',section);for(const [key,value] of params)target.searchParams.set(key,value);const response=await fetch(target,{headers:{authorization:`Bearer ${token}`}});if(!response.ok)throw new Error(`SalesOS Analytics antwortet mit ${response.status}`);return await response.json()};
+
+const verifyCoreSignature=async(req:Request,raw:string)=>{const secret=Deno.env.get('EHV_CORE_SIGNING_SECRET')||'',timestamp=req.headers.get('x-ehv-timestamp')||'',signature=(req.headers.get('x-ehv-signature')||'').toLowerCase();if(secret.length<48||!/^\d+$/.test(timestamp)||!/^[a-f0-9]{64}$/.test(signature)||Math.abs(Date.now()/1000-Number(timestamp))>300)return false;const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(secret),{name:'HMAC',hash:'SHA-256'},false,['verify']);const bytes=Uint8Array.from(signature.match(/.{2}/g)!.map(value=>parseInt(value,16)));return crypto.subtle.verify('HMAC',key,bytes,new TextEncoder().encode(`${timestamp}.${raw}`));};
 
 const resolvePartnerPortalUser = async (
   serviceClient: SupabaseClient,
@@ -99,11 +103,32 @@ Deno.serve(async (req) => {
   }
 
   const routePath=url.pathname.replace(/^.*\/portal-api/,"")||"/";
+  if(req.method==='POST'&&routePath.startsWith('/integrations/ehv-core/service-requests')){
+    const raw=await req.text();if(!await verifyCoreSignature(req,raw))return json({error:'Ungültige Core-Signatur'},401);
+    try{const body=JSON.parse(raw||'{}'),client=createServiceClient(),snapshot=await loadRuntime(client);let result:any,action='service_request.core_read',entityId='query';
+      if(routePath==='/integrations/ehv-core/service-requests'){
+        const customerId=String(body.customerId||''),propertyId=String(body.propertyId||'');
+        const customers=array(snapshot.state.customers),customer=customers.find(x=>String(x.id)===customerId),customerData={id:customerId,name:body.customerName||null,email:body.customerEmail||null,phone:body.customerPhone||null};if(customer)Object.assign(customer,customerData);else customers.unshift(customerData);snapshot.state.customers=customers;
+        const properties=array(snapshot.state.properties),property=properties.find(x=>String(x.id)===propertyId),propertyData={id:propertyId,customerId,postalCode:String(body.postalCode||''),address:body.address||null,city:body.city||null,type:body.propertyType||null};if(property)Object.assign(property,propertyData);else properties.unshift(propertyData);snapshot.state.properties=properties;
+        result=createServiceRequest(snapshot.state,{...body,customerId,propertyId,postalCode:String(body.postalCode||''),customerConfirmed:body.customerConfirmed===true},{id:identifier('service-request')});action='service_request.created_from_core';entityId=String(result.request.id);
+      }else if(routePath==='/integrations/ehv-core/service-requests/query'){
+        const requests=array(snapshot.state.serviceRequests).filter(x=>(!body.customerId||String(x.customerId)===String(body.customerId))&&(!body.propertyId||String(x.propertyId)===String(body.propertyId))&&(!body.equipmentId||String(x.equipmentId)===String(body.equipmentId))).map(x=>{const assigned=array(snapshot.state.partners).find(partner=>String(partner.id)===String(x.assignedPartnerId)),offer=x.offerDocument as Record<string,unknown>|undefined;return{id:x.id,propertyId:x.propertyId,equipmentId:x.equipmentId,source:x.source,serviceType:x.serviceType,priority:x.priority,description:x.description,status:x.status,createdAt:x.createdAt,offeredAt:x.offeredAt,acceptedAt:x.acceptedAt,appointmentAt:x.appointmentAt,inProgressAt:x.inProgressAt,completedAt:x.completedAt,partner:assigned&&x.contactReleasedAt?{company:assigned.company||assigned.name||'Fachpartner'}:null,offerDocument:offer?{name:offer.name,mimeType:offer.mimeType,amount:offer.amount,uploadedAt:offer.uploadedAt,status:offer.status}:null,invoiceAvailable:Boolean(x.invoiceDocument)}});result={requests};return json(result);
+      }else{const documentMatch=routePath.match(/^\/integrations\/ehv-core\/service-requests\/([^/]+)\/offer-document$/);if(documentMatch){const request=array(snapshot.state.serviceRequests).find(x=>String(x.id)===documentMatch[1]&&String(x.customerId)===String(body.customerId||'')),documentId=(request?.offerDocument as Record<string,unknown>|undefined)?.id;if(!request||!documentId)return json({error:'Angebot nicht gefunden'},404);const {data:document,error}=await client.from('documents').select('bucket_id,object_path').eq('id',String(documentId)).is('deleted_at',null).maybeSingle();if(error||!document)return json({error:'Angebotsdokument nicht gefunden'},404);const {data:signed,error:signedError}=await client.storage.from(document.bucket_id).createSignedUrl(document.object_path,60);if(signedError||!signed?.signedUrl)return json({error:'Angebot konnte nicht bereitgestellt werden'},503);return json({url:signed.signedUrl,expiresIn:60});}const match=routePath.match(/^\/integrations\/ehv-core\/service-requests\/([^/]+)\/(accept-offer|reject-offer)$/);if(!match)return json({error:'Route nicht gefunden'},404);result=actOnServiceRequest(snapshot.state,match[1],match[2],body,{customerId:String(body.customerId||'')});action=`service_request.${match[2]}`;entityId=match[1];}
+      await replaceRuntime(client,snapshot,'ehv-core',action,'service_request',entityId,{source:'ehv-core'});if(action==='service_request.created_from_core'){const x=result.request;return json({request:{id:x.id,propertyId:x.propertyId,equipmentId:x.equipmentId,serviceType:x.serviceType,priority:x.priority,status:x.status,createdAt:x.createdAt},idempotent:Boolean(result.idempotent)},201);}return json(result);
+    }catch(error){return json({error:error instanceof Error?error.message:'Core-Integration fehlgeschlagen',code:(error as {code?:string}).code},Number((error as {status?:number}).status||500));}
+  }
   const ownOnboardingRoute=routePath==='/partner-onboarding'||routePath.startsWith('/partner-onboarding/');
   let auth;
   try { auth = await authenticate(req.headers.get("Authorization"),{onboardingOnly:ownOnboardingRoute}); }
   catch (error) { return json({ error: error instanceof Error ? error.message : "Nicht angemeldet" }, Number((error as {status?:number}).status || 401)); }
   const { user, profile, sourceUserId, service: serviceClient } = auth;
+  const valuationPreviewMatch=routePath.match(/^\/admin\/valuation-preview\/([^/]+)$/);
+  if(valuationPreviewMatch){
+    if(req.method!=="GET")return json({error:"Methode nicht erlaubt"},405);
+    if(profile.role!=="super_admin"||req.headers.get("x-ehv-support-user"))return json({error:"Nur Admin Plus darf interne Bewertungsprüfungen öffnen."},403);
+    try{return json(await fetchValuationPreviewFromCore(decodeURIComponent(valuationPreviewMatch[1])));}
+    catch(error){return json({error:error instanceof Error?error.message:"Bewertungsprüfung nicht verfügbar"},Number((error as {status?:number}).status||503));}
+  }
   if(routePath==='/account/cancellation-review'){
     if(req.method!=='GET'||!isAdmin(profile)||req.headers.get('x-ehv-support-user'))return json({error:'Keine Berechtigung'},403);
     const {data,error}=await serviceClient.from('partner_cancellations').select('id,partner_id,requested_at,effective_date,status,billing_status,deletion_status').order('requested_at',{ascending:false}).limit(100);
