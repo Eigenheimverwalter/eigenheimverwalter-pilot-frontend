@@ -1,7 +1,19 @@
-import {normalizedPath,supportsPath,isDocumentUpload,isPublicPath,handlesRoute} from './supabase-routes.mjs?v=20260913-management';
+import {normalizedPath,supportsPath,isDocumentUpload,isPublicPath,handlesRoute} from './supabase-routes.mjs?v=20261016-dashboard-routing-1';
+import {apiBackendFor,allinklApiUrl} from './api-migration-routing.mjs?v=20261016-dashboard-routing-1';
+
+const allinklError=async response=>{
+  let data={};
+  try{data=await response.json()}catch{}
+  throw Object.assign(Error(data.message||data.error||`ALL-INKL-Anfrage fehlgeschlagen (${response.status})`),{status:response.status,code:data.code});
+};
 
 const config=window.__EHV_RUNTIME__||{};
 const enabled=config.authMode==='supabase'&&config.supabaseUrl&&config.supabasePublishableKey;
+const allinklAuthPreferred=config.allinklAuthPreferred===true;
+const allinklTokenKey='ehv_allinkl_portal_token';
+const allinklAuthRoot=String(config.allinklApiBase||'').replace(/\/+$/,'')||`${String(config.allinklAuthBase||'').replace(/\/+$/,'')}/v1/portal`;
+const allinklAuthUrl=path=>`${allinklAuthRoot}/auth/${path}`;
+const allinklToken=()=>sessionStorage.getItem(allinklTokenKey)||'';
 let client=null,clientPromise=null;
 
 const getClient=async()=>{
@@ -23,6 +35,32 @@ window.ehvSupabaseBridge={
     // Supabase uses the bearer session, not the legacy cookie/CSRF header.
     // Sending the obsolete header causes the browser's CORS preflight to fail.
     if(options.headers){const headers=new Headers(options.headers);headers.delete('X-CSRF-Token');options={...options,headers:Object.fromEntries(headers)};}
+    if(allinklAuthPreferred&&path==='/api/login'){
+      const response=await fetch(allinklAuthUrl('login'),{method:'POST',headers:{Accept:'application/json','Content-Type':'application/json'},body:options.body||'{}'});
+      if(!response.ok)return allinklError(response);
+      const data=await response.json();
+      if(!data.token)throw Error('Die sichere Portalverbindung hat kein Sitzungstoken geliefert.');
+      sessionStorage.setItem(allinklTokenKey,data.token);
+      return data;
+    }
+    if(allinklAuthPreferred&&path==='/api/logout'){
+      const token=allinklToken();
+      try{if(token){const response=await fetch(allinklAuthUrl('logout'),{method:'POST',headers:{Accept:'application/json',Authorization:`Bearer ${token}`}});if(!response.ok&&response.status!==401)return allinklError(response)}}finally{sessionStorage.removeItem(allinklTokenKey)}
+      return null;
+    }
+    if(allinklAuthPreferred&&path==='/api/me'){
+      const token=allinklToken();
+      if(!token)throw Object.assign(Error('Nicht angemeldet'),{status:401});
+      const response=await fetch(allinklAuthUrl('session'),{headers:{Accept:'application/json',Authorization:`Bearer ${token}`}});
+      if(!response.ok){if(response.status===401)sessionStorage.removeItem(allinklTokenKey);return allinklError(response)}
+      return response.json();
+    }
+    if(apiBackendFor(path,config)==='allinkl'){
+      const token=allinklToken(),headers={Accept:'application/json','Content-Type':'application/json',...(token?{Authorization:`Bearer ${token}`}:{}) ,...(options.headers||{})};
+      const response=await fetch(allinklApiUrl(path,config),{...options,headers});
+      if(!response.ok)return allinklError(response);
+      return response.status===204?null:response.json();
+    }
     if(!enabled)return null;
     if(isPublicPath(path)){
       const headers={apikey:config.supabasePublishableKey,'Content-Type':'application/json',...(options.headers||{})};
@@ -80,7 +118,7 @@ window.ehvSupabaseBridge={
     return data.user;
   },
   async onboardingAuthUser(){const supabase=await getClient(),{data,error}=await supabase.auth.getUser();return error?null:data.user;},
-  handles(path){return Boolean(enabled)&&handlesRoute(path);},
+  handles(path){return (allinklAuthPreferred&&['/api/login','/api/logout','/api/me'].includes(path))||apiBackendFor(path,config)==='allinkl'||Boolean(enabled)&&handlesRoute(path);},
 };
 
 const legacyDocumentRequest=href=>{
