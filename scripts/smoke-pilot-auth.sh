@@ -128,10 +128,19 @@ echo 'Regionale KPIs, Ereignis-KPIs und DWD-Livefeed bestätigt.'
 upload_payload=$(jq -nc --arg property "$property_id" \
   '{propertyId:$property,documentClass:"other",entityType:"ci_smoke",entityId:"ephemeral",name:"pilot-upload-smoke.png",content:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="}')
 echo 'Privaten Dokumenten-Lebenszyklus prüfen.'
-uploaded=$(curl --fail --silent --show-error --retry 3 --retry-all-errors --retry-delay 2 -X POST "${api}/functions/v1/document-api" \
+upload_response=$(mktemp)
+upload_status=$(curl --silent --show-error --retry 3 --retry-all-errors --retry-delay 2 --output "$upload_response" --write-out '%{http_code}' -X POST "${api}/functions/v1/document-api" \
   -H "apikey: ${SUPABASE_PUBLISHABLE_KEY}" -H "Authorization: Bearer ${access_token}" \
   -H "Origin: https://eigenheimverwalter.github.io" -H 'Content-Type: application/json' \
   --data "$upload_payload")
+if [[ "$upload_status" != '201' ]]; then
+  jq '{error:(.error // "Unbekannter Dokumentfehler")}' "$upload_response" 2>/dev/null || echo '{"error":"Nicht lesbare Fehlerantwort"}'
+  rm -f "$upload_response"
+  echo "Privater Dokumentupload fehlgeschlagen (HTTP ${upload_status})."
+  exit 1
+fi
+uploaded=$(cat "$upload_response")
+rm -f "$upload_response"
 document_id=$(jq -r '.document.id // empty' <<< "$uploaded")
 [[ "$document_id" =~ ^[0-9a-f-]{36}$ ]] || { echo 'Upload-Dokument-ID fehlt.'; exit 1; }
 document_record=$(curl --fail --silent --show-error \
