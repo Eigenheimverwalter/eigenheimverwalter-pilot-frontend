@@ -35,6 +35,20 @@ jobs:
         run: supabase secrets set PILOT_PARTNER_ONBOARDING_ENABLED=true --project-ref "$SUPABASE_PROJECT_REF"
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      - name: Configure signed EHV Core connection
+        shell: bash
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          EHV_CORE_API_URL: ${{ secrets.EHV_CORE_API_URL }}
+          EHV_CORE_SIGNING_SECRET: ${{ secrets.EHV_CORE_SIGNING_SECRET }}
+        run: |
+          set -euo pipefail
+          test "$EHV_CORE_API_URL" = 'https://api.eigenheimverwalter.de' || { echo 'EHV_CORE_API_URL muss auf die produktive EHV-Core-API zeigen.'; exit 1; }
+          test "${#EHV_CORE_SIGNING_SECRET}" -ge 48 || { echo 'EHV_CORE_SIGNING_SECRET fehlt oder ist zu kurz.'; exit 1; }
+          supabase secrets set \
+            EHV_CORE_API_URL="$EHV_CORE_API_URL" \
+            EHV_CORE_SIGNING_SECRET="$EHV_CORE_SIGNING_SECRET" \
+            --project-ref "$SUPABASE_PROJECT_REF"
       - name: Link project
         run: supabase link --project-ref "$SUPABASE_PROJECT_REF"
         env:
@@ -65,6 +79,9 @@ jobs:
           secret_names=$(supabase secrets list --project-ref "$SUPABASE_PROJECT_REF" --output json | jq -r '.[].name')
           grep -Fxq 'PILOT_MAIL_GATEWAY_TOKEN' <<< "$secret_names" || { echo 'PILOT_MAIL_GATEWAY_TOKEN fehlt im dedizierten Pilot-Projekt.'; exit 1; }
           for name in SMTP_PARTNER_PASSWORD SMTP_REGISTRATION_PASSWORD SMTP_INFO_PASSWORD; do
+            grep -Fxq "$name" <<< "$secret_names" || { echo "$name fehlt im dedizierten Pilot-Projekt."; exit 1; }
+          done
+          for name in EHV_CORE_API_URL EHV_CORE_SIGNING_SECRET; do
             grep -Fxq "$name" <<< "$secret_names" || { echo "$name fehlt im dedizierten Pilot-Projekt."; exit 1; }
           done
       - name: Deploy Edge Functions

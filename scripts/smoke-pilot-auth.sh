@@ -102,6 +102,33 @@ jq -e '.source=="supabase" and (.kpis|type=="object")' >/dev/null <<< "$dashboar
 property_id=$(jq -r '.properties[0].id // empty' <<< "$dashboard")
 test -n "$property_id" || { echo 'Keine Immobilie für isolierten Dokumententest verfügbar'; exit 1; }
 
+# The internal valuation preview is a signed, server-to-server call from the
+# Pilot Edge Function to the production EHV Core. Exercise the complete path
+# so a missing Core secret, wrong production URL or signature mismatch blocks
+# deployment instead of surfacing later as a generic portal error.
+production_customers=$(curl --fail --silent --show-error "${api}/functions/v1/portal-api/production/customers" \
+  -H "Authorization: Bearer ${access_token}" -H "Origin: https://eigenheimverwalter.github.io")
+valuation_property_id=$(jq -r '[.customers[] | .property_id | select(. != null and (tostring | test("^[0-9]+$")))][0] // empty' <<< "$production_customers")
+test -n "$valuation_property_id" || { echo 'Keine produktive Immobilie für den Bewertungs-Smoke-Test verfügbar.'; exit 1; }
+valuation_response=$(mktemp)
+valuation_status=$(curl --silent --show-error --output "$valuation_response" --write-out '%{http_code}' \
+  "${api}/functions/v1/portal-api/admin/valuation-preview/${valuation_property_id}" \
+  -H "Authorization: Bearer ${access_token}" -H "Origin: https://eigenheimverwalter.github.io")
+if [[ "$valuation_status" == '200' ]]; then
+  jq -e '(.result.indicative_value | type) == "number" and (.result.range_low | type) == "number" and (.result.range_high | type) == "number"' "$valuation_response" >/dev/null \
+    || { cat "$valuation_response"; rm -f "$valuation_response"; echo 'Bewertungsantwort ist unvollständig.'; exit 1; }
+elif [[ "$valuation_status" == '422' ]]; then
+  jq -e '(.error // .message | type) == "string"' "$valuation_response" >/dev/null \
+    || { cat "$valuation_response"; rm -f "$valuation_response"; echo 'Plausibilitätsantwort der Bewertung ist ungültig.'; exit 1; }
+else
+  jq '{error:(.error // .message // "Nicht lesbare Fehlerantwort")}' "$valuation_response" 2>/dev/null || true
+  rm -f "$valuation_response"
+  echo "Signierter Bewertungs-Smoke-Test fehlgeschlagen (HTTP ${valuation_status})."
+  exit 1
+fi
+rm -f "$valuation_response"
+echo 'Signierte EHV-Core-Bewertungsverbindung bestätigt.'
+
 management=$(curl --fail --silent --show-error "${api}/functions/v1/portal-api/management/dashboard?period=30d" \
   -H "Authorization: Bearer ${access_token}" -H "Origin: https://eigenheimverwalter.github.io")
 jq -e '(.kpis|length)==8 and (.meta.asOf|type=="string") and (.actions|type=="array")' >/dev/null <<< "$management" || { echo 'Management-Dashboard-Vertrag ungültig'; exit 1; }
