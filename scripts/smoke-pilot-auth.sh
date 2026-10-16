@@ -110,10 +110,30 @@ production_customers=$(curl --fail --silent --show-error "${api}/functions/v1/po
   -H "Authorization: Bearer ${access_token}" -H "Origin: https://eigenheimverwalter.github.io")
 valuation_property_id=$(jq -r '[.customers[] | .property_id | select(. != null and (tostring | test("^[0-9]+$")))][0] // empty' <<< "$production_customers")
 test -n "$valuation_property_id" || { echo 'Keine produktive Immobilie für den Bewertungs-Smoke-Test verfügbar.'; exit 1; }
+
+# The regular deployment smoke deliberately runs as Admin Light. First prove
+# that valuation access is denied for that role, then elevate only this
+# disposable CI identity to Admin Plus for the signed Core call. Restore the
+# original role immediately afterwards so all following ACL checks retain
+# their intended Admin-Light coverage.
+valuation_forbidden_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+  "${api}/functions/v1/portal-api/admin/valuation-preview/${valuation_property_id}" \
+  -H "Authorization: Bearer ${access_token}" -H "Origin: https://eigenheimverwalter.github.io")
+if [[ "$smoke_role" == 'admin_light' ]]; then
+  test "$valuation_forbidden_status" = '403' || { echo "Admin-Light-Bewertungs-ACL fehlgeschlagen (HTTP ${valuation_forbidden_status})."; exit 1; }
+  curl --fail --silent --show-error -X PATCH "${api}/rest/v1/portal_users?id=eq.${user_id}" \
+    "${admin_headers[@]}" -H 'Content-Type: application/json' -H 'Prefer: return=minimal' \
+    --data '{"role":"super_admin"}'
+fi
 valuation_response=$(mktemp)
 valuation_status=$(curl --silent --show-error --output "$valuation_response" --write-out '%{http_code}' \
   "${api}/functions/v1/portal-api/admin/valuation-preview/${valuation_property_id}" \
   -H "Authorization: Bearer ${access_token}" -H "Origin: https://eigenheimverwalter.github.io")
+if [[ "$smoke_role" == 'admin_light' ]]; then
+  curl --fail --silent --show-error -X PATCH "${api}/rest/v1/portal_users?id=eq.${user_id}" \
+    "${admin_headers[@]}" -H 'Content-Type: application/json' -H 'Prefer: return=minimal' \
+    --data '{"role":"admin_light"}'
+fi
 if [[ "$valuation_status" == '200' ]]; then
   jq -e '(.result.indicative_value | type) == "number" and (.result.range_low | type) == "number" and (.result.range_high | type) == "number"' "$valuation_response" >/dev/null \
     || { cat "$valuation_response"; rm -f "$valuation_response"; echo 'Bewertungsantwort ist unvollständig.'; exit 1; }
