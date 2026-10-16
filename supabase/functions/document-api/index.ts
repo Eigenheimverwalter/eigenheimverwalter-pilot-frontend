@@ -27,7 +27,7 @@ Deno.serve(async req=>{
   let auth;try{auth=await authenticate(req.headers.get("Authorization"));}catch(error){return json({error:error instanceof Error?error.message:"Nicht angemeldet"},Number((error as {status?:number}).status||401));}
   const {user,profile,sourceUserId,service}=auth,url=new URL(req.url),documentId=url.searchParams.get("id"),requestedPropertyId=url.searchParams.get("propertyId"),requestedClass=url.searchParams.get("class");
   try{
-    const snapshot=await loadRuntime(service),allowed=new Set(scopedProperties(snapshot.state,profile,sourceUserId).map(x=>String(x.id))),partner=sourcePartner(snapshot.state,sourceUserId,user.email||null);
+    const snapshot=await loadRuntime(service),allowed=new Set(scopedProperties(snapshot.state,profile,sourceUserId).map(x=>String(x.id))),partner=isAdmin(profile)?null:sourcePartner(snapshot.state,sourceUserId,user.email||null);
     if(partner)for(const request of array(snapshot.state.serviceRequests))if(String(request.assignedPartnerId)===String(partner.id)&&request.contactReleasedAt)allowed.add(String(request.propertyId));
     if(isAdmin(profile)){const mirror=snapshot.state.productionMirror as Record<string,unknown>|undefined,tables=mirror?.tables as Record<string,unknown>|undefined;for(const property of array(tables?.properties))allowed.add(String(property.id));}
     if(req.method==="POST"){
