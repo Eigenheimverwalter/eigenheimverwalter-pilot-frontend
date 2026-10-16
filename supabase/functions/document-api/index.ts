@@ -1,5 +1,5 @@
 import { corsHeaders } from "../_shared/cors.ts";
-import { array, authenticate, identifier, isAdmin, loadRuntime, replaceRuntime, scopedProperties, sourcePartner } from "../_shared/runtime.ts";
+import { array, authenticate, identifier, isAdmin, loadRuntime, replaceRuntime, scopedProperties } from "../_shared/runtime.ts";
 
 const jsonResponse=(req:Request,body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{...corsHeaders(req),"Content-Type":"application/json","Cache-Control":"no-store"}});
 const classes=new Set(["service","offer","invoice","equipment","land_register","sales_file","broker_contract","notarial_contract","other"]);
@@ -13,8 +13,6 @@ const legacyTarget=(route:string,state:Record<string,unknown>)=>{
     [/^\/api\/cases\/([^/]+)\/documents$/,"serviceCases","service"],
     [/^\/api\/broker\/sales-files\/([^/]+)\/documents$/,"salesFiles","sales_file"],
     [/^\/api\/equipment\/([^/]+)\/offers$/,"equipmentRecords","offer"],
-    [/^\/api\/service-requests\/([^/]+)\/offer$/,"serviceRequests","offer"],
-    [/^\/api\/service-requests\/([^/]+)\/invoice$/,"serviceRequests","invoice"],
     [/^\/api\/production\/properties\/([^/]+)\/land-register$/,"properties","land_register"],
   ] as const;
   for(const [pattern,key,documentClass] of patterns){const id=route.match(pattern)?.[1];if(id){const entity=array(state[key]).find(x=>String(x.id)===id);return entity?{entity,key,id,documentClass}:null;}}
@@ -27,12 +25,11 @@ Deno.serve(async req=>{
   let auth;try{auth=await authenticate(req.headers.get("Authorization"));}catch(error){return json({error:error instanceof Error?error.message:"Nicht angemeldet"},Number((error as {status?:number}).status||401));}
   const {user,profile,sourceUserId,service}=auth,url=new URL(req.url),documentId=url.searchParams.get("id"),requestedPropertyId=url.searchParams.get("propertyId"),requestedClass=url.searchParams.get("class");
   try{
-    const snapshot=await loadRuntime(service),allowed=new Set(scopedProperties(snapshot.state,profile,sourceUserId).map(x=>String(x.id))),partner=isAdmin(profile)?null:sourcePartner(snapshot.state,sourceUserId,user.email||null);
-    if(partner)for(const request of array(snapshot.state.serviceRequests))if(String(request.assignedPartnerId)===String(partner.id)&&request.contactReleasedAt)allowed.add(String(request.propertyId));
+    const snapshot=await loadRuntime(service),allowed=new Set(scopedProperties(snapshot.state,profile,sourceUserId).map(x=>String(x.id)));
     if(isAdmin(profile)){const mirror=snapshot.state.productionMirror as Record<string,unknown>|undefined,tables=mirror?.tables as Record<string,unknown>|undefined;for(const property of array(tables?.properties))allowed.add(String(property.id));}
     if(req.method==="POST"){
       const body=await req.json(),target=legacyTarget(String(body.legacyRoute||""),snapshot.state),propertyId=String(body.propertyId||target?.entity.propertyId||target?.entity.id||""),documentClass=String(body.documentClass||target?.documentClass||"other"),name=safe(body.name),file=decode(String(body.content||""));
-      if(!allowed.has(propertyId))return json({error:"Kein Zugriff auf dieses Objekt"},403);if(target?.key==="serviceRequests"&&(!partner||String(target.entity.assignedPartnerId)!==String(partner.id)))return json({error:"Keine Berechtigung für diese Serviceanfrage"},403);if(!classes.has(documentClass)||!name)return json({error:"Dokumentklasse und Dateiname sind erforderlich"},422);
+      if(!allowed.has(propertyId))return json({error:"Kein Zugriff auf dieses Objekt"},403);if(!classes.has(documentClass)||!name)return json({error:"Dokumentklasse und Dateiname sind erforderlich"},422);
       const sha256=hex(await crypto.subtle.digest("SHA-256",file.bytes)),bucket=buckets[documentClass],objectPath=`${propertyId}/${crypto.randomUUID()}.${extensions[file.mime]}`;
       const {error:uploadError}=await service.storage.from(bucket).upload(objectPath,file.bytes,{contentType:file.mime,upsert:false});if(uploadError)throw new Error("Datei konnte nicht gespeichert werden");
       const {data:property}=await service.from("properties").select("id").eq("source_id",propertyId).maybeSingle();
@@ -44,7 +41,6 @@ Deno.serve(async req=>{
         if(target.key==="serviceCases"){const documents=Array.isArray(target.entity.documents)?target.entity.documents:[];documents.push(reference);target.entity.documents=documents;}
         if(target.key==="salesFiles"){const rows=array(snapshot.state.brokerSalesDocuments);rows.push({...reference,id:data.id,salesFileId:target.id,propertyId});snapshot.state.brokerSalesDocuments=rows;}
         if(target.key==="equipmentRecords"){const rows=array(snapshot.state.partnerOffers);rows.push({id:identifier("offer"),documentId:data.id,equipmentId:target.id,propertyId,partnerId:null,status:"uploaded",uploadedAt:data.created_at});snapshot.state.partnerOffers=rows;}
-        if(target.key==="serviceRequests"){if(documentClass==="offer")target.entity.pendingOfferDocument={id:data.id,name,mimeType:file.mime,uploadedAt:data.created_at};else target.entity.pendingInvoiceDocument={id:data.id,name,mimeType:file.mime,uploadedAt:data.created_at};}
         if(target.key==="properties"){target.entity.landRegisterDocumentId=data.id;}
         await replaceRuntime(service,snapshot,user.id,"document.linked",target.key,target.id,{documentId:data.id,propertyId,documentClass});
       }
