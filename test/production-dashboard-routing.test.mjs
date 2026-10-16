@@ -23,9 +23,11 @@ test('dashboard remains on the implemented Supabase portal route',()=>{
   assert.equal(config.allinklRoutes.includes('/api/dashboard'),false);
 });
 
-test('existing migrated routes remain on the ALL-INKL portal API',()=>{
-  assert.equal(apiBackendFor('/api/production/customers/123',config),'allinkl');
-  assert.equal(allinklApiUrl('/api/production/customers/123',config),'https://api.eigenheimverwalter.de/api/v1/portal/production/customers/123');
+test('incomplete ALL-INKL migration cannot intercept existing production routes',()=>{
+  assert.equal(config.allinklAuthPreferred,false);
+  assert.equal(config.apiMode,'supabase');
+  assert.deepEqual(Array.from(config.allinklRoutes),[]);
+  assert.equal(apiBackendFor('/api/production/customers/123',config),'supabase');
 });
 
 test('valuation preview remains on Supabase and is not sent to Laravel',()=>{

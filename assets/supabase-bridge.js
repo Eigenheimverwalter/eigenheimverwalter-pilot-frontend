@@ -36,12 +36,16 @@ window.ehvSupabaseBridge={
     // Sending the obsolete header causes the browser's CORS preflight to fail.
     if(options.headers){const headers=new Headers(options.headers);headers.delete('X-CSRF-Token');options={...options,headers:Object.fromEntries(headers)};}
     if(allinklAuthPreferred&&path==='/api/login'){
-      const response=await fetch(allinklAuthUrl('login'),{method:'POST',headers:{Accept:'application/json','Content-Type':'application/json'},body:options.body||'{}'});
+      const response=await fetch('./portal-auth.php',{method:'POST',headers:{Accept:'application/json','Content-Type':'application/json'},body:options.body||'{}'});
       if(!response.ok)return allinklError(response);
-      const data=await response.json();
-      if(!data.token)throw Error('Die sichere Portalverbindung hat kein Sitzungstoken geliefert.');
-      sessionStorage.setItem(allinklTokenKey,data.token);
-      return data;
+      const payload=await response.json(),loginData=payload?.data&&typeof payload.data==='object'?{...payload,...payload.data}:payload;
+      const token=loginData.token||loginData.access_token;
+      if(!token)throw Error('Die sichere Portalverbindung hat kein Sitzungstoken geliefert.');
+      sessionStorage.setItem(allinklTokenKey,token);
+      const sessionResponse=await fetch(allinklAuthUrl('session'),{headers:{Accept:'application/json',Authorization:`Bearer ${token}`}});
+      if(!sessionResponse.ok){sessionStorage.removeItem(allinklTokenKey);return allinklError(sessionResponse)}
+      const sessionPayload=await sessionResponse.json(),sessionData=sessionPayload?.data&&typeof sessionPayload.data==='object'?{...sessionPayload,...sessionPayload.data}:sessionPayload;
+      return {user:sessionData.user||loginData.user,csrf:sessionData.csrf??loginData.csrf??null,supportView:sessionData.supportView??loginData.supportView??null};
     }
     if(allinklAuthPreferred&&path==='/api/logout'){
       const token=allinklToken();
