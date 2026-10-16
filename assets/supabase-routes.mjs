@@ -5,7 +5,7 @@ export const supported=new Set([
   '/api/partner-onboarding',
   '/api/legal-documents',
   '/api/marketing-kit',
-  '/api/me','/api/dashboard','/api/account','/api/customers','/api/production/customers',
+  '/api/me','/api/dashboard','/api/account','/api/customers','/api/production/customers','/api/production/sync-status',
   '/api/partners','/api/assignments','/api/cases','/api/sales','/api/valuations','/api/campaigns',
   '/api/role-profiles','/api/partner-role-templates','/api/admin/users','/api/opportunity-engine',
   '/api/partner/workbench','/api/audit','/api/postal-codes','/api/portfolio/risks',
@@ -34,7 +34,7 @@ export const dynamicSupported=[
   /^\/api\/campaigns\/[^/]+(?:\/(?:preview|source-verify|approve|activate))?$/,
   /^\/api\/broker\/sales-files\/[^/]+(?:\/(?:document-status|address-verification|mandate|closing|release))?$/,
   /^\/api\/customer-actions\/[^/]+\/respond$/, /^\/api\/partner-opportunities\/[^/]+\/complete$/,
-  /^\/api\/production\/customers\/[^/]+$/, /^\/api\/production\/properties\/[^/]+\/address-verification$/, /^\/api\/admin\/valuation-preview\/[^/]+$/,
+  /^\/api\/production\/customers\/[^/]+$/, /^\/api\/production\/properties\/[^/]+\/address-verification$/, /^\/api\/production\/equipment-documents\/[^/]+$/, /^\/api\/admin\/valuation-preview\/[^/]+$/,
   /^\/api\/properties\/[^/]+\/equipment$/
 ];
 export const documentUploads=[/^\/api\/cases\/[^/]+\/documents$/, /^\/api\/broker\/sales-files\/[^/]+\/documents$/, /^\/api\/equipment\/[^/]+\/offers$/, /^\/api\/production\/properties\/[^/]+\/land-register$/];

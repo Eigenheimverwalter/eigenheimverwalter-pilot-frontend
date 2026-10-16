@@ -6,7 +6,7 @@ import {stripeClient,verifyStripeConfiguration,checkoutParameters,verifyPaidChec
 import {applyPartnerLicenseChange} from './partner-license.mjs';
 import {ensureStripeWebhook} from './partner-stripe-configuration.mjs';
 
-const base='https://eigenheimverwalter.github.io/eigenheimverwalter-pilot-frontend';
+const base='https://eigenheimverwalter-pilot.de';
 const config=()=>({key:Deno.env.get('PILOT_STRIPE_SECRET_KEY')?.trim(),webhook:Deno.env.get('PILOT_STRIPE_WEBHOOK_SECRET')?.trim()});
 const enabled=()=>Boolean(config().key?.startsWith('sk_test_'));
 const messages:Record<string,string>={STRIPE_TEST_CONFIGURATION_REQUIRED:'Der Stripe-Testzugang wird noch eingerichtet. Ihre Auswahl bleibt erhalten.',STRIPE_REQUEST_FAILED:'Stripe ist gerade nicht erreichbar. Bitte erneut versuchen; es wird kein zweites Abo angelegt.',STRIPE_PRICE_CONFIGURATION_MISMATCH:'Die Stripe-Preise müssen vor der Zahlung geprüft werden.',CHECKOUT_CHANGED:'Der Zahlungsstand wurde geändert. Bitte neu laden.',CHECKOUT_PENDING_RECONCILIATION:'Der bestehende Checkout wird geprüft. Bitte keinen neuen Kauf starten.'};
