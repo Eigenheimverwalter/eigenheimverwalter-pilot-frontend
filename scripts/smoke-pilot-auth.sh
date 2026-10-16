@@ -125,8 +125,9 @@ dwd=$(curl --fail --silent --show-error "${api}/functions/v1/portal-api/weather/
 jq -e '.provider=="DWD" and (.received|type=="number") and (.mapped|type=="number") and .received>=0 and .mapped>=0 and .mapped<=.received and (.samples|type=="array")' >/dev/null <<< "$dwd" || { echo 'DWD-Vertrag ungültig'; exit 1; }
 echo 'Regionale KPIs, Ereignis-KPIs und DWD-Livefeed bestätigt.'
 
-upload_payload=$(jq -nc --arg property "$property_id" \
-  '{propertyId:$property,documentClass:"other",entityType:"ci_smoke",entityId:"ephemeral",name:"pilot-upload-smoke.png",content:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="}')
+upload_entity_id="ephemeral-$(date +%s)-${RANDOM}"
+upload_payload=$(jq -nc --arg property "$property_id" --arg entity_id "$upload_entity_id" \
+  '{propertyId:$property,documentClass:"other",entityType:"ci_smoke",entityId:$entity_id,name:"pilot-upload-smoke.png",content:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="}')
 echo 'Privaten Dokumenten-Lebenszyklus prüfen.'
 upload_response=$(mktemp)
 upload_status=$(curl --silent --show-error --retry 3 --retry-all-errors --retry-delay 2 --output "$upload_response" --write-out '%{http_code}' -X POST "${api}/functions/v1/document-api" \
