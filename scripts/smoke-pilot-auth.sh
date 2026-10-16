@@ -121,18 +121,22 @@ valuation_forbidden_status=$(curl --silent --output /dev/null --write-out '%{htt
   -H "Authorization: Bearer ${access_token}" -H "Origin: https://eigenheimverwalter.github.io")
 if [[ "$smoke_role" == 'admin_light' ]]; then
   test "$valuation_forbidden_status" = '403' || { echo "Admin-Light-Bewertungs-ACL fehlgeschlagen (HTTP ${valuation_forbidden_status})."; exit 1; }
-  curl --fail --silent --show-error -X PATCH "${api}/rest/v1/portal_users?id=eq.${user_id}" \
-    "${admin_headers[@]}" -H 'Content-Type: application/json' -H 'Prefer: return=minimal' \
-    --data '{"role":"super_admin"}'
+  elevated=$(curl --fail --silent --show-error -X PATCH "${api}/rest/v1/portal_users?id=eq.${user_id}" \
+    "${admin_headers[@]}" -H 'Content-Type: application/json' -H 'Prefer: return=representation' \
+    --data '{"role":"super_admin"}')
+  jq -e --arg id "$user_id" 'length==1 and .[0].id==$id and .[0].role=="super_admin"' >/dev/null <<< "$elevated" \
+    || { echo 'Temporäre Admin-Plus-Rolle wurde nicht gespeichert.'; exit 1; }
 fi
 valuation_response=$(mktemp)
 valuation_status=$(curl --silent --show-error --output "$valuation_response" --write-out '%{http_code}' \
   "${api}/functions/v1/portal-api/admin/valuation-preview/${valuation_property_id}" \
   -H "Authorization: Bearer ${access_token}" -H "Origin: https://eigenheimverwalter.github.io")
 if [[ "$smoke_role" == 'admin_light' ]]; then
-  curl --fail --silent --show-error -X PATCH "${api}/rest/v1/portal_users?id=eq.${user_id}" \
-    "${admin_headers[@]}" -H 'Content-Type: application/json' -H 'Prefer: return=minimal' \
-    --data '{"role":"admin_light"}'
+  restored=$(curl --fail --silent --show-error -X PATCH "${api}/rest/v1/portal_users?id=eq.${user_id}" \
+    "${admin_headers[@]}" -H 'Content-Type: application/json' -H 'Prefer: return=representation' \
+    --data '{"role":"admin_light"}')
+  jq -e --arg id "$user_id" 'length==1 and .[0].id==$id and .[0].role=="admin_light"' >/dev/null <<< "$restored" \
+    || { echo 'Temporäre Admin-Light-Rolle wurde nicht wiederhergestellt.'; exit 1; }
 fi
 if [[ "$valuation_status" == '200' ]]; then
   jq -e '(.result.indicative_value | type) == "number" and (.result.range_low | type) == "number" and (.result.range_high | type) == "number"' "$valuation_response" >/dev/null \
