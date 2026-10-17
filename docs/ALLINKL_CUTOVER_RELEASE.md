@@ -2,6 +2,8 @@
 
 This document is the binding release gate for the Property XRM / Partner OS.
 
+Public preflight command: `node scripts/preflight-allinkl-production.mjs`. A production release remains blocked until every line is `PASS`.
+
 ## Non-negotiable production rules
 
 - `api.eigenheimverwalter.de` and the ALL-INKL databases are the only production data sources.
