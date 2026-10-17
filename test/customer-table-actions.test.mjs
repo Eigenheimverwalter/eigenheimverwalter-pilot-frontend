@@ -15,3 +15,12 @@ test('die Kundenakte bleibt auch beim horizontalen Scrollen erreichbar', () => {
   assert.match(features, /\.customer-table th:first-child,\.customer-table td:first-child\{position:sticky;left:0/);
   assert.match(features, /\.customer-inline-action\{display:block/);
 });
+
+test('die Bewertungsprüfung liegt ausschließlich in der 360-Grad-Verkaufsakte', () => {
+  const productionOverview = app.slice(app.indexOf('const productionPage='), app.indexOf('async function openAdminValuationPreview'));
+  const customerView = app.slice(app.indexOf('async function openProductionCustomer'), app.indexOf('const navs='));
+
+  assert.doesNotMatch(productionOverview, /valuation-preview/);
+  assert.match(customerView, /<summary>Verkaufsakte<\/summary>/);
+  assert.match(customerView, /class="outline valuation-preview"/);
+});
