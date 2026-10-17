@@ -45,7 +45,7 @@ jq -e '.user.role=="super_admin" and .user.status=="active"' >/dev/null <<< "$me
 
 customers=$(curl --fail --silent --show-error "${api}/functions/v1/portal-api/production/customers" \
   -H "Authorization: Bearer ${access_token}" -H "Origin: https://eigenheimverwalter-pilot.de")
-property_id=$(jq -r '[.customers[] | .property_id | select(. != null and (tostring | test("^[0-9]+$")))][0] // empty' <<< "$customers")
+property_id=$(jq -r '[.customers[] | .property_id | select(tostring == "39")][0] // [.customers[] | .property_id | select(. != null and (tostring | test("^[0-9]+$")))][0] // empty' <<< "$customers")
 test -n "$property_id" || { echo 'Keine produktive Immobilie für den Bewertungs-Smoke-Test verfügbar.'; exit 1; }
 
 response=$(mktemp)
@@ -57,7 +57,7 @@ if [[ "$status" == '200' ]]; then
 elif [[ "$status" == '422' ]]; then
   jq -e '(.error // .message | type)=="string"' "$response" >/dev/null
 else
-  jq '{error:(.error // .message // "Nicht lesbare Fehlerantwort")}' "$response" 2>/dev/null || true
+  jq '.' "$response" 2>/dev/null || true
   rm -f "$response"
   echo "Signierter Bewertungs-Smoke-Test fehlgeschlagen (HTTP ${status})."
   exit 1
