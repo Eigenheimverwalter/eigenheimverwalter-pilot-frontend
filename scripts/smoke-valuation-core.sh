@@ -53,7 +53,7 @@ status=$(curl --silent --show-error --output "$response" --write-out '%{http_cod
   "${api}/functions/v1/portal-api/admin/valuation-preview/${property_id}" \
   -H "Authorization: Bearer ${access_token}" -H "Origin: https://eigenheimverwalter-pilot.de")
 if [[ "$status" == '200' ]]; then
-  if ! jq -e '(.result.indicative_value | type)=="number" and (.result.range_low | type)=="number" and (.result.range_high | type)=="number"' "$response" >/dev/null; then
+  if ! jq -e '(.result.indicativeValue | type)=="number" and (.result.rangeLow | type)=="number" and (.result.rangeHigh | type)=="number"' "$response" >/dev/null; then
     jq '.' "$response" 2>/dev/null || true
     echo 'Bewertungsantwort enthält kein gültiges Ergebnis.'
     exit 1
