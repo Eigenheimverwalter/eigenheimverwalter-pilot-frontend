@@ -1,7 +1,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const root = path.resolve(process.argv[2] || path.join(import.meta.dirname, '..'));
+const projectRoot = path.resolve(import.meta.dirname, '..');
+const root = path.resolve(process.argv[2] || path.join(projectRoot, 'dist-allinkl'));
+if (!fs.existsSync(root)) {
+  console.error(`ALL-INKL-Cutover-Verzeichnis fehlt: ${root}`);
+  process.exit(1);
+}
 const walk=directory=>fs.readdirSync(directory,{withFileTypes:true}).flatMap(entry=>entry.isDirectory()?walk(path.join(directory,entry.name)):[path.join(directory,entry.name)]);
 const files = walk(root).filter(file=>/\.(?:html?|js|mjs|php|json|css|htaccess)$/i.test(file));
 
