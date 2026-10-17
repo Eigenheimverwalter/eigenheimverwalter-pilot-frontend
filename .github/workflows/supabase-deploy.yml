@@ -1,12 +1,7 @@
-name: Supabase deploy
+name: DECOMMISSIONED - Supabase deploy
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main, codex/makler-workflow-and-platform-update]
-    paths:
-      - "supabase/**"
-      - ".github/workflows/supabase-deploy.yml"
 
 permissions:
   contents: read
@@ -20,6 +15,7 @@ env:
 
 jobs:
   deploy:
+    if: ${{ false }}
     runs-on: ubuntu-latest
     environment: staging
     env:

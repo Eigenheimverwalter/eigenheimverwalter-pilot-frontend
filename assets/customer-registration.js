@@ -1,8 +1,8 @@
 import {appDownloadPanel} from './app-downloads.mjs';
 await import('../runtime-config.js');
-await import('./supabase-bridge.js');
+await import('./allinkl-bridge.js');
 const token=decodeURIComponent(location.pathname.split('/').filter(Boolean).at(-1)||''),form=document.querySelector('#registration-form'),title=document.querySelector('#registration-title'),copy=document.querySelector('#registration-copy'),message=document.querySelector('#registration-message');
-const api=async(options={})=>{const path=`/api/customer-registration/${encodeURIComponent(token)}`,bridge=window.ehvSupabaseBridge;if(bridge?.handles(path))return bridge.request(path,options);throw Error('Supabase-Schnittstelle nicht verfügbar')};
+const api=async(options={})=>{const path=`/api/customer-registration/${encodeURIComponent(token)}`,bridge=window.ehvApiBridge;if(bridge?.handles(path))return bridge.request(path,options);throw Error('Portal-Schnittstelle nicht verfügbar')};
 try{const invitation=await api();title.textContent=`Willkommen, ${invitation.firstName}`;copy.textContent=`Ihre Einladung für ${invitation.email} ist bis ${new Date(invitation.expiresAt).toLocaleDateString('de-DE')} gültig.`;document.querySelector('#registration-email').value=invitation.email;form.hidden=false}catch(error){title.textContent='Einladung nicht verfügbar';copy.textContent=error.message}
 let busy=false;
 form.onsubmit=async event=>{
