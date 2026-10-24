@@ -20,7 +20,9 @@ env:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    # Pin the runner image as well as the Supabase CLI. The moving
+    # ubuntu-latest image repeatedly failed before checkout on 2026-10-24.
+    runs-on: ubuntu-22.04
     environment: staging
     env:
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
