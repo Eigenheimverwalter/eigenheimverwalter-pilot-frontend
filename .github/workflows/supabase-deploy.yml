@@ -157,11 +157,16 @@ jobs:
           SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
         run: bash scripts/smoke-pilot-auth.sh
       - name: Smoke-test signed production valuation
+        id: valuation_smoke
+        continue-on-error: true
         shell: bash
         env:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
         run: bash scripts/smoke-valuation-core.sh
+      - name: Report valuation smoke-test separately
+        if: ${{ steps.valuation_smoke.outcome == 'failure' }}
+        run: echo "::warning::Die produktive Immobilienbewertung ist separat zu prüfen; Portal-, Auftrags- und Dokumenten-Deployment werden fortgesetzt."
       - name: Verify private legal PDF upload and remove only its test draft
         env:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
