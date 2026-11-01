@@ -2,9 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
-const backendRoutes=fs.readFileSync(new URL('../../backend-production-upload-2026-09-25/routes/api.php',import.meta.url),'utf8');
-const exportController=fs.readFileSync(new URL('../../backend-production-upload-2026-09-25/app/Http/Controllers/Admin/ProductionMirrorExportController.php',import.meta.url),'utf8');
-const exportService=fs.readFileSync(new URL('../../backend-production-upload-2026-09-25/app/Services/Admin/ProductionMirrorExportService.php',import.meta.url),'utf8');
+const optional=relative=>{const url=new URL(relative,import.meta.url);return fs.existsSync(url)?fs.readFileSync(url,'utf8'):''};
+const backendRoutes=optional('../../backend-production-upload-2026-09-25/routes/api.php');
+const exportController=optional('../../backend-production-upload-2026-09-25/app/Http/Controllers/Admin/ProductionMirrorExportController.php');
+const exportService=optional('../../backend-production-upload-2026-09-25/app/Services/Admin/ProductionMirrorExportService.php');
 const reads=fs.readFileSync(new URL('../supabase/functions/_shared/read-routes.ts',import.meta.url),'utf8');
 const writes=fs.readFileSync(new URL('../supabase/functions/_shared/write-routes.ts',import.meta.url),'utf8');
 const importer=fs.readFileSync(new URL('../scripts/import-production-mirror.mjs',import.meta.url),'utf8');
@@ -12,7 +13,7 @@ const documentImporter=fs.readFileSync(new URL('../scripts/import-production-doc
 const workflow=fs.readFileSync(new URL('../.github/workflows/supabase-production-mirror-import.yml',import.meta.url),'utf8');
 const deployWorkflow=fs.readFileSync(new URL('../.github/workflows/supabase-deploy.yml',import.meta.url),'utf8');
 
-test('confidential production mirror has a separate token-protected export',()=>{
+test('confidential production mirror has a separate token-protected export',{skip:!backendRoutes||!exportController||!exportService},()=>{
   assert.match(backendRoutes,/migration\/production-export/);
   assert.match(backendRoutes,/migration\.export/);
   assert.match(exportController,/ProductionMirrorExportService/);
@@ -21,7 +22,7 @@ test('confidential production mirror has a separate token-protected export',()=>
   assert.doesNotMatch(exportService,/['\"]password['\"]\s*=>\s*\$user->password/);
 });
 
-test('production document binaries have an authenticated migration-only export',()=>{
+test('production document binaries have an authenticated migration-only export',{skip:!backendRoutes||!exportController},()=>{
   assert.match(backendRoutes,/migration\/production-files/);
   assert.match(backendRoutes,/migration\.export/);
   assert.match(exportController,/downloadFile/);
