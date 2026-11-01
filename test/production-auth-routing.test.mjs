@@ -10,6 +10,9 @@ test('production login and session use only the ALL-INKL portal proxy',()=>{
   assert.match(bridge,/\/api\/v1\/portal\/auth\/login/);
   assert.match(bridge,/\/api\/v1\/portal\/auth\/session/);
   assert.match(proxy,/https:\/\/api\.eigenheimverwalter\.de/);
+  assert.match(bridge,/sessionStorage\.setItem\(tokenKey,value\)/);
+  assert.doesNotMatch(bridge,/localStorage\.getItem\(tokenKey\)/);
+  assert.doesNotMatch(bridge,/localStorage\.setItem\(tokenKey/);
   assert.doesNotMatch(bridge,/supabase/i);
   assert.doesNotMatch(proxy,/supabase/i);
 });

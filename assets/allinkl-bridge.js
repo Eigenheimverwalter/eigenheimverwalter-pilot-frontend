@@ -1,6 +1,17 @@
 const tokenKey='ehv_allinkl_portal_token';
 const config=window.__EHV_RUNTIME__||{};
-const token=()=>sessionStorage.getItem(tokenKey)||'';
+let memoryToken='';
+const token=()=>memoryToken||sessionStorage.getItem(tokenKey)||'';
+const storeToken=value=>{
+  memoryToken=value;
+  sessionStorage.setItem(tokenKey,value);
+  localStorage.removeItem(tokenKey);
+};
+const clearToken=()=>{
+  memoryToken='';
+  localStorage.removeItem(tokenKey);
+  sessionStorage.removeItem(tokenKey);
+};
 const proxy=String(config.portalProxy||'./portal-api.php');
 
 const unpack=payload=>payload?.data&&typeof payload.data==='object'?payload.data:payload;
@@ -24,14 +35,15 @@ window.ehvApiBridge={
   async request(path,options={}){
     if(path==='/api/login'){
       const payload=JSON.parse(options.body||'{}');
-      const result=await requestProxy('/api/v1/portal/auth/login',{method:'POST',body:JSON.stringify({email:payload.email||payload.username,username:payload.username||payload.email,password:payload.password})});
+      const email=String(payload.email||payload.username||'').trim().toLowerCase();
+      const result=await requestProxy('/api/v1/portal/auth/login',{method:'POST',body:JSON.stringify({email,username:email,password:payload.password})});
       if(!result?.token)throw Error('Die sichere Portalverbindung hat kein Sitzungstoken geliefert.');
-      sessionStorage.setItem(tokenKey,result.token);
+      storeToken(result.token);
       const session=await requestProxy('/api/v1/portal/auth/session');
       return {user:session.user,csrf:null,supportView:null};
     }
     if(path==='/api/logout'){
-      try{if(token())await requestProxy('/api/v1/portal/auth/logout',{method:'POST',body:'{}'})}finally{sessionStorage.removeItem(tokenKey)}
+      try{if(token())await requestProxy('/api/v1/portal/auth/logout',{method:'POST',body:'{}'})}finally{clearToken()}
       return null;
     }
     if(path==='/api/me'){

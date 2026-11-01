@@ -1,0 +1,4 @@
+node_modules/
+dist-allinkl/
+.prod-audit/
+_deploy/
