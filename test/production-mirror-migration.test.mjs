@@ -29,15 +29,16 @@ test('production document binaries have an authenticated migration-only export',
   assert.match(exportController,/migration\.production_file_exported/);
 });
 
-test('production mirror merges into the current runtime revision instead of replacing newer work',()=>{
+test('legacy Supabase mirror workflow is permanently decommissioned',()=>{
   assert.match(importer,/select=payload,revision/);
   assert.match(importer,/\.\.\.current\.payload,productionMirror:/);
   assert.match(importer,/replace_portal_runtime_state/);
   assert.match(importer,/previous\?\.supabaseDocumentId/);
   assert.match(importer,/previousVersion===version/);
   assert.match(workflow,/production-export/);
-  assert.match(workflow,/SUPABASE_SERVICE_ROLE_KEY/);
-  assert.match(workflow,/cron: '2-59\/5 \* \* \* \*'/);
+  assert.match(workflow,/DECOMMISSIONED/);
+  assert.match(workflow,/if: \$\{\{ false \}\}/);
+  assert.doesNotMatch(workflow,/cron:/);
   assert.match(workflow,/cancel-in-progress: false/);
   assert.match(workflow,/https:\/\/api\.eigenheimverwalter\.de/);
   assert.match(workflow,/--retry 3 --retry-all-errors/);

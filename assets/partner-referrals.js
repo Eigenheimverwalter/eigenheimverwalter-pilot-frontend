@@ -8,10 +8,10 @@ const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&
 export const referralRoles = ['partner_basic', 'referral_partner', 'crafts_partner', 'broker_partner'];
 
 export async function portalRequest(path, options = {}) {
-  let bridge = window.ehvSupabaseBridge;
+  let bridge = window.ehvApiBridge;
   if (!bridge && window.__EHV_RUNTIME__?.authMode === 'supabase') {
-    await import('./supabase-bridge.js');
-    bridge = window.ehvSupabaseBridge;
+    await import('./allinkl-bridge.js');
+    bridge = window.ehvApiBridge;
   }
   if (bridge?.handles(path)) return bridge.request(path, options);
   if (window.ehvApi) return window.ehvApi(path, options);

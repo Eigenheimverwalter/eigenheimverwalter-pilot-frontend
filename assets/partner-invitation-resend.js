@@ -1,4 +1,4 @@
-const bridge=window.ehvSupabaseBridge;
+const bridge=window.ehvApiBridge;
 const escapeHtml=value=>String(value??'').replace(/[&<>'"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
 const formatDate=value=>value?new Date(value).toLocaleString('de-DE'):'Nicht dokumentiert';
 

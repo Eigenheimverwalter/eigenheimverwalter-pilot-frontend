@@ -10,7 +10,7 @@ test('live customer data refreshes silently without the legacy mirror warning',(
   assert.match(app,/document\.addEventListener\('visibilitychange',refreshProductionOnReturn\)/);
   assert.match(app,/window\.addEventListener\('focus',refreshProductionOnReturn\)/);
   assert.match(app,/Live-Daten · zuletzt aktualisiert/);
-  assert.match(app,/Direkte, signierte Live-Daten/);
+  assert.match(app,/Aktive Kunden und noch offene Registrierungen werden getrennt ausgewiesen/);
   assert.doesNotMatch(app,/Direkte, signierte Phase-4-Daten/);
   assert.doesNotMatch(app,/api\('\/api\/production\/sync-status'\)/);
   assert.doesNotMatch(app,/Achtung: Produktivspiegel nicht aktuell/);

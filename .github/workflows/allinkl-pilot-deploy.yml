@@ -1,0 +1,63 @@
+name: ALL-INKL Pilot deploy
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: allinkl-pilot-production
+  cancel-in-progress: false
+
+jobs:
+  verify-and-deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      ALLINKL_FTP_HOST: ${{ secrets.ALLINKL_FTP_HOST }}
+      ALLINKL_FTP_USERNAME: ${{ secrets.ALLINKL_FTP_USERNAME }}
+      ALLINKL_FTP_PASSWORD: ${{ secrets.ALLINKL_FTP_PASSWORD }}
+      ALLINKL_PILOT_TARGET_DIR: ${{ vars.ALLINKL_PILOT_TARGET_DIR }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+      - run: pnpm run build:allinkl
+      - run: pnpm run verify:allinkl
+      - name: Validate production target
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$ALLINKL_FTP_HOST"
+          test -n "$ALLINKL_FTP_USERNAME"
+          test -n "$ALLINKL_FTP_PASSWORD"
+          [[ "$ALLINKL_PILOT_TARGET_DIR" =~ ^/[^[:space:]]*pilot[^[:space:]]*/$ ]]
+      - name: Deploy verified portal files
+        uses: SamKirkland/FTP-Deploy-Action@fe9c9aad1198372d80a77c8dace63cbe48b69eac
+        with:
+          server: ${{ env.ALLINKL_FTP_HOST }}
+          username: ${{ env.ALLINKL_FTP_USERNAME }}
+          password: ${{ env.ALLINKL_FTP_PASSWORD }}
+          protocol: ftps
+          port: 21
+          local-dir: ./dist-allinkl/
+          server-dir: ${{ env.ALLINKL_PILOT_TARGET_DIR }}
+          dangerous-clean-slate: false
+      - name: Verify production is ALL-INKL only
+        shell: bash
+        run: |
+          set -euo pipefail
+          page=$(curl --fail --silent --show-error https://eigenheimverwalter-pilot.de/)
+          config=$(curl --fail --silent --show-error https://eigenheimverwalter-pilot.de/runtime-config.js)
+          grep -Fq 'eigenheimverwalter Pilot' <<< "$page"
+          grep -Fq "authMode:'allinkl'" <<< "$config"
+          grep -Fq "apiMode:'allinkl'" <<< "$config"
+          ! grep -Fq 'supabase.co' <<< "$page$config"

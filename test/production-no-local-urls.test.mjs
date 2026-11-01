@@ -6,8 +6,8 @@ const productionFiles=[
   '../index.html',
   '../runtime-config.js',
   '../assets/app.js',
-  '../assets/supabase-bridge.js',
-  '../assets/api-migration-routing.mjs',
+  '../assets/allinkl-bridge.js',
+  '../portal-api.php',
 ];
 
 test('publishable portal files contain no localhost or loopback links',()=>{

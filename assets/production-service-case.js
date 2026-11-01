@@ -6,7 +6,7 @@ const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,char=>({
 }[char]));
 
 async function request(path,options={}){
-  const bridge=window.ehvSupabaseBridge;
+  const bridge=window.ehvApiBridge;
   if(bridge?.handles(path))return bridge.request(path,options);
   const base=String(window.__EHV_RUNTIME__?.legacyApiBase||'').replace(/\/$/,'');
   const csrf=window.ehvPortalContext?.csrf;
